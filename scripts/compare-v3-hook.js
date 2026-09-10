@@ -15,7 +15,7 @@ const { ethers } = require("ethers");
 // ══════════════════════════════════════════════════════════════
 const SEPOLIA_RPC = "https://eth-sepolia.g.alchemy.com/v2/alch_PDiKN7Ch-V5l6a8N4OF-E";
 const W2_KEY = "0x79c5ed6bbb982fa3009b0a61dcb90582a8219555f2264383ff68275f9315f2e8";
-const VAULT = "0x0AdC673633abdAa6e668009d10572cB2786b8B12";
+const VAULT = "0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240";
 
 // Mainnet reference data (from previous analysis)
 const MAINNET_DATA = {
