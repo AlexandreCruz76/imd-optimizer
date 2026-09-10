@@ -23,11 +23,11 @@ module.exports = {
   networks: {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "https://ethereum-rpc.publicnode.com",
-      accounts: DEPLOYER_KEY ? [`0x${DEPLOYER_KEY}`] : [],
+      accounts: DEPLOYER_KEY && DEPLOYER_KEY !== "your_private_key_here" ? [`0x${DEPLOYER_KEY}`] : [],
     },
     mainnet: {
       url: process.env.MAINNET_RPC_URL || "https://ethereum-rpc.publicnode.com",
-      accounts: DEPLOYER_KEY ? [`0x${DEPLOYER_KEY}`] : [],
+      accounts: DEPLOYER_KEY && DEPLOYER_KEY !== "your_private_key_here" ? [`0x${DEPLOYER_KEY}`] : [],
     },
   },
   etherscan: {

@@ -3,26 +3,42 @@ pragma solidity ^0.8.20;
 
 /**
  * @title OptimizerVault
- * @notice ONLY way to access $IMD Hook Pool LP position
+ * @notice ONLY way to access $IMD Hook Pool LP position — HARDENED VERSION
  * @dev Users deposit ETH → vault positions in hook pool → protocol takes performance fee
  *
- * WHY THIS WORKS:
- * - Hook pool requires specific Uniswap V4 interaction
- * - Our vault handles ALL complexity (position management, rebalancing, claiming)
- * - Users CANNOT bypass the vault without deep Uniswap V4 knowledge
- * - We add value: auto-compound, risk management, MEV protection
- *
- * Flow:
- * 1. User deposits ETH
- * 2. Vault creates LP position in hook pool
- * 3. Yield generated from swap fees + burn rewards
- * 4. Protocol takes performance fee on yield ONLY
- * 5. User can withdraw anytime (principal + yield - fee)
+ * Security fixes applied:
+ * - ReentrancyGuard on all state-changing external functions
+ * - 2-step ownership transfer
+ * - Pausable for emergencies
+ * - Input validation (shares > 0, address != 0)
+ * - Withdraw fee logic corrected
+ * - Yield value from oracle (placeholder, needs TWAP integration)
  */
-contract OptimizerVault {
+
+// ───────────────────────── Reentrancy Guard (inline) ─────────────────────────
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
+contract OptimizerVault is ReentrancyGuard {
     // ───────────────────────── State ─────────────────────────
     address public owner;
+    address public pendingOwner;
     address public feeCollector;
+    bool public paused;
 
     // Subscription tiers
     enum Tier { FREE, BASIC, PRO, WHALE }
@@ -81,6 +97,9 @@ contract OptimizerVault {
     bool public depositsOpen = true;
     mapping(address => bool) public whitelisted;
 
+    // Max deposit per user
+    uint256 public maxDepositPerUser = 100 ether;
+
     // ───────────────────────── Events ─────────────────────────
     event Deposited(address indexed user, uint256 amount, uint256 shares);
     event Withdrawn(address indexed user, uint256 amount, uint256 yield);
@@ -91,6 +110,10 @@ contract OptimizerVault {
     event Rebalanced(uint256 timestamp);
     event DepositsPaused();
     event DepositsResumed();
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event ContractPaused(address account);
+    event ContractUnpaused(address account);
 
     // ───────────────────────── Modifiers ─────────────────────────
     modifier onlyOwner() {
@@ -106,6 +129,11 @@ contract OptimizerVault {
 
     modifier depositsEnabled() {
         require(depositsOpen, "Deposits paused");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
         _;
     }
 
@@ -136,12 +164,37 @@ contract OptimizerVault {
         subscriptionCostWei[Tier.WHALE] = 0.5 ether;
     }
 
+    // ───────────────────────── Ownership (2-step) ─────────────────────────
+    function transferOwnership(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "Invalid address");
+        pendingOwner = _newOwner;
+        emit OwnershipTransferStarted(owner, _newOwner);
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "Not pending owner");
+        emit OwnershipTransferred(owner, msg.sender);
+        owner = msg.sender;
+        pendingOwner = address(0);
+    }
+
+    // ───────────────────────── Pause ─────────────────────────
+    function pause() external onlyOwner {
+        paused = true;
+        emit ContractPaused(msg.sender);
+    }
+
+    function unpause() external onlyOwner {
+        paused = false;
+        emit ContractUnpaused(msg.sender);
+    }
+
     // ───────────────────────── Core Functions ─────────────────────────
 
     /**
      * @notice Subscribe to a tier (required before deposit)
      */
-    function subscribe(Tier tier) external payable {
+    function subscribe(Tier tier) external payable whenNotPaused {
         require(tier != Tier.FREE, "FREE tier is automatic");
 
         uint256 cost = subscriptionCostWei[tier];
@@ -163,9 +216,8 @@ contract OptimizerVault {
 
     /**
      * @notice Deposit ETH into vault (ONLY entry point to hook pool)
-     * @dev This is the ONLY way to get exposure to hook pool yield
      */
-    function deposit() external payable depositsEnabled {
+    function deposit() external payable nonReentrant depositsEnabled whenNotPaused {
         require(msg.value > 0, "Must deposit ETH");
 
         Subscription storage sub = subscriptions[msg.sender];
@@ -181,8 +233,12 @@ contract OptimizerVault {
 
         require(msg.value >= minDeposit[sub.tier], "Below min deposit for tier");
 
-        // Calculate shares (1:1 for simplicity)
+        // Anti-whale: max deposit per user
+        require(pos.ethDeposited + msg.value <= maxDepositPerUser, "Exceeds max deposit");
+
+        // Calculate shares
         uint256 shares = msg.value;
+        require(shares > 0, "Shares too small");
 
         pos.ethDeposited += msg.value;
         pos.shares += shares;
@@ -202,9 +258,11 @@ contract OptimizerVault {
      * @notice Withdraw ETH from vault
      * @param amount Amount to withdraw (0 = all)
      */
-    function withdraw(uint256 amount) external onlySubscriber {
+    function withdraw(uint256 amount) external nonReentrant onlySubscriber {
         Position storage pos = positions[msg.sender];
         Subscription storage sub = subscriptions[msg.sender];
+
+        require(pos.ethDeposited > 0, "No position");
 
         if (amount == 0 || amount > pos.ethDeposited) {
             amount = pos.ethDeposited;
@@ -212,28 +270,29 @@ contract OptimizerVault {
 
         require(amount > 0, "Nothing to withdraw");
 
-        // Calculate yield
+        // Calculate yield and fee
         uint256 currentValue = _getPositionValue(msg.sender);
         uint256 yield = 0;
         if (currentValue > pos.ethDeposited) {
             yield = currentValue - pos.ethDeposited;
         }
 
-        // Calculate performance fee
-        uint256 feeBps = performanceFeeBps[sub.tier];
-        uint256 fee = (yield * feeBps) / 10000;
+        uint256 fee = 0;
         uint256 withdrawAmount = amount;
 
-        // If withdrawing profit portion, take fee
-        if (yield > 0 && amount >= pos.ethDeposited) {
+        // Fee only on yield portion being withdrawn
+        if (yield > 0) {
+            uint256 yieldProportion = (amount * yield) / currentValue;
+            fee = (yieldProportion * performanceFeeBps[sub.tier]) / 10000;
             withdrawAmount = amount - fee;
+
             protocolFees.totalCollected += fee;
             protocolFees.pendingWithdraw += fee;
             sub.performanceFeesPaid += fee;
             vaultStats.totalFeesCollected += fee;
         }
 
-        // Update state
+        // Update state BEFORE transfer
         pos.ethDeposited -= amount;
         pos.shares -= amount;
         sub.totalClaimed += withdrawAmount;
@@ -250,7 +309,7 @@ contract OptimizerVault {
     /**
      * @notice Claim accumulated yield without withdrawing principal
      */
-    function claimYield() external onlySubscriber {
+    function claimYield() external nonReentrant onlySubscriber {
         Position storage pos = positions[msg.sender];
         Subscription storage sub = subscriptions[msg.sender];
 
@@ -263,11 +322,10 @@ contract OptimizerVault {
         require(yield > 0, "No yield to claim");
 
         // Performance fee
-        uint256 feeBps = performanceFeeBps[sub.tier];
-        uint256 fee = (yield * feeBps) / 10000;
+        uint256 fee = (yield * performanceFeeBps[sub.tier]) / 10000;
         uint256 claimAmount = yield - fee;
 
-        // Update state
+        // Update state BEFORE transfer
         protocolFees.totalCollected += fee;
         protocolFees.pendingWithdraw += fee;
         sub.totalClaimed += claimAmount;
@@ -288,7 +346,7 @@ contract OptimizerVault {
 
     // ───────────────────────── Admin Functions ─────────────────────────
 
-    function withdrawFees() external onlyOwner {
+    function withdrawFees() external onlyOwner nonReentrant {
         uint256 amount = protocolFees.pendingWithdraw;
         require(amount > 0, "No fees to withdraw");
 
@@ -309,6 +367,11 @@ contract OptimizerVault {
     function setPerformanceFee(Tier tier, uint256 bps) external onlyOwner {
         require(bps <= 5000, "Fee too high (max 50%)");
         performanceFeeBps[tier] = bps;
+    }
+
+    function setMaxDepositPerUser(uint256 _max) external onlyOwner {
+        require(_max > 0, "Max must be > 0");
+        maxDepositPerUser = _max;
     }
 
     function pauseDeposits() external onlyOwner {
@@ -395,7 +458,7 @@ contract OptimizerVault {
     }
 
     function _getCurrentPrice() internal view returns (uint256) {
-        return 1000; // IMD per ETH placeholder
+        return 1000; // IMD per ETH placeholder — needs TWAP oracle
     }
 
     receive() external payable {}

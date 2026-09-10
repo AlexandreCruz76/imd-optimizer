@@ -3,11 +3,37 @@ pragma solidity ^0.8.20;
 
 /**
  * @title AdoptionVault
- * @notice Fundraising contract for IMD Protocol mainnet deployment
+ * @notice Fundraising contract for IMD Protocol mainnet deployment — HARDENED VERSION
  * @dev Offers different support tiers with benefits for early adopters
+ *
+ * Security fixes applied:
+ * - ReentrancyGuard on ETH transfers
+ * - 2-step ownership transfer
+ * - distributeBenefits with gas-safe batching
+ * - Input validation
  */
-contract AdoptionVault {
+
+// ───────────────────────── Reentrancy Guard (inline) ─────────────────────────
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
+contract AdoptionVault is ReentrancyGuard {
     address public owner;
+    address public pendingOwner;
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
     
     enum Tier { SUPPORTER, BUILDER, SHARK, WHALE, FOUNDER }
@@ -18,16 +44,16 @@ contract AdoptionVault {
         uint256 joinedAt;
         uint256 lastClaimAt;
         bool isActive;
-        string message; // Optional message from supporter
+        string message;
     }
     
     struct TierConfig {
-        uint256 minContribution;  // Minimum ETH to join
-        uint256 feeDiscount;      // Fee discount in basis points (100 = 1%)
-        uint256 revenueShare;     // Revenue share in basis points
-        uint256 maxPositions;     // Max positions in vault
-        bool earlyAccess;         // Early access to features
-        bool governance;          // Governance rights
+        uint256 minContribution;
+        uint256 feeDiscount;
+        uint256 revenueShare;
+        uint256 maxPositions;
+        bool earlyAccess;
+        bool governance;
         string name;
         string description;
     }
@@ -41,12 +67,15 @@ contract AdoptionVault {
     
     // Fundraising goals
     uint256 public totalRaised;
-    uint256 public goalAmount = 5 ether; // 5 ETH goal
-    uint256 public minContribution = 0.01 ether; // 0.01 ETH minimum
+    uint256 public goalAmount = 5 ether;
+    uint256 public minContribution = 0.01 ether;
     
     // Benefits distribution
     mapping(address => uint256) public pendingBenefits;
     uint256 public totalBenefitsDistributed;
+    
+    // Gas-safe batch distribution
+    uint256 public lastDistributeIndex;
     
     // Events
     event SupporterJoined(
@@ -62,6 +91,8 @@ contract AdoptionVault {
     );
     event GoalReached(uint256 totalRaised, uint256 timestamp);
     event FundsWithdrawn(address indexed to, uint256 amount, uint256 timestamp);
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -76,11 +107,10 @@ contract AdoptionVault {
     constructor() {
         owner = msg.sender;
         
-        // Initialize tier configurations - Focus on VOLUME over large contributions
         tierConfigs[Tier.SUPPORTER] = TierConfig({
-            minContribution: 0.005 ether,  // 0.005 ETH (~$12)
-            feeDiscount: 300,        // 3% discount
-            revenueShare: 50,        // 0.5% revenue share
+            minContribution: 0.005 ether,
+            feeDiscount: 300,
+            revenueShare: 50,
             maxPositions: 1,
             earlyAccess: false,
             governance: false,
@@ -89,9 +119,9 @@ contract AdoptionVault {
         });
         
         tierConfigs[Tier.BUILDER] = TierConfig({
-            minContribution: 0.01 ether,   // 0.01 ETH (~$25)
-            feeDiscount: 500,        // 5% discount
-            revenueShare: 100,       // 1% revenue share
+            minContribution: 0.01 ether,
+            feeDiscount: 500,
+            revenueShare: 100,
             maxPositions: 2,
             earlyAccess: false,
             governance: false,
@@ -100,9 +130,9 @@ contract AdoptionVault {
         });
         
         tierConfigs[Tier.SHARK] = TierConfig({
-            minContribution: 0.025 ether,  // 0.025 ETH (~$60)
-            feeDiscount: 800,        // 8% discount
-            revenueShare: 200,       // 2% revenue share
+            minContribution: 0.025 ether,
+            feeDiscount: 800,
+            revenueShare: 200,
             maxPositions: 3,
             earlyAccess: true,
             governance: false,
@@ -111,9 +141,9 @@ contract AdoptionVault {
         });
         
         tierConfigs[Tier.WHALE] = TierConfig({
-            minContribution: 0.05 ether,   // 0.05 ETH (~$120)
-            feeDiscount: 1200,       // 12% discount
-            revenueShare: 350,       // 3.5% revenue share
+            minContribution: 0.05 ether,
+            feeDiscount: 1200,
+            revenueShare: 350,
             maxPositions: 5,
             earlyAccess: true,
             governance: true,
@@ -122,9 +152,9 @@ contract AdoptionVault {
         });
         
         tierConfigs[Tier.FOUNDER] = TierConfig({
-            minContribution: 0.1 ether,    // 0.1 ETH (~$240)
-            feeDiscount: 2000,       // 20% discount
-            revenueShare: 500,       // 5% revenue share
+            minContribution: 0.1 ether,
+            feeDiscount: 2000,
+            revenueShare: 500,
             maxPositions: 10,
             earlyAccess: true,
             governance: true,
@@ -133,17 +163,26 @@ contract AdoptionVault {
         });
     }
     
-    /**
-     * @notice Join as a supporter with a specific tier
-     * @param tier Tier to join
-     * @param message Optional message
-     */
+    // ───────────────────────── Ownership (2-step) ─────────────────────────
+    function transferOwnership(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "Invalid address");
+        pendingOwner = _newOwner;
+        emit OwnershipTransferStarted(owner, _newOwner);
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "Not pending owner");
+        emit OwnershipTransferred(owner, msg.sender);
+        owner = msg.sender;
+        pendingOwner = address(0);
+    }
+    
+    // ───────────────────────── Core Functions ─────────────────────────
+    
     function joinTier(Tier tier, string calldata message) external payable {
         require(!supporters[msg.sender].isActive, "Already a supporter");
         require(msg.value >= tierConfigs[tier].minContribution, "Below minimum contribution");
         require(msg.value >= minContribution, "Below global minimum");
-        
-        TierConfig memory config = tierConfigs[tier];
         
         supporters[msg.sender] = SupporterInfo({
             tier: tier,
@@ -159,16 +198,11 @@ contract AdoptionVault {
         
         emit SupporterJoined(msg.sender, tier, msg.value, block.timestamp);
         
-        // Check if goal reached
         if (totalRaised >= goalAmount) {
             emit GoalReached(totalRaised, block.timestamp);
         }
     }
     
-    /**
-     * @notice Upgrade to a higher tier
-     * @param newTier New tier to upgrade to
-     */
     function upgradeTier(Tier newTier) external payable {
         require(supporters[msg.sender].isActive, "Not a supporter");
         
@@ -185,47 +219,45 @@ contract AdoptionVault {
         emit SupporterJoined(msg.sender, newTier, msg.value, block.timestamp);
     }
     
-    /**
-     * @notice Claim accumulated benefits
-     */
-    function claimBenefits() external onlyActiveSupporter {
+    function claimBenefits() external onlyActiveSupporter nonReentrant {
         uint256 amount = pendingBenefits[msg.sender];
         require(amount > 0, "No benefits to claim");
         
         pendingBenefits[msg.sender] = 0;
         totalBenefitsDistributed += amount;
         
-        // Transfer ETH
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
         
         emit BenefitsClaimed(msg.sender, amount, block.timestamp);
     }
     
-    /**
-     * @notice Add benefits to a supporter (called by owner when revenue is generated)
-     * @param supporter Address to add benefits to
-     * @param amount Amount to add
-     */
     function addBenefits(address supporter, uint256 amount) external onlyOwner {
         require(supporters[supporter].isActive, "Not a supporter");
+        require(amount > 0, "Amount must be > 0");
         
         SupporterInfo storage info = supporters[supporter];
         TierConfig memory config = tierConfigs[info.tier];
         
-        // Calculate benefits based on tier's revenue share
         uint256 benefits = (amount * config.revenueShare) / 10000;
         pendingBenefits[supporter] += benefits;
     }
     
     /**
-     * @notice Distribute benefits to all supporters based on their tier
+     * @notice Gas-safe batch distribution — processes up to _maxBatch supporters per call
      * @param totalAmount Total amount to distribute
+     * @param _maxBatch Max supporters to process per call (prevents out-of-gas)
      */
-    function distributeBenefits(uint256 totalAmount) external onlyOwner {
+    function distributeBenefits(uint256 totalAmount, uint256 _maxBatch) external onlyOwner {
         require(totalAmount > 0, "Amount must be > 0");
+        require(_maxBatch > 0 && _maxBatch <= 200, "Batch must be 1-200");
         
-        for (uint256 i = 0; i < supporterList.length; i++) {
+        uint256 len = supporterList.length;
+        uint256 start = lastDistributeIndex;
+        uint256 end = start + _maxBatch;
+        if (end > len) end = len;
+        
+        for (uint256 i = start; i < end; i++) {
             address supporter = supporterList[i];
             SupporterInfo storage info = supporters[supporter];
             
@@ -235,16 +267,17 @@ contract AdoptionVault {
                 pendingBenefits[supporter] += benefits;
             }
         }
+        
+        lastDistributeIndex = end;
+        
+        // If we reached the end, reset for next distribution
+        if (end >= len) {
+            lastDistributeIndex = 0;
+        }
     }
     
-    /**
-     * @notice Get supporter's tier benefits
-     * @param supporter Address to check
-     * @return tier Supporter's tier
-     * @return feeDiscount Fee discount in basis points
-     * @return revenueShare Revenue share in basis points
-     * @return maxPositions Maximum positions allowed
-     */
+    // ───────────────────────── View Functions ─────────────────────────
+    
     function getSupporterBenefits(address supporter) external view returns (
         Tier tier,
         uint256 feeDiscount,
@@ -264,37 +297,25 @@ contract AdoptionVault {
         );
     }
     
-    /**
-     * @notice Get tier configuration
-     * @param tier Tier to check
-     * @return config Tier configuration
-     */
     function getTierConfig(Tier tier) external view returns (TierConfig memory) {
         return tierConfigs[tier];
     }
     
-    /**
-     * @notice Get total supporters
-     * @return count Number of supporters
-     */
     function getSupporterCount() external view returns (uint256 count) {
         return supporterList.length;
     }
     
-    /**
-     * @notice Get supporter list
-     * @return list Array of supporter addresses
-     */
     function getSupporterList() external view returns (address[] memory list) {
         return supporterList;
     }
     
-    /**
-     * @notice Withdraw funds (only after goal is reached)
-     * @param to Address to send funds to
-     * @param amount Amount to withdraw
-     */
-    function withdrawFunds(address to, uint256 amount) external onlyOwner {
+    function getDistributionProgress() external view returns (uint256 processed, uint256 total) {
+        return (lastDistributeIndex, supporterList.length);
+    }
+    
+    // ───────────────────────── Admin Functions ─────────────────────────
+    
+    function withdrawFunds(address to, uint256 amount) external onlyOwner nonReentrant {
         require(totalRaised >= goalAmount, "Goal not reached yet");
         require(to != address(0), "Invalid address");
         require(amount > 0, "Amount must be > 0");
@@ -305,35 +326,15 @@ contract AdoptionVault {
         emit FundsWithdrawn(to, amount, block.timestamp);
     }
     
-    /**
-     * @notice Update fundraising goal
-     * @param newGoal New goal amount
-     */
     function setGoal(uint256 newGoal) external onlyOwner {
         require(newGoal > 0, "Goal must be > 0");
         goalAmount = newGoal;
     }
     
-    /**
-     * @notice Update minimum contribution
-     * @param newMin New minimum contribution
-     */
     function setMinContribution(uint256 newMin) external onlyOwner {
         require(newMin > 0, "Minimum must be > 0");
         minContribution = newMin;
     }
     
-    /**
-     * @notice Transfer ownership
-     * @param newOwner New owner address
-     */
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "Invalid address");
-        owner = newOwner;
-    }
-    
-    /**
-     * @notice Receive ETH
-     */
     receive() external payable {}
 }

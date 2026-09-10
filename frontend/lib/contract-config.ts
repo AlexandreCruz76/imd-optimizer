@@ -3,7 +3,7 @@ export const SEPOLIA_CONFIG = {
   network: "sepolia",
   chainId: 11155111,
   rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-rpc.publicnode.com",
-  contractAddress: "0x0AdC673633abdAa6e668009d10572cB2786b8B12",
+  contractAddress: "0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240",
 };
 
 // Adoption Vault - Sepolia Testnet
@@ -11,7 +11,7 @@ export const ADOPTION_CONFIG = {
   network: "sepolia",
   chainId: 11155111,
   rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-rpc.publicnode.com",
-  contractAddress: "0x8Ef2DdCb0211003c23535aD0c6Ee3303f54193aF",
+  contractAddress: "0xf2BAD834Dc970aA5b2b8e7c0D4a0a8e42d7591Bc",
 };
 
 // Adoption Vault ABI
@@ -38,20 +38,24 @@ export const ADOPTION_ABI = [
   "event GoalReached(uint256 totalRaised, uint256 timestamp)",
 ];
 
-// Simplified ABI for OptimizerVaultTest
+// Hardened ABI for OptimizerVaultTest (security fixes applied)
 export const VAULT_ABI = [
   // View functions
   "function owner() view returns (address)",
+  "function pendingOwner() view returns (address)",
   "function feeCollector() view returns (address)",
+  "function paused() view returns (bool)",
   "function totalDeposits() view returns (uint256)",
   "function totalYield() view returns (uint256)",
   "function totalFeesCollected() view returns (uint256)",
   "function getContractBalance() view returns (uint256)",
+  "function maxDepositPerUser() view returns (uint256)",
   
   // Position functions
   "function getPosition(address user) view returns (uint256 ethDeposited, uint256 shares, uint256 yieldEarned, uint256 lastClaimAt)",
   "function getSubscription(address user) view returns (uint8 tier, uint256 subscribedAt, uint256 expiresAt, bool active)",
   "function getTierInfo(uint8 tier) view returns (uint256 fee, uint256 cost, uint256 minDeposit)",
+  "function getDailyYieldAdded(address user) view returns (uint256)",
   
   // State-changing functions
   "function subscribe(uint8 tier) payable",
@@ -61,13 +65,24 @@ export const VAULT_ABI = [
   
   // Admin functions
   "function addYieldToUser(address user, uint256 amount)",
-  "function distributeYield()",
+  "function setFeeCollector(address collector)",
+  "function setMaxDepositPerUser(uint256 max)",
+  "function sweepStuckFunds()",
+  "function pause()",
+  "function unpause()",
+  "function transferOwnership(address newOwner)",
+  "function acceptOwnership()",
   
   // Events
   "event Deposited(address indexed user, uint256 amount, uint256 shares)",
   "event Withdrawn(address indexed user, uint256 amount, uint256 shares)",
   "event YieldClaimed(address indexed user, uint256 amount, uint256 fee)",
   "event Subscribed(address indexed user, uint8 tier, uint256 expiresAt)",
+  "event YieldDistributed(uint256 amount)",
+  "event Paused(address account)",
+  "event Unpaused(address account)",
+  "event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)",
+  "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
 ];
 
 // Tier names mapping
