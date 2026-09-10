@@ -1,0 +1,35 @@
+{
+  "name": "imd-optimizer",
+  "version": "1.0.0",
+  "description": "IMD Protocol Optimizer - Yield optimization for Uniswap V4 Hook Pool",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "compile": "npx hardhat compile",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "deploy:mainnet": "npx hardhat run scripts/deploy.js --network mainnet",
+    "verify": "npx hardhat verify --network sepolia",
+    "test": "npx hardhat test"
+  },
+  "dependencies": {
+    "@uniswap/v4-core": "^1.0.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.1.3",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.29.1"
+  },
+  "keywords": [
+    "uniswap",
+    "v4",
+    "hooks",
+    "defi",
+    "optimizer",
+    "imd"
+  ],
+  "author": "IMD Protocol",
+  "license": "MIT"
+}
