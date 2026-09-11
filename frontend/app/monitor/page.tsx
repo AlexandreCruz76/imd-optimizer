@@ -96,8 +96,11 @@ export default function Monitor() {
   const hookVol = parseFloat(data.hookVolume);
   const nativeVol = parseFloat(data.nativeVolume);
   const hookApy = hookLiq > 0 ? (hookVol * 0.01 * 365 / hookLiq * 100) : 0;
-  const nativeApy = 5.0;
+  const nativeLiq = parseFloat(data.nativeLiqETH);
+  // Native volume not available without indexer — cannot calculate real APY
+  const nativeApy = nativeVol > 0 ? (nativeVol * 0.003 * 365 / nativeLiq * 100) : 0;
   const apyMultiplier = nativeApy > 0 ? hookApy / nativeApy : 0;
+  const hasNativeData = nativeVol > 0;
 
   // Virtual token calculations
   const totalBurned = parseFloat(burns?.burned || "0");
@@ -214,9 +217,11 @@ export default function Monitor() {
           <div className="text-2xl text-[#00ff41] glow-strong font-bold">
             {apyMultiplier.toFixed(1)}x MORE YIELD
           </div>
-          <div className="text-xs text-[#00ff4160] mt-1">
-            Same ETH deposited earns {apyMultiplier.toFixed(1)}x more in hook pool
-          </div>
+            <div className="text-xs text-[#00ff4160] mt-1">
+              {hasNativeData 
+                ? `Same ETH deposited earns ${apyMultiplier.toFixed(1)}x more in hook pool`
+                : `Hook pool APY: ${hookApy.toFixed(1)}% (native data unavailable)`}
+            </div>
         </div>
       </div>
 
@@ -258,13 +263,13 @@ export default function Monitor() {
             </span>
           </div>
           <div className="space-y-2">
-            <Row label="24H VOLUME" value={`${data.nativeVolume} ETH`} />
-            <Row label="ESTIMATED APY" value={`${nativeApy.toFixed(1)}%`} color="#ff0040" />
-            <Row label="VOLUME SHARE" value={`${data.nativeVolumeShare}%`} />
+            <Row label="24H VOLUME" value={hasNativeData ? `${data.nativeVolume} ETH` : "N/A"} />
+            <Row label="ESTIMATED APY" value={hasNativeData ? `${nativeApy.toFixed(1)}%` : "N/A (no volume data)"} color="#ff0040" />
+            <Row label="VOLUME SHARE" value={hasNativeData ? `${data.nativeVolumeShare}%` : "N/A"} />
             <div className="mt-3 pt-3 border-t border-[#ff004015]">
               <div className="text-xs text-[#ff004060]">YOUR 10 ETH EARNS</div>
               <div className="text-lg text-[#ff0040]">
-                ~{(10 * nativeApy / 100).toFixed(2)} ETH/year
+                {hasNativeData ? `~${(10 * nativeApy / 100).toFixed(2)} ETH/year` : "N/A"}
               </div>
             </div>
           </div>
@@ -281,11 +286,15 @@ export default function Monitor() {
             <div className="text-xs text-[#00ff4140]">APY COMPARISON</div>
             <div className="text-lg">
               <span className="text-[#00ff41]">{hookApy.toFixed(1)}%</span>
-              <span className="text-[#00ff4140]"> vs </span>
-              <span className="text-[#ff0040]">{nativeApy.toFixed(1)}%</span>
+              {hasNativeData && (
+                <>
+                  <span className="text-[#00ff4140]"> vs </span>
+                  <span className="text-[#ff0040]">{nativeApy.toFixed(1)}%</span>
+                </>
+              )}
             </div>
             <div className="text-xs text-[#00ff41]">
-              Hook earns {apyMultiplier.toFixed(1)}x more
+              {hasNativeData ? `Hook earns ${apyMultiplier.toFixed(1)}x more` : "Native data unavailable"}
             </div>
           </div>
           <div>
