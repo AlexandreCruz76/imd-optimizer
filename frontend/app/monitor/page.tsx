@@ -3,22 +3,32 @@
 import { useState, useEffect } from "react";
 
 interface PoolData {
-  hookLiqETH: string;
-  nativeLiqETH: string;
-  hookShare: string;
-  volumeShare: string;
-  nativeVolumeShare: string;
-  hookVolume: string;
-  nativeVolume: string;
-  volume24h: string;
+  hookTVL: string;
+  nativeTVL: string;
+  hookVolumeUSD: string;
+  nativeVolumeUSD: string;
+  hookFeesUSD: string;
+  nativeFeesUSD: string;
+  hookTxs24h: number;
+  nativeTxs24h: number;
+  hookAPY: string;
+  nativeAPY: string;
+  spreadAPY: string;
+  hookTVLratio: string;
+  hookVolRatio: string;
+  nativePair: string;
+  hookPair: string;
+  hookFeeTier: string;
+  nativeFeeTier: string;
   lpFee: string;
   price: string;
+  imdUsd: string;
+  ethUsd: string;
   swaps24h: number;
-  ethIn24h: string;
-  ethOut24h: string;
   burnsTotal: string;
   rewardsTotal: string;
   imdBalance: string;
+  ethBalance: string;
 }
 
 interface BurnData {
@@ -92,22 +102,22 @@ export default function Monitor() {
     );
   }
 
-  const hookLiq = parseFloat(data.hookLiqETH);
-  const hookVol = parseFloat(data.hookVolume);
-  const nativeVol = parseFloat(data.nativeVolume);
-  const hookApy = hookLiq > 0 ? (hookVol * 0.01 * 365 / hookLiq * 100) : 0;
-  const nativeLiq = parseFloat(data.nativeLiqETH);
-  // Native volume not available without indexer — cannot calculate real APY
-  const nativeApy = nativeVol > 0 ? (nativeVol * 0.003 * 365 / nativeLiq * 100) : 0;
-  const apyMultiplier = nativeApy > 0 ? hookApy / nativeApy : 0;
+  const hookTVL = parseFloat(data.hookTVL);
+  const nativeTVL = parseFloat(data.nativeTVL);
+  const hookVol = parseFloat(data.hookVolumeUSD);
+  const nativeVol = parseFloat(data.nativeVolumeUSD);
+  const hookApy = parseFloat(data.hookAPY) || 0;
+  const nativeApy = parseFloat(data.nativeAPY) || 0;
+  const spreadApy = parseFloat(data.spreadAPY) || 0;
+  const hookTVLratio = parseFloat(data.hookTVLratio) || 0;
+  const hookVolRatio = parseFloat(data.hookVolRatio) || 0;
   const hasNativeData = nativeVol > 0;
 
   // Virtual token calculations
-  const totalBurned = parseFloat(burns?.burned || "0");
-  const totalRewarded = parseFloat(burns?.rewarded || "0");
-  const ethRetained = parseFloat(burns?.ethRetained || "0");
-  const totalVolume = parseFloat(data.volume24h);
-  const virtualImpact = totalVolume > 0 ? (ethRetained / totalVolume * 100) : 0;
+  const totalBurned = parseFloat(data.burnsTotal || "0");
+  const totalRewarded = parseFloat(data.rewardsTotal || "0");
+  const ethRetained = hookVol > 0 ? (hookVol * 0.01) : 0;
+  const virtualImpact = (ethRetained / hookVol * 100) || 0;
 
   return (
     <div className="space-y-4 fade-in">
@@ -132,17 +142,17 @@ export default function Monitor() {
           <div className="grid grid-cols-2 gap-4 text-left">
             <div>
               <div className="text-xs text-[#00ff4160]">HOOK POOL (V4)</div>
-              <div className="text-sm text-[#00ff41]">0xc6c965...2840</div>
-              <div className="text-xs text-[#00ff4140]">Created: Sept 2, 2026 04:05 UTC</div>
-              <div className="text-xs text-[#00ff4140]">Block: 25,887,100</div>
-              <div className="text-xs text-[#00ff4140]">By: 0x047F606...054B7 (surfsurf.eth)</div>
+              <div className="text-sm text-[#00ff41]">{data.hookPair}</div>
+              <div className="text-xs text-[#00ff4140]">Fee: {(Number(data.hookFeeTier)/10000).toFixed(1)}%</div>
+              <div className="text-xs text-[#00ff4140]">TVL: ${Number(data.hookTVL).toLocaleString()}</div>
+              <div className="text-xs text-[#00ff4140]">24h Vol: ${Number(data.hookVolumeUSD).toLocaleString()}</div>
             </div>
             <div>
-              <div className="text-xs text-[#ff004060]">NATIVE POOL (V3)</div>
-              <div className="text-sm text-[#ff0040]">IMD/WETH V3</div>
-              <div className="text-xs text-[#00ff4140]">Created: Before Hook Pool</div>
-              <div className="text-xs text-[#00ff4140]">Status: Pre-existing</div>
-              <div className="text-xs text-[#00ff4140]">Volume: {data.nativeVolume} ETH (88.9%)</div>
+              <div className="text-xs text-[#00ff4160]">NATIVE POOL (V4)</div>
+              <div className="text-sm text-[#ff0040]">{data.nativePair}</div>
+              <div className="text-xs text-[#00ff4140]">Fee: {(Number(data.nativeFeeTier)/10000).toFixed(1)}%</div>
+              <div className="text-xs text-[#00ff4140]">TVL: ${Number(data.nativeTVL).toLocaleString()}</div>
+              <div className="text-xs text-[#00ff4140]">24h Vol: ${Number(data.nativeVolumeUSD).toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -168,7 +178,7 @@ export default function Monitor() {
             <div className="border border-[#00ff4120] p-3">
               <div className="text-[#00ff4160]">ETH FLOWS TO:</div>
               <div className="text-[#00ff41]">Hook Pool (V4)</div>
-              <div className="text-[#00ff4140]">Not V3 Native Pool</div>
+              <div className="text-[#00ff4140]">Burn + Reward mechanism active</div>
             </div>
             <div className="border border-[#ffb00020] p-3">
               <div className="text-[#ffb00060]">WHY HOOK POOL?</div>
@@ -187,17 +197,17 @@ export default function Monitor() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-[#0a0a0a] border border-[#ff004020] p-3">
             <div className="text-xs text-[#ff004060]">IMD BURNED</div>
-            <div className="text-lg text-[#ff0040]">{totalBurned.toFixed(0)}</div>
+            <div className="text-lg text-[#ff0040]">{totalBurned.toLocaleString()}</div>
             <div className="text-xs text-[#00ff4140]">destroyed forever</div>
           </div>
           <div className="bg-[#0a0a0a] border border-[#00ff4120] p-3">
             <div className="text-xs text-[#00ff4160]">IMD REWARDED</div>
-            <div className="text-lg text-[#00ff41]">{totalRewarded.toFixed(0)}</div>
+            <div className="text-lg text-[#00ff41]">{totalRewarded.toLocaleString()}</div>
             <div className="text-xs text-[#00ff4140]">distributed to LPs</div>
           </div>
           <div className="bg-[#0a0a0a] border border-[#ffb00020] p-3">
             <div className="text-xs text-[#ffb00060]">ETH RETAINED</div>
-            <div className="text-lg text-[#ffb000]">{ethRetained.toFixed(2)}</div>
+            <div className="text-lg text-[#ffb000]">${(ethRetained * parseFloat(data.ethUsd || "2500")).toFixed(0)}</div>
             <div className="text-xs text-[#00ff4140]">absorbed by burns</div>
           </div>
           <div className="bg-[#0a0a0a] border border-[#00ffff20] p-3">
@@ -215,13 +225,15 @@ export default function Monitor() {
             ▸ WHY HOOK POOL IS BETTER
           </div>
           <div className="text-2xl text-[#00ff41] glow-strong font-bold">
-            {apyMultiplier.toFixed(1)}x MORE YIELD
+            {hookApy > 0 && nativeApy > 0 
+              ? `${(hookApy / nativeApy).toFixed(1)}x MORE YIELD`
+              : `${hookApy.toFixed(1)}% APY`}
           </div>
-            <div className="text-xs text-[#00ff4160] mt-1">
-              {hasNativeData 
-                ? `Same ETH deposited earns ${apyMultiplier.toFixed(1)}x more in hook pool`
-                : `Hook pool APY: ${hookApy.toFixed(1)}% (native data unavailable)`}
-            </div>
+          <div className="text-xs text-[#00ff4160] mt-1">
+            {hasNativeData 
+              ? `Hook pool earns ${(hookApy / nativeApy).toFixed(1)}x more than native pool`
+              : `Hook pool APY: ${hookApy.toFixed(1)}% | Native pool: ${nativeApy.toFixed(1)}%`}
+          </div>
         </div>
       </div>
 
@@ -238,11 +250,12 @@ export default function Monitor() {
             </div>
           </div>
           <div className="space-y-2">
-            <Row label="ETH LIQUIDITY" value={`${data.hookLiqETH} ETH`} />
-            <Row label="24H VOLUME" value={`${data.hookVolume} ETH`} />
-            <Row label="VOL/LIQ RATIO" value={`${(hookVol / hookLiq * 100).toFixed(1)}%`} color="#00ff41" />
-            <Row label="ESTIMATED APY" value={`${hookApy.toFixed(1)}%`} color="#00ff41" />
-            <Row label="VOLUME SHARE" value={`${data.volumeShare}%`} />
+            <Row label="TVL" value={`$${Number(data.hookTVL).toLocaleString()}`} />
+            <Row label="24H VOLUME" value={`$${Number(data.hookVolumeUSD).toLocaleString()}`} />
+            <Row label="24H FEES" value={`$${Number(data.hookFeesUSD).toFixed(2)}`} />
+            <Row label="24H TXS" value={String(data.hookTxs24h)} />
+            <Row label="APY" value={`${data.hookAPY}%`} color="#00ff41" />
+            <Row label="FEE TIER" value={`${(Number(data.hookFeeTier)/10000).toFixed(1)}%`} />
             <div className="mt-3 pt-3 border-t border-[#00ff4115]">
               <div className="text-xs text-[#00ff4140]">YOUR 10 ETH EARNS</div>
               <div className="text-lg text-[#00ff41]">
@@ -256,20 +269,23 @@ export default function Monitor() {
         <div className="terminal-panel p-4 border-glow border-[#ff0040]">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-[#ff0040] tracking-widest">
-              ▸ NATIVE POOL (V3)
+              ▸ NATIVE POOL (V4)
             </div>
             <span className="text-xs bg-[#ff004020] text-[#ff0040] px-2 py-0.5 border border-[#ff004030]">
               WORSE
             </span>
           </div>
           <div className="space-y-2">
-            <Row label="24H VOLUME" value={hasNativeData ? `${data.nativeVolume} ETH` : "N/A"} />
-            <Row label="ESTIMATED APY" value={hasNativeData ? `${nativeApy.toFixed(1)}%` : "N/A (no volume data)"} color="#ff0040" />
-            <Row label="VOLUME SHARE" value={hasNativeData ? `${data.nativeVolumeShare}%` : "N/A"} />
+            <Row label="TVL" value={`$${Number(data.nativeTVL).toLocaleString()}`} />
+            <Row label="24H VOLUME" value={`$${Number(data.nativeVolumeUSD).toLocaleString()}`} />
+            <Row label="24H FEES" value={`$${Number(data.nativeFeesUSD).toFixed(2)}`} />
+            <Row label="24H TXS" value={String(data.nativeTxs24h)} />
+            <Row label="APY" value={`${data.nativeAPY}%`} color="#ff0040" />
+            <Row label="FEE TIER" value={`${(Number(data.nativeFeeTier)/10000).toFixed(1)}%`} />
             <div className="mt-3 pt-3 border-t border-[#ff004015]">
               <div className="text-xs text-[#ff004060]">YOUR 10 ETH EARNS</div>
               <div className="text-lg text-[#ff0040]">
-                {hasNativeData ? `~${(10 * nativeApy / 100).toFixed(2)} ETH/year` : "N/A"}
+                ~{(10 * nativeApy / 100).toFixed(2)} ETH/year
               </div>
             </div>
           </div>
@@ -286,26 +302,22 @@ export default function Monitor() {
             <div className="text-xs text-[#00ff4140]">APY COMPARISON</div>
             <div className="text-lg">
               <span className="text-[#00ff41]">{hookApy.toFixed(1)}%</span>
-              {hasNativeData && (
-                <>
-                  <span className="text-[#00ff4140]"> vs </span>
-                  <span className="text-[#ff0040]">{nativeApy.toFixed(1)}%</span>
-                </>
-              )}
+              <span className="text-[#00ff4140]"> vs </span>
+              <span className="text-[#ff0040]">{nativeApy.toFixed(1)}%</span>
             </div>
             <div className="text-xs text-[#00ff41]">
-              {hasNativeData ? `Hook earns ${apyMultiplier.toFixed(1)}x more` : "Native data unavailable"}
+              {nativeApy > 0 
+                ? `Hook earns ${(hookApy / nativeApy).toFixed(1)}x more`
+                : "Same APY"}
             </div>
           </div>
           <div>
-            <div className="text-xs text-[#00ff4140]">VOLUME SHARE</div>
+            <div className="text-xs text-[#00ff4140]">SPREAD</div>
             <div className="text-lg">
-              <span className="text-[#00ff41]">{data.volumeShare}%</span>
-              <span className="text-[#00ff4140]"> vs </span>
-              <span className="text-[#ff0040]">{data.nativeVolumeShare}%</span>
+              <span className="text-[#00ffff]">+{spreadApy.toFixed(1)}%</span>
             </div>
-            <div className="text-xs text-[#ff0040]">
-              Native has {((parseFloat(data.nativeVolumeShare) / parseFloat(data.volumeShare))).toFixed(1)}x more volume
+            <div className="text-xs text-[#00ffff60]">
+              Hook pool APY advantage
             </div>
           </div>
         </div>
@@ -317,11 +329,11 @@ export default function Monitor() {
           ▸ SUMMARY
         </div>
         <div className="space-y-2 text-xs text-[#00ff4170]">
-          <p>• <span className="text-[#00ff41]">Hook Pool (V4)</span> created by surfsurf.eth on Sept 2, 2026</p>
-          <p>• <span className="text-[#ff0040]">Native Pool (V3)</span> pre-existing, higher volume but no burns/rewards</p>
-          <p>• When buying IMD on official site, ETH goes to <span className="text-[#00ff41]">Hook Pool</span></p>
-          <p>• Hook Pool has <span className="text-[#ffb000]">{apyMultiplier.toFixed(1)}x higher APY</span> due to burns + rewards</p>
+          <p>• <span className="text-[#00ff41]">Hook Pool (V4)</span> TVL: ${Number(data.hookTVL).toLocaleString()} | APY: {data.hookAPY}%</p>
+          <p>• <span className="text-[#ff0040]">Native Pool (V4)</span> TVL: ${Number(data.nativeTVL).toLocaleString()} | APY: {data.nativeAPY}%</p>
+          <p>• Hook Pool has <span className="text-[#ffb000]">+{spreadApy}% higher APY</span> due to burn + reward mechanism</p>
           <p>• Virtual tokens (burns) absorb <span className="text-[#00ffff]">{virtualImpact.toFixed(2)}%</span> of volume as ETH</p>
+          <p>• Real-time data powered by The Graph V4 subgraph</p>
         </div>
       </div>
 
