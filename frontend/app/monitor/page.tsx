@@ -29,6 +29,7 @@ interface PoolData {
   rewardsTotal: string;
   imdBalance: string;
   ethBalance: string;
+  timestamp: string;
 }
 
 interface BurnData {
@@ -45,6 +46,7 @@ export default function Monitor() {
   const [burns, setBurns] = useState<BurnData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -62,6 +64,7 @@ export default function Monitor() {
       if (!poolRes.ok) throw new Error("Failed to fetch pool data");
       const poolData = await poolRes.json();
       setData(poolData);
+      setLastUpdate(new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }));
 
       if (burnsRes.ok) {
         const feesData = await burnsRes.json();
@@ -127,6 +130,11 @@ export default function Monitor() {
         </h1>
         <div className="flex items-center gap-3">
           <span className="text-xs text-[#00ff4140]">LIVE</span>
+          {lastUpdate && (
+            <span className="text-xs text-[#00ff4160]">
+              {lastUpdate}
+            </span>
+          )}
           <button onClick={fetchData} className="text-xs text-[#00ff4160] hover:text-[#00ff41]">
             REFRESH
           </button>
@@ -334,6 +342,7 @@ export default function Monitor() {
           <p>• Hook Pool has <span className="text-[#ffb000]">+{spreadApy}% higher APY</span> due to burn + reward mechanism</p>
           <p>• Virtual tokens (burns) absorb <span className="text-[#00ffff]">{virtualImpact.toFixed(2)}%</span> of volume as ETH</p>
           <p>• Real-time data powered by The Graph V4 subgraph</p>
+          <p className="text-[#00ff4130]">• Last Graph sync: {data.timestamp ? new Date(data.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "N/A"}</p>
         </div>
       </div>
 
