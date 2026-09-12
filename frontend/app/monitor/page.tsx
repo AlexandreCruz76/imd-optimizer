@@ -115,6 +115,8 @@ export default function Monitor() {
   const hookTVLratio = parseFloat(data.hookTVLratio) || 0;
   const hookVolRatio = parseFloat(data.hookVolRatio) || 0;
   const hasNativeData = nativeVol > 0;
+  const hookWins = hookApy > nativeApy;
+  const apyRatio = nativeApy > 0 ? (hookApy / nativeApy) : 0;
 
   // Virtual token calculations
   const totalBurned = parseFloat(data.burnsTotal || "0");
@@ -227,20 +229,20 @@ export default function Monitor() {
       </div>
 
       {/* KEY INSIGHT */}
-      <div className="terminal-panel p-4 border border-[#00ff41] glow">
+      <div className={`terminal-panel p-4 border glow ${hookWins ? 'border-[#00ff41]' : 'border-[#ff0040]'}`}>
         <div className="text-center">
           <div className="text-xs text-[#00ff4160] tracking-widest mb-2">
-            ▸ WHY HOOK POOL IS BETTER
+            ▸ APY COMPARISON
           </div>
-          <div className="text-2xl text-[#00ff41] glow-strong font-bold">
-            {hookApy > 0 && nativeApy > 0 
-              ? `${(hookApy / nativeApy).toFixed(1)}x MORE YIELD`
-              : `${hookApy.toFixed(1)}% APY`}
+          <div className={`text-2xl glow-strong font-bold ${hookWins ? 'text-[#00ff41]' : 'text-[#ff0040]'}`}>
+            {hookWins 
+              ? `HOOK WINS: +${spreadApy.toFixed(1)}% APY`
+              : `NATIVE WINS: +${Math.abs(spreadApy).toFixed(1)}% APY`}
           </div>
           <div className="text-xs text-[#00ff4160] mt-1">
-            {hasNativeData 
-              ? `Hook pool earns ${(hookApy / nativeApy).toFixed(1)}x more than native pool`
-              : `Hook pool APY: ${hookApy.toFixed(1)}% | Native pool: ${nativeApy.toFixed(1)}%`}
+            {hookWins 
+              ? `Hook pool (${hookApy.toFixed(1)}%) beats Native (${nativeApy.toFixed(1)}%)`
+              : `Native pool (${nativeApy.toFixed(1)}%) beats Hook (${hookApy.toFixed(1)}%)`}
           </div>
         </div>
       </div>
@@ -248,13 +250,13 @@ export default function Monitor() {
       {/* Comparison grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Hook pool */}
-        <div className="terminal-panel p-4 border-glow border-[#00ff41]">
+        <div className={`terminal-panel p-4 border-glow ${hookWins ? 'border-[#00ff41]' : 'border-[#00ff4130]'}`}>
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-[#00ff41] tracking-widest">
               ▸ HOOK POOL (V4)
             </div>
-            <div className="text-xs bg-[#00ff41] text-[#0a0a0a] px-2 py-0.5">
-              BETTER
+            <div className={`text-xs px-2 py-0.5 ${hookWins ? 'bg-[#00ff41] text-[#0a0a0a]' : 'bg-[#ff004020] text-[#ff0040] border border-[#ff004030]'}`}>
+              {hookWins ? 'BETTER' : 'WORSE'}
             </div>
           </div>
           <div className="space-y-2">
@@ -274,13 +276,13 @@ export default function Monitor() {
         </div>
 
         {/* Native pool */}
-        <div className="terminal-panel p-4 border-glow border-[#ff0040]">
+        <div className={`terminal-panel p-4 border-glow ${!hookWins ? 'border-[#ff0040]' : 'border-[#ff004030]'}`}>
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-[#ff0040] tracking-widest">
               ▸ NATIVE POOL (V4)
             </div>
-            <span className="text-xs bg-[#ff004020] text-[#ff0040] px-2 py-0.5 border border-[#ff004030]">
-              WORSE
+            <span className={`text-xs px-2 py-0.5 ${!hookWins ? 'bg-[#ff0040] text-[#fff]' : 'bg-[#ff004020] text-[#ff0040] border border-[#ff004030]'}`}>
+              {!hookWins ? 'BETTER' : 'WORSE'}
             </span>
           </div>
           <div className="space-y-2">
@@ -313,19 +315,21 @@ export default function Monitor() {
               <span className="text-[#00ff4140]"> vs </span>
               <span className="text-[#ff0040]">{nativeApy.toFixed(1)}%</span>
             </div>
-            <div className="text-xs text-[#00ff41]">
-              {nativeApy > 0 
-                ? `Hook earns ${(hookApy / nativeApy).toFixed(1)}x more`
-                : "Same APY"}
+            <div className={`text-xs ${hookWins ? 'text-[#00ff41]' : 'text-[#ff0040]'}`}>
+              {hookWins 
+                ? `Hook earns ${(hookApy / nativeApy).toFixed(2)}x more`
+                : `Native earns ${(nativeApy / hookApy).toFixed(2)}x more`}
             </div>
           </div>
           <div>
             <div className="text-xs text-[#00ff4140]">SPREAD</div>
             <div className="text-lg">
-              <span className="text-[#00ffff]">+{spreadApy.toFixed(1)}%</span>
+              <span className={hookWins ? 'text-[#00ff41]' : 'text-[#ff0040]'}>
+                {spreadApy >= 0 ? '+' : ''}{spreadApy.toFixed(1)}%
+              </span>
             </div>
-            <div className="text-xs text-[#00ffff60]">
-              Hook pool APY advantage
+            <div className={`text-xs ${hookWins ? 'text-[#00ff4160]' : 'text-[#ff004060]'}`}>
+              {hookWins ? 'Hook pool advantage' : 'Native pool advantage'}
             </div>
           </div>
         </div>
@@ -339,7 +343,10 @@ export default function Monitor() {
         <div className="space-y-2 text-xs text-[#00ff4170]">
           <p>• <span className="text-[#00ff41]">Hook Pool (V4)</span> TVL: ${Number(data.hookTVL).toLocaleString()} | APY: {data.hookAPY}%</p>
           <p>• <span className="text-[#ff0040]">Native Pool (V4)</span> TVL: ${Number(data.nativeTVL).toLocaleString()} | APY: {data.nativeAPY}%</p>
-          <p>• Hook Pool has <span className="text-[#ffb000]">+{spreadApy}% higher APY</span> due to burn + reward mechanism</p>
+          <p>• {hookWins 
+            ? <span>Hook Pool has <span className="text-[#00ff41]">+{spreadApy.toFixed(1)}% higher APY</span> due to burn + reward mechanism</span>
+            : <span>Native Pool has <span className="text-[#ff0040]">+{Math.abs(spreadApy).toFixed(1)}% higher APY</span> — higher volume drives better returns</span>}
+          </p>
           <p>• Virtual tokens (burns) absorb <span className="text-[#00ffff]">{virtualImpact.toFixed(2)}%</span> of volume as ETH</p>
           <p>• Real-time data powered by The Graph V4 subgraph</p>
           <p className="text-[#00ff4130]">• Last Graph sync: {data.timestamp ? new Date(data.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "N/A"}</p>
