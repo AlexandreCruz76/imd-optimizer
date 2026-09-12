@@ -7,14 +7,15 @@ const links = [
   { href: "/", label: "DASHBOARD", shortcut: "F1" },
   { href: "/analyze", label: "ANALYZE", shortcut: "F2" },
   { href: "/monitor", label: "MONITOR", shortcut: "F3" },
-  { href: "/lp", label: "LP SIM", shortcut: "F4" },
-  { href: "/burns", label: "BURNS", shortcut: "F5" },
-  { href: "/subscribe", label: "SUBSCRIBE", shortcut: "F6" },
-  { href: "/vault", label: "VAULT", shortcut: "F7" },
-  { href: "/adoption", label: "ADOPT", shortcut: "F8" },
-  { href: "/docs", label: "DOCS", shortcut: "F9" },
-  { href: "/admin", label: "ADMIN", shortcut: "F10" },
-  { href: "/wallet-test", label: "WALLET", shortcut: "F11" },
+  { href: "/arbitrage", label: "ARBITRAGE", shortcut: "F4" },
+  { href: "/lp", label: "LP SIM", shortcut: "F5" },
+  { href: "/burns", label: "BURNS", shortcut: "F6" },
+  { href: "/subscribe", label: "SUBSCRIBE", shortcut: "F7" },
+  { href: "/vault", label: "VAULT", shortcut: "F8" },
+  { href: "/adoption", label: "ADOPT", shortcut: "F9" },
+  { href: "/docs", label: "DOCS", shortcut: "F10" },
+  { href: "/admin", label: "ADMIN", shortcut: "F11" },
+  { href: "/wallet-test", label: "WALLET", shortcut: "F12" },
 ];
 
 export function TerminalNav() {
