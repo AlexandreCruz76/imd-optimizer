@@ -106,3 +106,32 @@ export const TIER_MIN_DEPOSIT = [
   "1000000000000000000", // 1 ETH
   "10000000000000000000", // 10 ETH
 ];
+
+// MigrationRouter - Sepolia Testnet
+export const MIGRATION_CONFIG = {
+  network: "sepolia",
+  chainId: 11155111,
+  rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-rpc.publicnode.com",
+  contractAddress: process.env.MIGRATION_ROUTER_ADDRESS || "",
+};
+
+// MigrationRouter ABI
+export const MIGRATION_ABI = [
+  "function depositToHook() external payable",
+  "function depositToNative() external payable",
+  "function withdrawFromHook(uint256 amount) external",
+  "function withdrawFromNative(uint256 amount) external",
+  "function migrateToNative(uint256 spreadAtMigration) external",
+  "function migrateToHook(uint256 spreadAtMigration) external",
+  "function getUserBalance(address user) external view returns (uint256 hook, uint256 native, uint256 total)",
+  "function getMigrationHistory(address user) external view returns (tuple(address user, address fromPool, address toPool, uint256 amount, uint256 timestamp, uint256 spreadAtMigration)[])",
+  "function totalMigrations() external view returns (uint256)",
+  "function totalVolumeMigrated() external view returns (uint256)",
+  "function hookBalance(address) external view returns (uint256)",
+  "function nativeBalance(address) external view returns (uint256)",
+  "function owner() view returns (address)",
+  "function paused() view returns (bool)",
+  "event Migrated(address indexed user, address indexed fromPool, address indexed toPool, uint256 amount, uint256 spreadAtMigration)",
+  "event Deposited(address indexed user, address indexed pool, uint256 amount)",
+  "event Withdrawn(address indexed user, address indexed pool, uint256 amount)",
+];
