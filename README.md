@@ -141,7 +141,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Community
 
 - Twitter: [@surfcoderepeat](https://x.com/surfcoderepeat)
-- Discord: IMD Protocol Community
 - Website: [imd.fun](https://imd.fun)
 
 ## Disclaimer
