@@ -23,17 +23,17 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
     uint256 private _nextTokenId = 1;
     uint256 public constant MAX_SUPPLY = 100;
 
-    // Preços
+    // Pricing
     uint256 public priceETH = 0.5 ether;
     uint256 public priceETHBacker = 1 ether;
     uint256 public constant BACKER_SUPPLY = 50;
 
-    // Rastreamento de mint
+    // Mint tracking
     uint256 public totalMinted;
     uint256 public totalRaised;
     bool public mintOpen = false;
 
-    // Sistema de tiers
+    // Tier system
     enum Tier { NONE, GENESIS, BACKER }
 
     struct KeyInfo {
@@ -48,12 +48,12 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
     mapping(address => uint256[]) public ownerKeys;
     mapping(address => Tier) public userTier;
 
-    // Distribuição de MEV
+    // MEV Distribution
     uint256 public pendingMEV;
     mapping(address => uint256) public pendingMEVPerUser;
 
-    // Vesting (opcional — para alocação da equipe)
-    uint256 public teamAllocation = 10; // 10 keys reservadas
+    // Vesting (optional — for team allocation)
+    uint256 public teamAllocation = 10; // 10 keys reserved
     mapping(address => bool) public isTeam;
 
     // ==================== EVENTS ====================
@@ -98,7 +98,7 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
     // ==================== MINT ====================
 
     /**
-     * @notice Mintar uma Genesis Key (0.5 ETH)
+     * @notice Mint a Genesis Key (0.5 ETH)
      */
     function mintGenesis() external payable nonReentrant mintingOpen {
         if (totalMinted >= MAX_SUPPLY) revert MaxSupplyReached();
@@ -120,7 +120,7 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
         totalMinted++;
         totalRaised += msg.value;
 
-        // Reembolso de excesso
+        // Refund excess
         if (msg.value > priceETH) {
             (bool sent, ) = msg.sender.call{value: msg.value - priceETH}("");
             require(sent, "Refund failed");
@@ -130,7 +130,7 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Mintar uma Backer Key (1 ETH) — acesso prioritário
+     * @notice Mint a Backer Key (1 ETH) — priority access
      */
     function mintBacker() external payable nonReentrant mintingOpen {
         if (totalMinted >= MAX_SUPPLY) revert MaxSupplyReached();
@@ -152,7 +152,7 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
         totalMinted++;
         totalRaised += msg.value;
 
-        // Reembolso de excesso
+        // Refund excess
         if (msg.value > priceETHBacker) {
             (bool sent, ) = msg.sender.call{value: msg.value - priceETHBacker}("");
             require(sent, "Refund failed");
@@ -164,15 +164,15 @@ contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
     // ==================== MEV DISTRIBUTION ====================
 
     /**
-     * @notice Depositar lucros de MEV para distribuição aos titulares de keys
-     * @dev Chamado pelo OptimizerHook após internalizar arbitragem
+     * @notice Deposit MEV profits for distribution to key holders
+     * @dev Called by OptimizerHook after internalizing arbitrage
      */
     function depositMEV() external payable onlyOwner {
         pendingMEV += msg.value;
     }
 
     /**
-     * @notice Reivindicar participação acumulada de MEV
+     * @notice Claim accumulated MEV share
      */
     function claimMEV() external nonReentrant onlyKeyHolder {
         uint256 share = _calculateMEVShare(msg.sender);

@@ -19,7 +19,7 @@ interface IBuilderStakingVault {
     function totalBuilderScore() external view returns (uint256);
 }
 
-// Interface de queima ERC20 (não está na base OpenZeppelin)
+// ERC20 burn interface (not in OpenZeppelin base)
 interface IERC20Burnable is IERC20 {
     function burn(uint256 amount) external;
 }
@@ -51,15 +51,15 @@ contract OptimizerHook is Ownable {
         1 << 3 |  // beforeSwap
         1 << 5;   // afterSwap
 
-    // Níveis de taxa (basis points)
-    uint256 public constant FEE_GENESIS = 0;      // 0% — Titulares Genesis Key
-    uint256 public constant FEE_IDENTITY_MD = 10; // 0.1% — Titulares Identity MD
-    uint256 public constant FEE_VAREJO = 50;      // 0.5% — Varejo
-    uint256 public constant FEE_B2B = 0;          // 0% — Parceiros B2B
+    // Fee tiers (basis points)
+    uint256 public constant FEE_GENESIS = 0;      // 0% — Genesis Key holders
+    uint256 public constant FEE_IDENTITY_MD = 10; // 0.1% — Identity MD holders
+    uint256 public constant FEE_VAREJO = 50;      // 0.5% — Retail
+    uint256 public constant FEE_B2B = 0;          // 0% — B2B partners
 
-    // Limites de MEV (basis points)
-    uint256 public constant MEV_THRESHOLD = 50;    // Delta de 0.5% aciona captura de MEV
-    uint256 public constant MAX_SLIPPAGE = 300;    // 3% máxima proteção contra slippage
+    // MEV thresholds (basis points)
+    uint256 public constant MEV_THRESHOLD = 50;    // 0.5% delta triggers MEV capture
+    uint256 public constant MAX_SLIPPAGE = 300;    // 3% max slippage protection
 
     // ==================== STATE ====================
 
@@ -68,27 +68,27 @@ contract OptimizerHook is Ownable {
     IERC721 public immutable genesisKey;
     IERC721 public immutable identityMD;
 
-    // Gerenciamento de pools
+    // Pool management
     address public hookPool;
     address public nativePool;
     address public targetToken;
 
-    // Rastreamento de taxas
+    // Fee tracking
     uint256 public totalFeesCollected;
     uint256 public pendingFees;
     mapping(address => uint256) public userFees;
 
-    // Rastreamento de MEV
+    // MEV tracking
     uint256 public totalMEVCaptured;
     uint256 public totalArbitragesExecuted;
     mapping(address => uint256) public userMEVShare;
 
-    // Elasticidade
+    // Elasticity
     uint256 public totalBurnsExecuted;
     uint256 public lastBurnTimestamp;
     uint256 public burnCooldown = 1 hours;
 
-    // Parceiros B2B
+    // B2B partners
     mapping(address => bool) public b2bPartners;
     mapping(address => uint256) public partnerFees;
 
@@ -109,8 +109,8 @@ contract OptimizerHook is Ownable {
     // ==================== HOOK CALLBACKS ====================
 
     /**
-     * @notice Hook chamado antes do swap — Camada 1: Identity-Fi
-     * @dev Determina o nível de taxa com base na propriedade do NFT
+     * @notice Hook called before swap — Layer 1: Identity-Fi
+     * @dev Determines fee tier based on NFT ownership
      */
     function beforeSwap(
         address sender,
@@ -120,10 +120,10 @@ contract OptimizerHook is Ownable {
         uint256 sqrtPriceX96,
         bytes calldata data
     ) external returns (int256 amount0, int256 amount1, uint256 sqrtPriceX96After) {
-        // Cálculo da taxa com base no nível do NFT
+        // Fee calculation based on NFT tier
         uint256 fee = _getFeeForUser(sender);
 
-        // Aplicar taxa ao valor do swap
+        // Apply fee to swap amount
         if (fee > 0) {
             uint256 feeAmount = (amountSpecified * fee) / 10000;
             pendingFees += feeAmount;
@@ -135,8 +135,8 @@ contract OptimizerHook is Ownable {
     }
 
     /**
-     * @notice Hook chamado após o swap — Camada 2: Elasticidade + Camada 3: MEV
-     * @dev Executa mecânicas de queima e internalização de MEV
+     * @notice Hook called after swap — Layer 2: Elasticity + Layer 3: MEV
+     * @dev Executes burn mechanics and MEV internalization
      */
     function afterSwap(
         address sender,
@@ -147,10 +147,10 @@ contract OptimizerHook is Ownable {
         int256 tick,
         bytes calldata data
     ) external returns (int128 liquidityDelta) {
-        // Camada 2: Elasticidade — Verificar se queima é necessária
+        // Layer 2: Elasticity — Check if burn is needed
         _checkElasticity(sqrtPriceX96);
 
-        // Camada 3: Internalização de MEV — Verificar oportunidade de arbitragem
+        // Layer 3: MEV Internalization — Check for arbitrage opportunity
         _checkMEVOpportunity(sender, zeroForOne, amountSpecified, amountOut);
 
         return 0;
@@ -159,48 +159,48 @@ contract OptimizerHook is Ownable {
     // ==================== LAYER 1: IDENTITY-FI ====================
 
     /**
-     * @notice Obter nível de taxa para um usuário com base na posse de NFTs
+     * @notice Get fee tier for a user based on NFT holdings
      */
     function _getFeeForUser(address user) internal view returns (uint256) {
-        // Verificar Genesis Key primeiro (taxa 0%)
+        // Check Genesis Key first (0% fee)
         if (genesisKey.balanceOf(user) > 0) {
             return FEE_GENESIS;
         }
 
-        // Verificar Identity MD NFT (taxa 0.1%)
+        // Check Identity MD NFT (0.1% fee)
         if (identityMD.balanceOf(user) > 0) {
             return FEE_IDENTITY_MD;
         }
 
-        // Verificar parceiro B2B (taxa 0%)
+        // Check B2B partner (0% fee)
         if (b2bPartners[user]) {
             return FEE_B2B;
         }
 
-        // Taxa padrão do varejo (0.5%)
+        // Default retail fee (0.5%)
         return FEE_VAREJO;
     }
 
     // ==================== LAYER 2: ELASTICITY ====================
 
     /**
-     * @notice Verificar se evento de queima deve acionar ajuste de oferta
+     * @notice Check if burn event should trigger supply adjustment
      */
     function _checkElasticity(uint256 currentPrice) internal {
-        // Prevenir queimas muito frequentes
+        // Prevent too frequent burns
         if (block.timestamp - lastBurnTimestamp < burnCooldown) {
             return;
         }
 
-        // Lógica de elasticidade simplificada:
-        // Em produção, isso compararia com o oráculo Standard Reserve
-        // Por agora, apenas rastreamos o evento
+        // Simplified elasticity logic:
+        // In production, this would compare against Standard Reserve oracle
+        // For now, we just track the event
         totalBurnsExecuted++;
         lastBurnTimestamp = block.timestamp;
     }
 
     /**
-     * @notice Executar queima de tokens (chamado pelo keeper)
+     * @notice Execute token burn (called by keeper)
      */
     function executeBurn(uint256 amount) external onlyOwner {
         IERC20Burnable(targetToken).burn(amount);
@@ -211,7 +211,7 @@ contract OptimizerHook is Ownable {
     // ==================== LAYER 3: MEV INTERNALIZATION ====================
 
     /**
-     * @notice Verificar oportunidade de MEV após o swap
+     * @notice Check for MEV opportunity after swap
      */
     function _checkMEVOpportunity(
         address sender,
@@ -219,17 +219,17 @@ contract OptimizerHook is Ownable {
         uint256 amountSpecified,
         uint256 amountOut
     ) internal {
-        // Calcular impacto no preço
+        // Calculate price impact
         uint256 priceImpact = _calculatePriceImpact(amountSpecified, amountOut);
 
-        // Se o impacto no preço exceder o limite, executar arbitragem
+        // If price impact exceeds threshold, execute arbitrage
         if (priceImpact >= MEV_THRESHOLD) {
             _executeInternalArbitrage(zeroForOne, priceImpact);
         }
     }
 
     /**
-     * @notice Calcular impacto no preço de um swap
+     * @notice Calculate price impact of a swap
      */
     function _calculatePriceImpact(
         uint256 amountIn,
@@ -241,23 +241,23 @@ contract OptimizerHook is Ownable {
     }
 
     /**
-     * @notice Executar arbitragem interna para capturar MEV
-     * @dev Compre barato na pool nativa, venda caro na pool hook
+     * @notice Execute internal arbitrage to capture MEV
+     * @dev Buys low on native pool, sells high on hook pool
      */
     function _executeInternalArbitrage(
         bool zeroForOne,
         uint256 priceImpact
     ) internal {
-        // Em produção, isso faria:
-        // 1. Verificar ambas as pools para delta de preço
-        // 2. Executar arbitragem atômica via router
-        // 3. Depositar MEV capturado no vault de staking
-        // 4. Atualizar participações de MEV dos usuários
+        // In production, this would:
+        // 1. Check both pools for price delta
+        // 2. Execute atomic arbitrage via router
+        // 3. Deposit captured MEV to staking vault
+        // 4. Update user MEV shares
 
         totalMEVCaptured += priceImpact;
         totalArbitragesExecuted++;
 
-        // Depositar MEV capturado no vault de staking
+        // Deposit captured MEV to staking vault
         uint256 mevAmount = (address(this).balance * priceImpact) / 10000;
         if (mevAmount > 0) {
             stakingVault.depositFees{value: mevAmount}();
@@ -267,42 +267,42 @@ contract OptimizerHook is Ownable {
     // ==================== ADMIN FUNCTIONS ====================
 
     /**
-     * @notice Definir status de parceiro B2B
+     * @notice Set B2B partner status
      */
     function setB2BPartner(address partner, bool status) external onlyOwner {
         b2bPartners[partner] = status;
     }
 
     /**
-     * @notice Definir período de cooldown de queima
+     * @notice Set burn cooldown period
      */
     function setBurnCooldown(uint256 _cooldown) external onlyOwner {
         burnCooldown = _cooldown;
     }
 
     /**
-     * @notice Definir token alvo para queimas
+     * @notice Set target token for burns
      */
     function setTargetToken(address _token) external onlyOwner {
         targetToken = _token;
     }
 
     /**
-     * @notice Definir endereço da pool hook
+     * @notice Set hook pool address
      */
     function setHookPool(address _pool) external onlyOwner {
         hookPool = _pool;
     }
 
     /**
-     * @notice Definir endereço da pool nativa
+     * @notice Set native pool address
      */
     function setNativePool(address _pool) external onlyOwner {
         nativePool = _pool;
     }
 
     /**
-     * @notice Coletar taxas pendentes
+     * @notice Collect pending fees
      */
     function collectFees() external onlyOwner returns (uint256 fees) {
         fees = pendingFees;
@@ -311,7 +311,7 @@ contract OptimizerHook is Ownable {
     }
 
     /**
-     * @notice Retirar recompensas de MEV para o vault de staking
+     * @notice Withdraw MEV rewards to staking vault
      */
     function withdrawMEV() external onlyOwner {
         uint256 balance = address(this).balance;

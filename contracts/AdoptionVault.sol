@@ -58,23 +58,23 @@ contract AdoptionVault is ReentrancyGuard {
         string description;
     }
     
-    // Rastreamento de apoiadores
+    // Supporter tracking
     mapping(address => SupporterInfo) public supporters;
     address[] public supporterList;
     
-    // Configurações de tier
+    // Tier configurations
     mapping(Tier => TierConfig) public tierConfigs;
     
-    // Metas de arrecadação
+    // Fundraising goals
     uint256 public totalRaised;
     uint256 public goalAmount = 5 ether;
     uint256 public minContribution = 0.01 ether;
     
-    // Distribuição de benefícios
+    // Benefits distribution
     mapping(address => uint256) public pendingBenefits;
     uint256 public totalBenefitsDistributed;
     
-    // Distribuição em lote segura para gas
+    // Gas-safe batch distribution
     uint256 public lastDistributeIndex;
     
     // Events
@@ -244,9 +244,9 @@ contract AdoptionVault is ReentrancyGuard {
     }
     
     /**
-     * @notice Distribuição em lote segura para gas — processa até _maxBatch apoiadores por chamada
-     * @param totalAmount Valor total a distribuir
-     * @param _maxBatch Máximo de apoiadores a processar por chamada (previne out-of-gas)
+     * @notice Gas-safe batch distribution — processes up to _maxBatch supporters per call
+     * @param totalAmount Total amount to distribute
+     * @param _maxBatch Max supporters to process per call (prevents out-of-gas)
      */
     function distributeBenefits(uint256 totalAmount, uint256 _maxBatch) external onlyOwner {
         require(totalAmount > 0, "Amount must be > 0");
@@ -270,7 +270,7 @@ contract AdoptionVault is ReentrancyGuard {
         
         lastDistributeIndex = end;
         
-        // Se chegamos ao final, resetar para próxima distribuição
+        // If we reached the end, reset for next distribution
         if (end >= len) {
             lastDistributeIndex = 0;
         }

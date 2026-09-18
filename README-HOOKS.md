@@ -1,92 +1,92 @@
 # IMD Optimizer Hooks
 
-Hooks customizados do Uniswap V4 para o protocolo Optimizer IMD.
+Custom Uniswap V4 hooks for the IMD Protocol Optimizer.
 
-## Visão Geral
+## Overview
 
-Este pacote contém três hooks customizados para o Uniswap V4:
+This package contains three custom hooks for Uniswap V4:
 
-1. **DonationHook** - Coleta taxas de doações para financiar o protocolo Optimizer
-2. **IMDTWAPHook** - Fornece oráculo de Preço Médio Ponderado no Tempo (TWAP)
-3. **IMDPerpetualHook** - Habilita negociação de futuros perpetuos em pools IMD
+1. **DonationHook** - Collects fees from donations to fund the Optimizer protocol
+2. **IMDTWAPHook** - Provides Time-Weighted Average Price (TWAP) oracle
+3. **IMDPerpetualHook** - Enables perpetual futures trading on IMD pools
 
-## Contratos
+## Contracts
 
 ### DonationHook.sol
 
-Um hook que coleta uma taxa de doações para financiar o protocolo Optimizer.
+A hook that collects a fee from donations to fund the Optimizer protocol.
 
-**Funcionalidades:**
-- Coleta 10% de taxa em todas as doações
-- Transfere taxas para o proprietário do protocolo
-- Rastreia doações totais e taxas coletadas
-- Emite eventos para transparência
+**Features:**
+- Collects 10% fee on all donations
+- Transfers fees to protocol owner
+- Tracks total donations and fees collected
+- Emits events for transparency
 
-**Uso:**
+**Usage:**
 ```solidity
-// Deploy com endereço do PoolManager
+// Deploy with PoolManager address
 DonationHook hook = new DonationHook(poolManager);
 
-// Doar para uma pool
+// Donate to a pool
 hook.donate{value: 0.1 ether}(poolKey, amount0, amount1);
 ```
 
 ### IMDTWAPHook.sol
 
-Um hook que fornece oráculo de Preço Médio Ponderado no Tempo (TWAP) para pools IMD.
+A hook that provides Time-Weighted Average Price (TWAP) oracle for IMD pools.
 
-**Funcionalidades:**
-- Rastreia preços cumulativos ao longo do tempo
-- Calcula TWAP para qualquer período de tempo (1-24 horas)
-- Resistente a ataques de flash loan
-- Fornece feeds de preços precisos para derivados
+**Features:**
+- Tracks cumulative prices over time
+- Calculates TWAP for any time period (1-24 hours)
+- Resistant to flash loan attacks
+- Provides accurate price feeds for derivatives
 
-**Uso:**
+**Usage:**
 ```solidity
-// Deploy com endereço do PoolManager
+// Deploy with PoolManager address
 IMDTWAPHook hook = new IMDTWAPHook(poolManager);
 
-// Obter TWAP para uma pool
+// Get TWAP for a pool
 (uint256 twap0, uint256 twap1) = hook.getTWAP(poolId, 1 hours);
 ```
 
 ### IMDPerpetualHook.sol
 
-Um hook que habilita negociação de futuros perpetuos em pools IMD.
+A hook that enables perpetual futures trading on IMD pools.
 
-**Funcionalidades:**
-- Abrir posições long/short com alavancagem de até 10x
-- Taxas de financiamento dinâmicas baseadas na proporção long/short
-- Liquidação automática quando a margem é insuficiente
-- Gerenciamento de posições e cálculo de PnL
+**Features:**
+- Open long/short positions with up to 10x leverage
+- Dynamic funding rates based on long/short ratio
+- Automatic liquidation when margin is insufficient
+- Position management and PnL calculation
 
-**Uso:**
+**Usage:**
 ```solidity
-// Deploy com endereço do PoolManager
+// Deploy with PoolManager address
 IMDPerpetualHook hook = new IMDPerpetualHook(poolManager);
 
-// Abrir posição long com alavancagem 5x
+// Open a long position with 5x leverage
 bytes32 positionId = hook.openPosition{value: 0.1 ether}(poolKey, PositionType.LONG, 5);
 
-// Fechar posição
+// Close position
 hook.closePosition(positionId, poolKey);
 ```
 
-## Instalação
+## Installation
 
 ```bash
 npm install
 ```
 
-## Compilação
+## Compilation
 
 ```bash
 npx hardhat compile
 ```
 
-## Deploy
+## Deployment
 
-### Testnet Sepolia
+### Sepolia Testnet
 
 ```bash
 npx hardhat run scripts/deploy.js --network sepolia
@@ -98,20 +98,20 @@ npx hardhat run scripts/deploy.js --network sepolia
 npx hardhat run scripts/deploy.js --network mainnet
 ```
 
-## Configuração
+## Configuration
 
-Atualize `hardhat.config.js` com seus:
-- Endpoints RPC
-- Chaves privadas
-- Chaves API do Etherscan
+Update `hardhat.config.js` with your:
+- RPC endpoints
+- Private keys
+- Etherscan API keys
 
-## Testes
+## Testing
 
 ```bash
 npx hardhat test
 ```
 
-## Arquitetura
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -119,20 +119,20 @@ npx hardhat test
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  DonationHook                                               │
-│  ├── beforeDonate() → Calcular taxa                         │
-│  └── afterDonate()  → Atualizar estatísticas, emitir evento │
+│  ├── beforeDonate() → Calculate fee                         │
+│  └── afterDonate()  → Update stats, emit event              │
 │                                                             │
 │  IMDTWAPHook                                                │
-│  ├── beforeSwap()  → Atualizar preços cumulativos           │
-│  └── afterSwap()   → Recalcular TWAP                        │
+│  ├── beforeSwap()  → Update cumulative prices               │
+│  └── afterSwap()   → Recalculate TWAP                       │
 │                                                             │
 │  IMDPerpetualHook                                           │
-│  ├── beforeSwap()  → Atualizar taxas de financiamento       │
-│  └── afterSwap()   → Verificar liquidações                  │
+│  ├── beforeSwap()  → Update funding rates                   │
+│  └── afterSwap()   → Check liquidations                     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Licença
+## License
 
 MIT

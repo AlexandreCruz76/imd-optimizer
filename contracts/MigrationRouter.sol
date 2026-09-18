@@ -7,18 +7,18 @@ pragma solidity ^0.8.20;
  * @dev Executes withdraw + deposit in single transaction
  */
 contract MigrationRouter {
-    // ───────────────────────── Estado ─────────────────────────
+    // ───────────────────────── State ─────────────────────────
     address public owner;
     bool public paused;
 
-    // Endereços das pools
+    // Pool addresses
     address public hookPool;
     address public nativePool;
 
-    // PoolManager (singleton Uniswap V4)
+    // PoolManager (Uniswap V4 singleton)
     address public poolManager;
 
-    // Rastreamento de migrações
+    // Migration tracking
     uint256 public totalMigrations;
     uint256 public totalVolumeMigrated;
 
@@ -33,7 +33,7 @@ contract MigrationRouter {
 
     MigrationRecord[] public migrations;
 
-    // Saldos dos usuários por pool
+    // User balances per pool
     mapping(address => uint256) public hookBalance;
     mapping(address => uint256) public nativeBalance;
     mapping(address => uint256) public totalDeposited;
