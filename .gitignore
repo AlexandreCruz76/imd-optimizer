@@ -62,7 +62,8 @@ deploy-deploy/
 scripts/
 
 # Internal docs
-docs/
+docs/*.md
+!docs/investors.html
 
 # Sepolia deployment
 deployments/sepolia/
