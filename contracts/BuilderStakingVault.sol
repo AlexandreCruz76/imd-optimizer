@@ -29,22 +29,22 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     IERC20 public builderToken;
     address public builderTokenAddress;
 
-    // Fee tracking
+    // Rastreamento de taxas
     uint256 public totalFeesDistributed;
     uint256 public pendingFees;
     mapping(address => uint256) public pendingRewards;
 
-    // Lock tiers
+    // Níveis de bloqueio
     uint256 public constant LOCK_30_DAYS = 30 days;
     uint256 public constant LOCK_90_DAYS = 90 days;
     uint256 public constant LOCK_180_DAYS = 180 days;
 
-    // Multipliers (basis points)
+    // Multiplicadores (basis points)
     uint256 public constant MULT_30_DAYS = 10000;   // 1.00x
     uint256 public constant MULT_90_DAYS = 13500;   // 1.35x
     uint256 public constant MULT_180_DAYS = 18500;  // 1.85x
 
-    // User positions
+    // Posições dos usuários
     struct StakingPosition {
         uint256 amount;
         uint256 lockEnd;
@@ -58,14 +58,14 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     mapping(address => uint256) public totalStaked;
     mapping(address => uint256) public builderScore;
 
-    // Global stats
+    // Estatísticas globais
     uint256 public totalDeposited;
     uint256 public totalBuilderScore;
     uint256 public totalPositions;
 
-    // Fee distribution
-    uint256 public performanceFeeBps = 1500; // 15% of yield
-    uint256 public stakerShareBps = 6000;    // 60% goes to stakers
+    // Distribuição de taxas
+    uint256 public performanceFeeBps = 1500; // 15% do yield
+    uint256 public stakerShareBps = 6000;    // 60% vai para stakers
 
     // ==================== EVENTS ====================
 
@@ -111,9 +111,9 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     // ==================== CORE FUNCTIONS ====================
 
     /**
-     * @notice Stake $BUILDER tokens
-     * @param amount Amount of $BUILDER to stake
-     * @param lockTier Lock period: 30, 90, or 180 days
+     * @notice Fazer stake de tokens $BUILDER
+     * @param amount Quantidade de $BUILDER para fazer stake
+     * @param lockTier Período de bloqueio: 30, 90 ou 180 dias
      */
     function stake(uint256 amount, uint256 lockTier) external nonReentrant {
         if (amount == 0) revert InsufficientAmount();
@@ -121,7 +121,7 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
             revert InvalidLockTier();
         }
 
-        // Calculate multiplier and duration
+        // Calcular multiplicador e duração
         uint256 multiplier;
         uint256 lockDuration;
 
@@ -136,14 +136,14 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
             lockDuration = LOCK_180_DAYS;
         }
 
-        // Transfer tokens from user
+        // Transferir tokens do usuário
         bool transferred = builderToken.transferFrom(msg.sender, address(this), amount);
         if (!transferred) revert TransferFailed();
 
-        // Calculate builder score
+        // Calcular pontuação do builder
         uint256 score = (amount * multiplier) / 10000;
 
-        // Create position
+        // Criar posição
         StakingPosition memory newPos = StakingPosition({
             amount: amount,
             lockEnd: block.timestamp + lockDuration,
@@ -155,10 +155,10 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
 
         positions[msg.sender].push(newPos);
 
-        // Mint receipt tokens
+        // Mintar tokens de recibo
         _mint(msg.sender, amount);
 
-        // Update stats
+        // Atualizar estatísticas
         totalStaked[msg.sender] += amount;
         builderScore[msg.sender] += score;
         totalDeposited += amount;
@@ -169,8 +169,8 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Withdraw staked $BUILDER (after lock expires)
-     * @param positionIndex Index of the position to withdraw
+     * @notice Retirar $BUILDER em stake (após o bloqueio expirar)
+     * @param positionIndex Índice da posição para retirar
      */
     function withdraw(uint256 positionIndex) external nonReentrant {
         if (positionIndex >= positions[msg.sender].length) revert NothingToWithdraw();
@@ -181,16 +181,16 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
         uint256 amount = pos.amount;
         uint256 penalty = 0;
 
-        // Check if lock is still active
+        // Verificar se o bloqueio ainda está ativo
         if (block.timestamp < pos.lockEnd) {
-            // Early withdrawal — 2% penalty
+            // Retirada antecipada — penalidade de 2%
             penalty = (amount * 200) / 10000;
         }
 
         uint256 amountToSend = amount - penalty;
         uint256 score = (amount * pos.multiplier) / 10000;
 
-        // Update state BEFORE transfer
+        // Atualizar estado ANTES da transferência
         pos.amount = 0;
         pos.lockEnd = 0;
         totalStaked[msg.sender] -= amount;
@@ -198,14 +198,14 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
         totalDeposited -= amount;
         totalBuilderScore -= score;
 
-        // Burn receipt tokens
+        // Queimar tokens de recibo
         _burn(msg.sender, amount);
 
-        // Transfer tokens
+        // Transferir tokens
         bool transferred = builderToken.transfer(msg.sender, amountToSend);
         if (!transferred) revert TransferFailed();
 
-        // Send penalty to burn address
+        // Enviar penalidade para endereço de queima
         if (penalty > 0) {
             builderToken.transfer(address(0xdead), penalty);
         }
@@ -214,7 +214,7 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Claim accumulated rewards
+     * @notice Reivindicar recompensas acumuladas
      */
     function claimRewards() external nonReentrant {
         uint256 rewards = pendingRewards[msg.sender];
@@ -222,7 +222,7 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
 
         pendingRewards[msg.sender] = 0;
 
-        // Transfer rewards
+        // Transferir recompensas
         bool transferred = builderToken.transfer(msg.sender, rewards);
         if (!transferred) revert TransferFailed();
 
@@ -232,8 +232,8 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
     // ==================== FEE DISTRIBUTION ====================
 
     /**
-     * @notice Deposit performance fees for distribution to stakers
-     * @dev Called by OptimizerVault after collecting fees
+     * @notice Depositar taxas de performance para distribuição aos stakers
+     * @dev Chamado pelo OptimizerVault após coletar taxas
      */
     function depositFees() external payable onlyOwner {
         uint256 feeAmount = msg.value;
@@ -242,10 +242,10 @@ contract BuilderStakingVault is ERC20, Ownable, ReentrancyGuard {
         pendingFees += stakerShare;
         totalFeesDistributed += stakerShare;
 
-        // Distribute proportionally to stakers
+        // Distribuir proporcionalmente aos stakers
         if (totalBuilderScore > 0) {
-            // Simplified: distribute equally per point
-            // In production, use a reward-per-token accumulator
+            // Simplificado: distribuir igualmente por ponto
+            // Em produção, usar um acumulador de recompensa por token
         }
 
         emit FeesDeposited(feeAmount, block.timestamp);

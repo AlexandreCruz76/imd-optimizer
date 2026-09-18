@@ -63,7 +63,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         params: [accounts[0], "latest"],
       });
 
-      // Create ethers provider and signer
+      // Criar provider e signer ethers
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const web3Signer = await web3Provider.getSigner();
 
@@ -100,7 +100,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Listen for account/chain changes
+  // Escutar mudanças de conta/chain
   useEffect(() => {
     if (!window.ethereum) return;
 
@@ -134,7 +134,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Extend Window for ethereum
+// Estender Window para ethereum
 declare global {
   interface Window {
     ethereum?: any;

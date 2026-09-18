@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
-  // Mock response — in production, interact with OptimizerRouter contract
+  // Resposta simulada — em produção, interagir com o contrato OptimizerRouter
   const mockTxHash = "0x" + Array.from({ length: 64 }, () =>
     Math.floor(Math.random() * 16).toString(16)
   ).join("");
@@ -25,6 +25,6 @@ export async function POST(req: NextRequest) {
     mevCaptured: (parseFloat(standardAmount) * 0.02).toFixed(4),
     burnAmount: (parseFloat(standardAmount) * 0.02).toFixed(4),
     yieldDistributed: (parseFloat(standardAmount) * 0.001).toFixed(4),
-    message: `Executed protected sell and burn for ${standardAmount} $STANDARD`,
+    message: `Venda protegida e queima executada para ${standardAmount} $STANDARD`,
   });
 }

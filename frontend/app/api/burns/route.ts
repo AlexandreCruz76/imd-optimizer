@@ -38,15 +38,15 @@ export async function GET() {
       analyzer.getTrimSummary(168), // 7 days
     ]);
 
-    // Get recent Trimmed events
+    // Obter eventos Trimmed recentes
     const latest = state.block;
-    const from = Math.max(25887180, latest - 300 * 168); // 7 days back
+    const from = Math.max(25887180, latest - 300 * 168); // 7 dias atrás
 
-    // Fetch Trimmed events via the analyzer's internal chain
-    // We'll use the hookPoolAnalyzer's analyze method for comprehensive data
+    // Buscar eventos Trimmed via a cadeia interna do analisador
+    // Usaremos o método analyze do hookPoolAnalyzer para dados abrangentes
     const analysis = await analyzer.analyze(10);
 
-    // Calculate burn stats
+    // Calcular estatísticas de queima
     const capUtilization = state.inventoryCap > 0
       ? ((state.inventoryCap - state.ethInPool) / state.inventoryCap) * 100
       : 0;
@@ -69,12 +69,12 @@ export async function GET() {
       hookVolumeShare: analysis.metrics.currentApy,
     };
 
-    // Generate burn events from Trimmed events
-    // Since we can't get individual event details from the analyzer,
-    // we'll create representative events based on the trim summary
+    // Gerar eventos de queima a partir dos eventos Trimmed
+    // Como não podemos obter detalhes individuais do evento do analisador,
+    // criaremos eventos representativos com base no resumo do trim
     const events: BurnEvent[] = [];
     if (trimSummary.totalTrims > 0) {
-      // Create events based on actual trim data
+      // Criar eventos com base nos dados reais do trim
       const eventCount = Math.min(trimSummary.totalTrims, 20);
       const avgBurn = trimSummary.burned / eventCount;
       const avgReward = trimSummary.rewarded / eventCount;
@@ -95,7 +95,7 @@ export async function GET() {
       }
     }
 
-    // Add current state as latest event
+    // Adicionar estado atual como evento mais recente
     events.unshift({
       id: "current",
       block: latest,

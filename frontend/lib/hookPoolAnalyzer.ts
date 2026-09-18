@@ -1,13 +1,13 @@
 /**
- * Hook Pool Analyzer
+ * Analisador de Pool Hook
  * 
- * Core analysis engine for the $IMD CappedBurnHook pool.
- * Fetches on-chain data and computes key metrics for optimization.
+ * Mecanismo de análise central para a pool $IMD CappedBurnHook.
+ * Busca dados on-chain e computa métricas-chave para otimização.
  */
 
 import { CONFIG } from "./config";
 
-// ───────────────────────── Types ─────────────────────────
+// ───────────────────────── Tipos ─────────────────────────
 export interface PoolState {
   block: number;
   timestamp: number;
@@ -16,7 +16,7 @@ export interface PoolState {
   imdUsd: number | null;
   ethUsd: number | null;
   
-  // Liquidity
+  // Liquidez
   ethInPool: number;
   imdInPool: number;
   inventoryCap: number;
@@ -31,7 +31,7 @@ export interface PoolState {
   backstopPrincipal: number;
   backstopConverted: number;
   
-  // Fees & Rewards
+  // Taxas e Recompensas
   lpFee: number;
   rewardShareBps: number;
   feeTokenClaims: number;
@@ -39,17 +39,17 @@ export interface PoolState {
   totalBurned: number;
   totalRewarded: number;
   
-  // Retained ETH
+  // ETH Retido
   retainedEth: number;
   rebalanceThreshold: number;
   pendingRebalance: boolean;
   rebalanceEnabled: boolean;
   
-  // Reference pool
+  // Pool de referência
   referenceTick: number;
   referenceLiquidity: number;
   
-  // Hook share
+  // Participação do hook
   hookLiquidityShare: number;
   hookVolumeShare: number;
 }
@@ -86,10 +86,10 @@ export interface LPPosition {
 }
 
 export interface OptimizationResult {
-  // Current state
+  // Estado atual
   current: PoolState;
   
-  // Projections
+  // Projeções
   projections: {
     days: number;
     estimatedFees: number;
