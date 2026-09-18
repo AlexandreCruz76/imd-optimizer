@@ -5,49 +5,49 @@
 ![Network](https://img.shields.io/badge/network-Sepolia-blue)
 ![Frontend](https://img.shields.io/badge/frontend-Next.js_16-black)
 
-> *"O Optimizer não é um cofre. É um banco central autônomo que protege o capital do varejo contra a inércia e os robôs."*
+> *"Optimizer is not a vault. It is an autonomous central bank that protects retail capital against inertia and bots."*
 
 ---
 
-## 🎯 Visão Geral
+## 🎯 Overview
 
-O **Optimizer** é um protocolo DeFi construído sobre **Uniswap V4** que implementa um **Meta-Hook de 3 camadas** para:
+**Optimizer** is a DeFi protocol built on **Uniswap V4** that implements a **3-Layer Meta-Hook** to:
 
-1. **Proteger** o capital do varejo contra MEV bots
-2. **Otimizar** yield através de arbitragem automática
-3. **Distribuir** taxas para holders de $BUILDER
+1. **Protect** retail capital against MEV bots
+2. **Optimize** yield through automatic arbitrage
+3. **Distribute** fees to $BUILDER holders
 
 ---
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    OPTIMIZER META-HOOK ENGINE                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  [👤 Capital do Investidor]                                     │
+│  [👤 Investor Capital]                                          │
 │      │                                                          │
 │      ▼                                                          │
 │  ┌─────────────────┐                                            │
-│  │ OPTIMIZER ROUTER│ ← Entry point para swaps                   │
+│  │ OPTIMIZER ROUTER│ ← Entry point for swaps                    │
 │  └────────┬────────┘                                            │
 │           │                                                     │
 │           ▼                                                     │
 │  ┌─────────────────────────────────────────────────────┐       │
-│  │           META-HOOK ENGINE (3 CAMADAS)               │       │
+│  │           META-HOOK ENGINE (3 LAYERS)                │       │
 │  │                                                     │       │
 │  │  Layer 1: IDENTITY-FI (beforeSwap)                   │       │
-│  │  → Lê NFT Identity MD / Genesis Key                  │       │
-│  │  → Taxa dinâmica: 0% / 0.1% / 0.5%                  │       │
+│  │  → Reads Identity MD NFT / Genesis Key               │       │
+│  │  → Dynamic fee: 0% / 0.1% / 0.5%                    │       │
 │  │                                                     │       │
 │  │  Layer 2: ELASTICITY (afterSwap)                     │       │
-│  │  → Sincroniza $IMD Burns + Standard Reserve          │       │
+│  │  → Syncs $IMD Burns + Standard Reserve               │       │
 │  │                                                     │       │
 │  │  Layer 3: MEV INTERNALIZATION                        │       │
-│  │  → Detecta delta de preço                            │       │
-│  │  → Executa arbitragem internamente                   │       │
-│  │  → Lucro volta para LP pool                          │       │
+│  │  → Detects price delta                               │       │
+│  │  → Executes internal arbitrage                       │       │
+│  │  → Profit returns to LP pool                         │       │
 │  └─────────────────────────────────────────────────────┘       │
 │           │                                                     │
 │           ▼                                                     │
@@ -61,30 +61,30 @@ O **Optimizer** é um protocolo DeFi construído sobre **Uniswap V4** que implem
 
 ---
 
-## 📦 Contratos (Sepolia Testnet)
+## 📦 Contracts (Sepolia Testnet)
 
-| Contrato | Endereço | Descrição |
-|----------|----------|-----------|
-| `OptimizerHook` | `0xc6c965bd164c483e87d0b550671798e9a3602840` | Meta-Hook de 3 camadas |
-| `OptimizerRouter` | `0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240` | Router com proteção MEV |
+| Contract | Address | Description |
+|----------|---------|-------------|
+| `OptimizerHook` | `0xc6c965bd164c483e87d0b550671798e9a3602840` | 3-Layer Meta-Hook |
+| `OptimizerRouter` | `0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240` | Router with MEV protection |
 | `OptimizerGenesisKey` | `0x...` | NFT ERC-721 (200 supply) |
 | `BuilderStakingVault` | `0x...` | Stake $BUILDER → 60% fees |
-| `MigrationRouter` | `0x...` | Migração atômica entre pools |
+| `MigrationRouter` | `0x...` | Atomic migration between pools |
 
 ---
 
 ## 🚀 Quick Start
 
-### Contratos
+### Contracts
 
 ```bash
-# Instalar dependências
+# Install dependencies
 npm install
 
-# Compilar contratos
+# Compile contracts
 npx hardhat compile
 
-# Rodar testes
+# Run tests
 npx hardhat test
 
 # Deploy Sepolia
@@ -98,33 +98,33 @@ cd frontend
 npm install
 npm run dev
 
-# Acessar: http://localhost:3000
+# Access: http://localhost:3000
 ```
 
 ---
 
-## 📱 Páginas do Frontend
+## 📱 Frontend Pages
 
-| Rota | Descrição | Status |
-|------|-----------|--------|
-| `/` | Dashboard — visão geral das pools | ✅ |
-| `/swap` | Protected Swap — swap com proteção MEV | ✅ |
-| `/burns` | Burn Mechanics — eventos de burn on-chain | ✅ |
-| `/arbitrage` | Yield Arbitrage — comparação Hook vs Native | ✅ |
-| `/nft-mint` | Genesis Key — mint do NFT ERC-721 | ✅ |
-| `/staking` | $BUILDER Staking — stake para earn fees | ✅ |
-| `/docs` | Documentação completa | ✅ |
+| Route | Description | Status |
+|-------|-------------|--------|
+| `/` | Dashboard — pools overview | ✅ |
+| `/swap` | Protected Swap — swap with MEV protection | ✅ |
+| `/burns` | Burn Mechanics — on-chain burn events | ✅ |
+| `/arbitrage` | Yield Arbitrage — Hook vs Native comparison | ✅ |
+| `/nft-mint` | Genesis Key — ERC-721 NFT mint | ✅ |
+| `/staking` | $BUILDER Staking — stake to earn fees | ✅ |
+| `/docs` | Full documentation | ✅ |
 
 ---
 
-## 💰 Distribuição de Taxas
+## 💰 Fee Distribution
 
 ```
-PERFORMANCE FEE (15% do yield):
+PERFORMANCE FEE (15% of yield):
 ├── 60% → $BUILDER Stakers
-├── 20% → Treasury (operação + audits)
-├── 15% → Developers (manutenção)
-└──  5% → Burn (deflação)
+├── 20% → Treasury (operations + audits)
+├── 15% → Developers (maintenance)
+└──  5% → Burn (deflation)
 
 FEE TIERS:
 ├── Genesis Key holders: 0%
@@ -137,55 +137,55 @@ FEE TIERS:
 
 ---
 
-## 🔐 Segurança
+## 🔐 Security
 
-- **ReentrancyGuard** em todos os contratos
-- **Slippage Protection** no OptimizerRouter
-- **Block Delay** entre operações do mesmo usuário
-- **Ownership Transfer** com 2-step
-- **Pausable** para emergências
+- **ReentrancyGuard** on all contracts
+- **Slippage Protection** on OptimizerRouter
+- **Block Delay** between same-user operations
+- **Ownership Transfer** with 2-step
+- **Pausable** for emergencies
 
 ---
 
-## 📊 Métricas On-Chain
+## 📊 On-Chain Metrics
 
-| Métrica | Valor |
-|---------|-------|
-| **TVL** | Verificar via API `/api/pool-state` |
-| **APY** | Calculado em tempo real |
-| **Burns** | Eventos Trimmed on-chain |
-| **Arbitrage** | Snapshot a cada 30s |
+| Metric | Value |
+|--------|-------|
+| **TVL** | Check via API `/api/pool-state` |
+| **APY** | Calculated in real-time |
+| **Burns** | Trimmed on-chain events |
+| **Arbitrage** | Snapshot every 30s |
 
 ---
 
 ## 🌐 Links
 
-| Recurso | URL |
-|---------|-----|
+| Resource | URL |
+|----------|-----|
 | **Frontend** | http://localhost:3000 |
 | **API Pool State** | http://localhost:3000/api/pool-state |
 | **API Burns** | http://localhost:3000/api/burns |
 | **API Arbitrage** | http://localhost:3000/api/arbitrage |
-| **Documentação** | https://github.com/your-org/optimizer |
+| **Documentation** | https://github.com/AlexandreCruz76/imd-optimizer |
 
 ---
 
-## 📚 Documentação
+## 📚 Documentation
 
-| Documento | Descrição |
-|-----------|-----------|
-| [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) | Visão completa do ecossistema |
-| [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) | Roadmap de 3 fases |
-| [PITCH-DECK.md](docs/PITCH-DECK.md) | Resumo para investidores |
-| [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) | Arquitetura técnica |
-| [IDENTITY-BRANDING.md](docs/IDENTITY-BRANDING.md) | Identidade Agentic Frog |
+| Document | Description |
+|----------|-------------|
+| [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) | Full ecosystem view |
+| [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) | 3-phase roadmap |
+| [PITCH-DECK.md](docs/PITCH-DECK.md) | Investor summary |
+| [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) | Technical architecture |
+| [IDENTITY-BRANDING.md](docs/IDENTITY-BRANDING.md) | Agentic Frog identity |
 
 ---
 
-## 🛠️ Tecnologias
+## 🛠️ Technologies
 
-| Camada | Tecnologia |
-|--------|------------|
+| Layer | Technology |
+|-------|------------|
 | **Smart Contracts** | Solidity 0.8.28, OpenZeppelin 5.x |
 | **Blockchain** | Ethereum (Mainnet + Sepolia) |
 | **DEX** | Uniswap V4 (Singleton Architecture) |
@@ -195,16 +195,16 @@ FEE TIERS:
 
 ---
 
-## 📄 Licença
+## 📄 License
 
 MIT © IMD Protocol
 
 ---
 
-## 🔗 Para Investidores
+## 🔗 For Investors
 
-**Documentação completa:** [https://github.com/your-org/optimizer](https://github.com/your-org/optimizer)
+**Full documentation:** [https://github.com/AlexandreCruz76/imd-optimizer](https://github.com/AlexandreCruz76/imd-optimizer)
 
-**Contato:** [seu-email@exemplo.com]
+**Contact:** [your-email@example.com]
 
-**Twitter:** [@seu-handle](https://twitter.com/seu-handle)
+**Twitter:** [@your-handle](https://twitter.com/your-handle)

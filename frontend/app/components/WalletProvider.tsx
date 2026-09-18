@@ -46,7 +46,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const connect = useCallback(async () => {
     if (typeof window === "undefined" || !window.ethereum) {
-      alert("Instale MetaMask ou outro wallet");
+      alert("Install MetaMask or another wallet");
       return;
     }
 

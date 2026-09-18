@@ -7,14 +7,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title OptimizerGenesisKey
- * @notice NFT ERC-721 — Licença Utility do Optimizer Protocol
- * @dev 100 keys. 0.5–1 ETH each. Taxa zero + MEV share + Governance.
+ * @notice ERC-721 NFT — Optimizer Protocol Utility License
+ * @dev 100 keys. 0.5–1 ETH each. Zero fees + MEV share + Governance.
  *
  * Utility:
- * - Taxa zero no Optimizer router PARA SEMPRE
- * - % do MEV capturado do capital
- * - Acesso prioritário à Meta-Hook Factory (B2B)
- * - Direitos de voto em parâmetros do protocolo
+ * - Zero fees on Optimizer router FOREVER
+ * - % of MEV captured from capital
+ * - Priority access to Meta-Hook Factory (B2B)
+ * - Voting rights on protocol parameters
  */
 contract OptimizerGenesisKey is ERC721, Ownable, ReentrancyGuard {
 

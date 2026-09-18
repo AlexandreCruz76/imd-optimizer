@@ -1,134 +1,134 @@
-# OPTIMIZER — Guia do Investidor
+# OPTIMIZER — Investor Guide
 
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-Testnet-blue)
 
-> *"Protegendo o capital do varejo contra MEV bots através de Meta-Hooks inteligentes."*
+> *"Protecting retail capital against MEV bots through intelligent Meta-Hooks."*
 
 ---
 
-## 📌 Resumo Executivo
+## 📌 Executive Summary
 
-**Optimizer** é um protocolo DeFi que implementa um **Meta-Hook de 3 camadas** sobre o **Uniswap V4** para:
+**Optimizer** is a DeFi protocol that implements a **3-Layer Meta-Hook** on **Uniswap V4** to:
 
-- **Proteger** investidores varejistas contra arbitragem por bots
-- **Otimizar** yield através de captura automática de MEV
-- **Distribuir** taxas de forma justa para holders de $BUILDER
-
----
-
-## 🎯 Problema que Resolvemos
-
-| Problema | Impacto | Solução Optimizer |
-|----------|---------|-------------------|
-| **MEV Bots** | $600M+ roubados/ano de varejistas | Internalização de MEV via Hook |
-| **Taxas Justas** | Varejo paga mais que institutionais | Taxa dinâmica baseada em NFT |
-| **Yield Subótimo** | LPs perdem oportunidades | Arbitragem automática Hook vs Native |
-| **Complexidade** | Difícil acessar DeFi avançado | Interface simples e intuitiva |
+- **Protect** retail investors against bot arbitrage
+- **Optimize** yield through automatic MEV capture
+- **Distribute** fees fairly to $BUILDER holders
 
 ---
 
-## 💰 Modelo de Negócio
+## 🎯 Problem We Solve
 
-### Fontes de Receita
+| Problem | Impact | Optimizer Solution |
+|---------|--------|-------------------|
+| **MEV Bots** | $600M+ stolen/year from retail | MEV internalization via Hook |
+| **Fair Fees** | Retail pays more than institutions | Dynamic fees based on NFT |
+| **Suboptimal Yield** | LPs miss opportunities | Automatic Hook vs Native arbitrage |
+| **Complexity** | Hard to access advanced DeFi | Simple and intuitive interface |
 
-1. **Taxas de Swap** (0.5% - 1%)
-   - Varejo paga taxa maior
-   - Genesis Key holders pagam 0%
-   - Identity MD holders pagam 0.1%
+---
 
-2. **Captura de MEV**
-   - Arbitragem interna via Hook
-   - 100% do lucro volta para LPs
+## 💰 Business Model
 
-3. **Performance Fee** (15% do yield)
+### Revenue Sources
+
+1. **Swap Fees** (0.5% - 1%)
+   - Retail pays higher fees
+   - Genesis Key holders pay 0%
+   - Identity MD holders pay 0.1%
+
+2. **MEV Capture**
+   - Internal arbitrage via Hook
+   - 100% of profit returns to LPs
+
+3. **Performance Fee** (15% of yield)
    - 60% → $BUILDER Stakers
    - 20% → Treasury
    - 15% → Developers
    - 5% → Burn
 
-### Projeções de Revenue
+### Revenue Projections
 
-| Cenário | TVL | Volume Mensal | Revenue Anual |
-|---------|-----|---------------|---------------|
-| **Conservador** | $1M | $10M | $120K |
-| **Moderado** | $10M | $100M | $1.2M |
-| **Otimista** | $100M | $1B | $12M |
+| Scenario | TVL | Monthly Volume | Annual Revenue |
+|----------|-----|----------------|----------------|
+| **Conservative** | $1M | $10M | $120K |
+| **Moderate** | $10M | $100M | $1.2M |
+| **Optimistic** | $100M | $1B | $12M |
 
 ---
 
-## 🏗️ Tecnologia
+## 🏗️ Technology
 
-### Stack Técnico
+### Technical Stack
 
-| Componente | Tecnologia | Status |
-|------------|------------|--------|
-| **Smart Contracts** | Solidity 0.8.28 | ✅ Auditado |
+| Component | Technology | Status |
+|-----------|------------|--------|
+| **Smart Contracts** | Solidity 0.8.28 | ✅ Audited |
 | **Blockchain** | Ethereum Mainnet | ✅ |
 | **DEX** | Uniswap V4 | ✅ |
 | **Frontend** | Next.js 16 | ✅ |
 | **Graph** | The Graph | ✅ |
 
-### Diferenciais Técnicos
+### Technical Differentiators
 
-1. **Meta-Hook de 3 Camadas**
-   - Layer 1: Identidade-Fi (taxas dinâmicas)
-   - Layer 2: Elasticidade (burns automáticos)
-   - Layer 3: Internalização de MEV
+1. **3-Layer Meta-Hook**
+   - Layer 1: Identity-Fi (dynamic fees)
+   - Layer 2: Elasticity (automatic burns)
+   - Layer 3: MEV Internalization
 
-2. **Integração com The Standard**
-   - Burns determinísticos
-   - Reserva ativa de valor
+2. **The Standard Integration**
+   - Deterministic burns
+   - Active value reserve
 
-3. **Segurança**
+3. **Security**
    - ReentrancyGuard
    - Slippage Protection
-   - Block Delay entre operações
+   - Block Delay between operations
 
 ---
 
-## 📊 Métricas Chave
+## 📊 Key Metrics
 
-### Indicadores de Performance
+### Performance Indicators
 
-| Métrica | Descrição | Meta |
-|---------|-----------|------|
+| Metric | Description | Target |
+|--------|-------------|--------|
 | **TVL** | Total Value Locked | $10M+ |
-| **Volume** | Volume de swaps/mês | $100M+ |
-| **APY** | Yield anual para LPs | 30%+ |
-| **Utilização** | % do volume via Hook | 50%+ |
+| **Volume** | Monthly swap volume | $100M+ |
+| **APY** | Annual yield for LPs | 30%+ |
+| **Utilization** | % of volume via Hook | 50%+ |
 
-### KPIs de Crescimento
+### Growth KPIs
 
-| Métrica | Descrição | Meta 6 meses |
-|---------|-----------|--------------|
-| **Usuários** | Wallets únicas | 10,000+ |
-| **NFTs** | Genesis Keys mintados | 200/200 |
+| Metric | Description | 6-Month Target |
+|--------|-------------|----------------|
+| **Users** | Unique wallets | 10,000+ |
+| **NFTs** | Genesis Keys minted | 200/200 |
 | **Stakers** | $BUILDER staked | 1M+ tokens |
-| **Pools** | Pools ativas | 5+ |
+| **Pools** | Active pools | 5+ |
 
 ---
 
 ## 🗓️ Roadmap
 
-### Fase 1: Foundation (Q3 2026) ✅
+### Phase 1: Foundation (Q3 2026) ✅
 
 - [x] Deploy OptimizerHook (Sepolia)
 - [x] Deploy OptimizerRouter (Sepolia)
-- [x] Frontend com Dashboard
-- [x] API de Pool State
-- [x] Burn Mechanics on-chain
+- [x] Frontend with Dashboard
+- [x] Pool State API
+- [x] On-chain Burn Mechanics
 - [x] Arbitrage Engine
 
-### Fase 2: Growth (Q4 2026)
+### Phase 2: Growth (Q4 2026)
 
-- [ ] Deploy Mainnet
-- [ ] Audit formal (Trail of Bits / OpenZeppelin)
-- [ ] Integração com The Graph
-- [ ] Launch Genesis Key NFT
-- [ ] Launch $BUILDER Staking
+- [ ] Mainnet Deploy
+- [ ] Formal audit (Trail of Bits / OpenZeppelin)
+- [ ] The Graph Integration
+- [ ] Genesis Key NFT Launch
+- [ ] $BUILDER Staking Launch
 
-### Fase 3: Scale (Q1 2027)
+### Phase 3: Scale (Q1 2027)
 
 - [ ] Multi-chain (Base, Arbitrum)
 - [ ] Institutional API
@@ -151,50 +151,50 @@
 
 ### Genesis Key NFT
 
-| Supply | Preço | Benefícios |
-|--------|-------|------------|
+| Supply | Price | Benefits |
+|--------|-------|----------|
 | **200** | 0.5 ETH | 0% fees + MEV share |
 
 ---
 
-## 🏆 Time
+## 🏆 Team
 
 **Alexandre Cruz da Cunha** — Founder & Lead Developer
 
-- Experiência em Solidity e DeFi
-- Projetos anteriores: FrenPet ($100M+ MC)
-- Foco: Uniswap V4 Hooks e MEV
+- Solidity and DeFi experience
+- Previous projects: FrenPet ($100M+ MC)
+- Focus: Uniswap V4 Hooks and MEV
 
 ---
 
-## 📞 Contato
+## 📞 Contact
 
-| Canal | Link |
-|-------|------|
-| **Twitter** | [@seu-handle](https://twitter.com/seu-handle) |
-| **Discord** | [discord.gg/seu-servidor](https://discord.gg/seu-servidor) |
-| **Telegram** | [t.me/seu-grupo](https://t.me/seu-grupo) |
+| Channel | Link |
+|---------|------|
+| **Twitter** | [@your-handle](https://twitter.com/your-handle) |
+| **Discord** | [discord.gg/your-server](https://discord.gg/your-server) |
+| **Telegram** | [t.me/your-group](https://t.me/your-group) |
 | **Email** | invest@optimizer.imd |
 
 ---
 
-## 📚 Documentação Técnica
+## 📚 Technical Documentation
 
-Para investidores que desejam profundidade técnica:
+For investors seeking technical depth:
 
-1. [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) — Visão completa do ecossistema
-2. [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) — Roadmap detalhado
-3. [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) — Arquitetura técnica
-4. [PITCH-DECK.md](docs/PITCH-DECK.md) — Apresentação completa
-
----
-
-## � Disclaimer
-
-Este documento é para fins informativos apenas e não constitui aconselhamento financeiro. Investimentos em criptomoedas são de alto risco. Faça sua própria pesquisa (DYOR).
+1. [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) — Full ecosystem view
+2. [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) — Detailed roadmap
+3. [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) — Technical architecture
+4. [PITCH-DECK.md](docs/PITCH-DECK.md) — Full presentation
 
 ---
 
-**Última atualização:** Setembro 2026
+## ⚠️ Disclaimer
 
-**Versão:** 1.0.0
+This document is for informational purposes only and does not constitute financial advice. Cryptocurrency investments are high risk. Do your own research (DYOR).
+
+---
+
+**Last updated:** September 2026
+
+**Version:** 1.0.0

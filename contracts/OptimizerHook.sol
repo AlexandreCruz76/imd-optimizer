@@ -26,21 +26,21 @@ interface IERC20Burnable is IERC20 {
 
 /**
  * @title OptimizerHook
- * @notice Meta-Hook de 3 Camadas para Uniswap V4
- * @dev Hook Singleton que internaiza MEV e roteia capital automaticamente
+ * @notice 3-Layer Meta-Hook for Uniswap V4
+ * @dev Singleton Hook that internalizes MEV and routes capital automatically
  *
  * Layer 1: IDENTITY-FI (beforeSwap)
- *   → Lê Identity MD NFT / Genesis Key
- *   → Taxa dinâmica: 0% / 0.1% / 0.5%
+ *   → Reads Identity MD NFT / Genesis Key
+ *   → Dynamic fee: 0% / 0.1% / 0.5%
  *
  * Layer 2: ELASTICITY (afterSwap)
- *   → Sincroniza $IMD Burns + Standard Reserve
- *   → Aciona auto-burn em contração
+ *   → Syncs $IMD Burns + Standard Reserve
+ *   → Triggers auto-burn on contraction
  *
  * Layer 3: MEV INTERNALIZATION (afterSwap)
- *   → Detecta delta de preço (burn events)
- *   → Executa arbitragem internamente
- *   → Lucro volta para LP pool
+ *   → Detects price delta (burn events)
+ *   → Executes internal arbitrage
+ *   → Profit returns to LP pool
  */
 contract OptimizerHook is Ownable {
 
@@ -54,7 +54,7 @@ contract OptimizerHook is Ownable {
     // Fee tiers (basis points)
     uint256 public constant FEE_GENESIS = 0;      // 0% — Genesis Key holders
     uint256 public constant FEE_IDENTITY_MD = 10; // 0.1% — Identity MD holders
-    uint256 public constant FEE_VAREJO = 50;      // 0.5% — Retail
+    uint256 public constant FEE_RETAIL = 50;      // 0.5% — Retail
     uint256 public constant FEE_B2B = 0;          // 0% — B2B partners
 
     // MEV thresholds (basis points)
@@ -178,7 +178,7 @@ contract OptimizerHook is Ownable {
         }
 
         // Default retail fee (0.5%)
-        return FEE_VAREJO;
+        return FEE_RETAIL;
     }
 
     // ==================== LAYER 2: ELASTICITY ====================

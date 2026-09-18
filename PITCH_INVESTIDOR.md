@@ -1,139 +1,139 @@
-# Pitch — Reunião com Investidor
+# Pitch — Investor Meeting
 ## IMD Protocol + Uniswap V4 Hook Pool Optimizer
 
 ---
 
-## O QUE É (30 segundos)
+## WHAT IT IS (30 seconds)
 
-O **Optimizer** é um vault ERC-4626 que automatiza yield farming entre duas pools Uniswap V4 do token IMD:
+**Optimizer** is an ERC-4626 vault that automates yield farming between two Uniswap V4 pools of the IMD token:
 
-- **Hook Pool**: pool com burn automático (85% dos tokens queimados, 15% pro swarm)
-- **Native Pool**:池 padrão sem burn
+- **Hook Pool**: pool with automatic burn (85% of tokens burned, 15% to the swarm)
+- **Native Pool**: standard pool without burn
 
-O sistema monitora os APYs em tempo real e move a liquidez para a pool que está pagando mais. O investidor deposita ETH, o contrato faz o trabalho.
+The system monitors APYs in real-time and moves liquidity to the pool paying more. The investor deposits ETH, the contract does the work.
 
 ---
 
-## STATUS ATUAL (Mãos na massa)
+## CURRENT STATUS (Hands-on)
 
 | Item | Status |
 |------|--------|
-| Smart contracts | Deployed e testados (Sepolia), 161 testes passando |
-| Vault (ERC-4626) | Functionando — deposito/withdraw/sweep |
-| Frontend | 13 páginas com dados on-chain em tempo real |
-| Data pipeline | Event indexer custom (sem dependência do The Graph) |
-| Auditoria | 0 vulnerabilidades, 0 chaves no GitHub |
-| Pool Hook (mainnet) | $52k TVL, 166% APY, 96 swaps/dia |
-| Pool Native (mainnet) | $625k TVL, 166% APY, 187 swaps/dia |
+| Smart contracts | Deployed and tested (Sepolia), 161 tests passing |
+| Vault (ERC-4626) | Working — deposit/withdraw/sweep |
+| Frontend | 13 pages with real-time on-chain data |
+| Data pipeline | Custom event indexer (no The Graph dependency) |
+| Audit | 0 vulnerabilities, 0 keys on GitHub |
+| Hook Pool (mainnet) | $52k TVL, 166% APY, 96 swaps/day |
+| Native Pool (mainnet) | $625k TVL, 166% APY, 187 swaps/day |
 
 ---
 
-## O QUE PRECISAMOS PARA IR PRO MAINNET
+## WHAT WE NEED TO GO TO MAINNET
 
-### 1. Deploy dos contratos
-- Custo estimado: **~0.3 ETH** (gas mainnet)
-- Contratos: OptimizerVault + AdoptionVault + HookDeployer
+### 1. Contract deployment
+- Estimated cost: **~0.3 ETH** (mainnet gas)
+- Contracts: OptimizerVault + AdoptionVault + HookDeployer
 
-### 2. Liquidez inicial
-- Pool IMD/WETH no Uniswap V4
-- **Mínimo**: 2 ETH + ~5,700 IMD (~$5k total)
+### 2. Initial liquidity
+- IMD/WETH pool on Uniswap V4
+- **Minimum**: 2 ETH + ~5,700 IMD (~$5k total)
 - **Ideal**: 5 ETH + ~14,250 IMD (~$12.5k total)
-- **Conservador**: 10 ETH + ~28,500 IMD (~$25k total)
+- **Conservative**: 10 ETH + ~28,500 IMD (~$25k total)
 
-### 3. Operação semanal (caixa)
-- Volume da Hook Pool: ~$24k/dia
-- Fees da Hook Pool: ~$238/dia (1% fee tier)
-- **Se capturarmos 1% do volume**: ~$240/dia = **~$1,680/semana**
-- **Se capturarmos 5% do volume**: ~$1,200/dia = **~$8,400/semana**
+### 3. Weekly operation (cash flow)
+- Hook Pool volume: ~$24k/day
+- Hook Pool fees: ~$238/day (1% fee tier)
+- **If we capture 1% of volume**: ~$240/day = **~$1,680/week**
+- **If we capture 5% of volume**: ~$1,200/day = **~$8,400/week**
 
 ---
 
-## NÚMEROS QUE IMPORTAM
+## NUMBERS THAT MATTER
 
 ```
 IMD Token:     $2.87 (mainnet)
 ETH:           $2,395
 Hook Pool TVL: $52,198
 Native TVL:    $625,268
-APY ambos:     ~166% (com dados reais)
-Spread:        +0.4% (Hook ganhando)
+APY both:      ~166% (real data)
+Spread:        +0.4% (Hook winning)
 Swaps 24h:     283 (Hook: 96 + Native: 187)
 ```
 
 ---
 
-## PEDIDO OBJETIVO
+## DIRECT ASK
 
-> "Preciso de **[X] ETH** para:
-> 1. Deploy dos contratos no mainnet (~0.3 ETH)
-> 2. Criar liquidez na池 IMD/WETH (~[Y] ETH + IMD)
-> 3. Operar por 30 dias sem preocupação de gas
+> "I need **[X] ETH** to:
+> 1. Deploy contracts to mainnet (~0.3 ETH)
+> 2. Create liquidity in IMD/WETH pool (~[Y] ETH + IMD)
+> 3. Operate for 30 days without gas worries
 >
-> Com esse capital, o sistema gera **~$[Z]/semana** em fees.
-> ROI estimado: **[N]x em 12 meses**.
+> With this capital, the system generates **~$[Z]/week** in fees.
+> Estimated ROI: **[N]x in 12 months**.
 >
-> O vault é non-custodial — o investidor pode sacar a qualquer momento.
-> Os contratos já estão auditados e testados."
+> The vault is non-custodial — the investor can withdraw at any time.
+> The contracts are already audited and tested."
 
 ---
 
-## PERGUNTAS QUE VÃO FAZER
+## QUESTIONS THEY WILL ASK
 
-### "Qual o risco?"
-- Non-custodial: investidor mantém controle
-- Contratos já auditados (161 testes, 0 vulnerabilities)
-- Liquidez em Uniswap V4 (protocolo battle-tested)
-- Risco principal: impermanent loss (mitigado pelo optimizer)
+### "What's the risk?"
+- Non-custodial: investor maintains control
+- Contracts already audited (161 tests, 0 vulnerabilities)
+- Liquidity on Uniswap V4 (battle-tested protocol)
+- Main risk: impermanent loss (mitigated by optimizer)
 
-### "Quanto tempo pra voltar?"
-- Com 1% do volume da Hook Pool: ~30 dias
-- Com 5% do volume: ~6 dias
-- Cenário conservador (0.5%): ~60 dias
+### "How long to break even?"
+- With 1% of Hook Pool volume: ~30 days
+- With 5% of volume: ~6 days
+- Conservative scenario (0.5%): ~60 days
 
-### "Quem já está usando?"
-- Hook Pool: $52k TVL (já tem liquidez real)
-- Native Pool: $625k TVL (pool ativa com volume)
-- 283 swaps/dia (prova de demanda)
+### "Who's already using it?"
+- Hook Pool: $52k TVL (already has real liquidity)
+- Native Pool: $625k TVL (active pool with volume)
+- 283 swaps/day (proof of demand)
 
-### "Como ganham dinheiro?"
-- 10% performance fee no vault
-- Deploy fee para novos hooks
-- Sem mensalidade, sem custo fixo
+### "How do you make money?"
+- 10% performance fee on vault
+- Deploy fee for new hooks
+- No monthly fee, no fixed cost
 
 ---
 
-## ARQUITETURA TÉCNICA (resumo executivo)
+## TECHNICAL ARCHITECTURE (executive summary)
 
 ```
-Investidor → Deposita ETH → Vault (ERC-4626)
+Investor → Deposits ETH → Vault (ERC-4626)
                                     ↓
-                            Optimizer monitora APY
+                            Optimizer monitors APY
                                     ↓
-                    Move liquidez: Hook ↔ Native
+                    Moves liquidity: Hook ↔ Native
                                     ↓
-                            Fees acumuladas
+                            Fees accumulated
                                     ↓
-                    Investidor saca ETH + rendimento
+                    Investor withdraws ETH + yield
 ```
 
 ---
 
-## VALOR SUGERIDO
+## SUGGESTED AMOUNT
 
-| Cenário | Investimento | Liquidez | Retorno Semanal | ROI 12m |
-|---------|-------------|----------|-----------------|---------|
-| Mínimo | 3 ETH (~$7.2k) | 2 ETH + IMD | ~$50-150 | 4-10x |
+| Scenario | Investment | Liquidity | Weekly Return | 12m ROI |
+|----------|------------|-----------|---------------|---------|
+| Minimum | 3 ETH (~$7.2k) | 2 ETH + IMD | ~$50-150 | 4-10x |
 | Ideal | 10 ETH (~$24k) | 5 ETH + IMD | ~$200-500 | 5-12x |
-| Conservador | 25 ETH (~$60k) | 15 ETH + IMD | ~$500-1,500 | 5-13x |
+| Conservative | 25 ETH (~$60k) | 15 ETH + IMD | ~$500-1,500 | 5-13x |
 
-*Retornos baseados em 1-5% de captura do volume atual. Dados reais da pool.*
+*Returns based on 1-5% of current volume capture. Real pool data.*
 
 ---
 
-## FECHAR
+## CLOSE
 
-> "O protocolo já funciona. As pools já existem. Já tem volume real.
-> O que falta é o capital inicial pra entrar de vez.
-> Com [X] ETH, a gente deploya, adiciona liquidez e começa a gerar caixa na primeira semana."
+> "The protocol already works. The pools already exist. There's already real volume.
+> What's missing is the initial capital to go all in.
+> With [X] ETH, we deploy, add liquidity and start generating cash flow in the first week."
 
 ---
