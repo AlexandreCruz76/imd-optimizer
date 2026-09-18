@@ -57,6 +57,7 @@ export default function LPSim() {
   const [projections, setProjections] = useState<Projection[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -97,8 +98,6 @@ export default function LPSim() {
       setLoading(false);
     }
   }
-
-  const [error, setError] = useState<string | null>(null);
 
   function calculateProjections() {
     if (!data) return;

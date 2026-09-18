@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { fetchBothPoolsFromGraph } from "@/lib/graphClient";
+import { getEventIndexer } from "@/lib/eventIndexer";
 
 export const dynamic = "force-dynamic";
 
-interface ArbitrageSnapshot {
+interface Snapshot {
   timestamp: string;
   hookAPY: number;
   nativeAPY: number;
@@ -23,106 +24,110 @@ interface ArbitrageSnapshot {
   nativeFeeTier: number;
 }
 
-// In-memory history (last 24h of snapshots)
-const history: ArbitrageSnapshot[] = [];
-const MAX_HISTORY = 1440; // 24h * 60min
+const history: Snapshot[] = [];
+const MAX_HISTORY = 1440;
 
-function calculateAPY(fees24h: number, tvl: number): number {
-  return tvl > 0 ? (fees24h * 365 / tvl) * 100 : 0;
+function calcAPY(fees: number, tvl: number) {
+  return tvl > 0 ? (fees * 365 / tvl) * 100 : 0;
+}
+
+async function fetchData() {
+  // Try Graph first
+  const apiKey = process.env.THE_GRAPH_API_KEY || "";
+  let hookTv = 0, hookVol = 0, hookFees = 0, hookTxs = 0;
+  let nativeTv = 0, nativeVol = 0, nativeFees = 0, nativeTxs = 0;
+  let useGraph = false;
+
+  if (apiKey) {
+    try {
+      const pools = await fetchBothPoolsFromGraph(apiKey);
+      if (pools.hook || pools.native) {
+        useGraph = true;
+        if (pools.hook) {
+          hookTv = pools.hook.tvlUSD;
+          hookVol = pools.hook.volume24hUSD;
+          hookFees = pools.hook.fees24hUSD;
+          hookTxs = pools.hook.txs24h;
+        }
+        if (pools.native) {
+          nativeTv = pools.native.tvlUSD;
+          nativeVol = pools.native.volume24hUSD;
+          nativeFees = pools.native.fees24hUSD;
+          nativeTxs = pools.native.txs24h;
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback to Event Indexer
+  if (!useGraph) {
+    try {
+      const indexer = getEventIndexer();
+      const [h, n] = await Promise.all([
+        indexer.getPoolMetrics("0x415829f72e9f54531c26eae76f107618540e898a45d6ae35959e143f5faca704"),
+        indexer.getPoolMetrics("0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3"),
+      ]);
+      if (h) { hookTv = h.tvlUSD; hookVol = h.volume24hUSD; hookFees = h.fees24hUSD; hookTxs = h.txs24h; }
+      if (n) { nativeTv = n.tvlUSD; nativeVol = n.volume24hUSD; nativeFees = n.fees24hUSD; nativeTxs = n.txs24h; }
+    } catch {}
+  }
+
+  const hookAPY = calcAPY(hookFees, hookTv);
+  const nativeAPY = calcAPY(nativeFees, nativeTv);
+  const spread = hookAPY - nativeAPY;
+
+  return { hookTv, hookVol, hookFees, hookTxs, nativeTv, nativeVol, nativeFees, nativeTxs, hookAPY, nativeAPY, spread };
 }
 
 export async function GET() {
   try {
-    const apiKey = process.env.THE_GRAPH_API_KEY || "";
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "THE_GRAPH_API_KEY not configured" },
-        { status: 500 }
-      );
-    }
+    const d = await fetchData();
 
-    const pools = await fetchBothPoolsFromGraph(apiKey);
-    const hook = pools.hook;
-    const native = pools.native;
-
-    const hookAPY = hook ? calculateAPY(hook.fees24hUSD, hook.tvlUSD) : 0;
-    const nativeAPY = native ? calculateAPY(native.fees24hUSD, native.tvlUSD) : 0;
-    const spread = hookAPY - nativeAPY;
-
-    const snapshot: ArbitrageSnapshot = {
+    const snapshot: Snapshot = {
       timestamp: new Date().toISOString(),
-      hookAPY,
-      nativeAPY,
-      spread,
-      winner: hookAPY > nativeAPY ? "hook" : "native",
-      hookTVL: hook?.tvlUSD || 0,
-      nativeTVL: native?.tvlUSD || 0,
-      hookVol24h: hook?.volume24hUSD || 0,
-      nativeVol24h: native?.volume24hUSD || 0,
-      hookFees24h: hook?.fees24hUSD || 0,
-      nativeFees24h: native?.fees24hUSD || 0,
-      hookTxs: hook?.txs24h || 0,
-      nativeTxs: native?.txs24h || 0,
-      hookPair: hook?.pair || "ETH/IMD",
-      nativePair: native?.pair || "ETH/IMD",
-      hookFeeTier: hook?.feeTier || 10000,
-      nativeFeeTier: native?.feeTier || 10000,
+      hookAPY: d.hookAPY,
+      nativeAPY: d.nativeAPY,
+      spread: d.spread,
+      winner: d.hookAPY > d.nativeAPY ? "hook" : "native",
+      hookTVL: d.hookTv,
+      nativeTVL: d.nativeTv,
+      hookVol24h: d.hookVol,
+      nativeVol24h: d.nativeVol,
+      hookFees24h: d.hookFees,
+      nativeFees24h: d.nativeFees,
+      hookTxs: d.hookTxs,
+      nativeTxs: d.nativeTxs,
+      hookPair: "ETH/IMD",
+      nativePair: "ETH/IMD",
+      hookFeeTier: 10000,
+      nativeFeeTier: 10000,
     };
 
-    // Store snapshot
     history.push(snapshot);
-    if (history.length > MAX_HISTORY) {
-      history.splice(0, history.length - MAX_HISTORY);
-    }
+    if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
 
-    // Calculate statistics
+    // Stats
     const spreads = history.map((s) => s.spread);
-    const avgSpread = spreads.length > 0
-      ? spreads.reduce((a, b) => a + b, 0) / spreads.length
-      : 0;
+    const avgSpread = spreads.length > 0 ? spreads.reduce((a, b) => a + b, 0) / spreads.length : 0;
     const maxSpread = spreads.length > 0 ? Math.max(...spreads) : 0;
     const minSpread = spreads.length > 0 ? Math.min(...spreads) : 0;
-
-    // Count wins
     const hookWins = history.filter((s) => s.winner === "hook").length;
     const nativeWins = history.filter((s) => s.winner === "native").length;
 
-    // Simulate earnings for 10 ETH over history
-    let hookEarnings = 0;
-    let nativeEarnings = 0;
-    let arbitrageEarnings = 0;
+    // Simulation
     const investmentETH = 10;
-
+    let hookE = 0, nativeE = 0, arbE = 0;
     for (let i = 1; i < history.length; i++) {
       const prev = history[i - 1];
       const curr = history[i];
-      const hoursBetween =
-        (new Date(curr.timestamp).getTime() -
-          new Date(prev.timestamp).getTime()) /
-        (1000 * 60 * 60);
-
-      // Always in best pool
-      const bestAPY = Math.max(prev.hookAPY, prev.nativeAPY);
-      arbitrageEarnings += (investmentETH * bestAPY / 100 / 365 / 24) * hoursBetween;
-
-      // Always in hook
-      hookEarnings += (investmentETH * prev.hookAPY / 100 / 365 / 24) * hoursBetween;
-
-      // Always in native
-      nativeEarnings += (investmentETH * prev.nativeAPY / 100 / 365 / 24) * hoursBetween;
+      const hours = (new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3600000;
+      arbE += (investmentETH * Math.max(prev.hookAPY, prev.nativeAPY) / 100 / 365 / 24) * hours;
+      hookE += (investmentETH * prev.hookAPY / 100 / 365 / 24) * hours;
+      nativeE += (investmentETH * prev.nativeAPY / 100 / 365 / 24) * hours;
     }
 
-    const arbitrageGainVsHook = hookEarnings > 0
-      ? ((arbitrageEarnings - hookEarnings) / hookEarnings) * 100
-      : 0;
-    const arbitrageGainVsNative = nativeEarnings > 0
-      ? ((arbitrageEarnings - nativeEarnings) / nativeEarnings) * 100
-      : 0;
-
-    // Migration threshold analysis
-    const THRESHOLD = 2.0; // 2% spread needed to justify migration cost
-    const migrationNeeded = Math.abs(spread) > THRESHOLD;
-    const recommendedPool = spread > THRESHOLD ? "hook" : spread < -THRESHOLD ? "native" : "hold";
+    const THRESHOLD = 2.0;
+    const recommendedPool = d.spread > THRESHOLD ? "hook" : d.spread < -THRESHOLD ? "native" : "hold";
 
     return NextResponse.json({
       current: snapshot,
@@ -138,32 +143,29 @@ export async function GET() {
       },
       simulation: {
         investmentETH,
-        hookEarningsETH: hookEarnings.toFixed(4),
-        nativeEarningsETH: nativeEarnings.toFixed(4),
-        arbitrageEarningsETH: arbitrageEarnings.toFixed(4),
-        arbitrageGainVsHookPct: arbitrageGainVsHook.toFixed(2),
-        arbitrageGainVsNativePct: arbitrageGainVsNative.toFixed(2),
+        hookEarningsETH: hookE.toFixed(4),
+        nativeEarningsETH: nativeE.toFixed(4),
+        arbitrageEarningsETH: arbE.toFixed(4),
+        arbitrageGainVsHookPct: hookE > 0 ? ((arbE - hookE) / hookE * 100).toFixed(2) : "0",
+        arbitrageGainVsNativePct: nativeE > 0 ? ((arbE - nativeE) / nativeE * 100).toFixed(2) : "0",
       },
       recommendation: {
-        migrationNeeded,
+        migrationNeeded: Math.abs(d.spread) > THRESHOLD,
         recommendedPool,
         spreadThreshold: THRESHOLD,
-        currentSpread: spread.toFixed(2),
+        currentSpread: d.spread.toFixed(2),
         reasoning:
           recommendedPool === "hook"
-            ? `Hook Pool APY (${hookAPY.toFixed(1)}%) beats Native (${nativeAPY.toFixed(1)}%) by ${Math.abs(spread).toFixed(1)}%`
+            ? `Hook APY (${d.hookAPY.toFixed(1)}%) beats Native (${d.nativeAPY.toFixed(1)}%) by ${Math.abs(d.spread).toFixed(1)}%`
             : recommendedPool === "native"
-            ? `Native Pool APY (${nativeAPY.toFixed(1)}%) beats Hook (${hookAPY.toFixed(1)}%) by ${Math.abs(spread).toFixed(1)}%`
-            : `Spread (${Math.abs(spread).toFixed(1)}%) below threshold (${THRESHOLD}%) — stay in current pool`,
+            ? `Native APY (${d.nativeAPY.toFixed(1)}%) beats Hook (${d.hookAPY.toFixed(1)}%) by ${Math.abs(d.spread).toFixed(1)}%`
+            : `Spread (${Math.abs(d.spread).toFixed(1)}%) below threshold (${THRESHOLD}%) — hold position`,
       },
-      history: history.slice(-60), // Last 60 snapshots for chart
+      history: history.slice(-60),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("Arbitrage API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch arbitrage data", details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed", details: String(error) }, { status: 500 });
   }
 }

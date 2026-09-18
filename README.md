@@ -1,148 +1,210 @@
-# IMD Protocol - Optimizer Beta
+# OPTIMIZER — Uniswap V4 Meta-Hook Engine
 
-> Yield optimization for Uniswap V4 Hook Pools
+![License](https://img.shields.io/badge/license-MIT-green)
+![Solidity](https://img.shields.io/badge/solidity-0.8.28-blue)
+![Network](https://img.shields.io/badge/network-Sepolia-blue)
+![Frontend](https://img.shields.io/badge/frontend-Next.js_16-black)
 
-## Overview
+> *"O Optimizer não é um cofre. É um banco central autônomo que protege o capital do varejo contra a inércia e os robôs."*
 
-IMD Protocol Optimizer is a system that optimizes liquidity positions on Uniswap V4 Hook Pools, specifically designed for the $IMD CappedBurnHook pool.
+---
 
-### Key Features
+## 🎯 Visão Geral
 
-- **Vault System** - ERC-4626 compliant vault for yield optimization
-- **Analytics Dashboard** - Real-time pool analytics and monitoring
-- **Burn Tracking** - Monitor token burns and rewards
-- **LP Simulation** - Simulate liquidity positions before execution
-- **Adoption Program** - Community-driven funding with tiered benefits
+O **Optimizer** é um protocolo DeFi construído sobre **Uniswap V4** que implementa um **Meta-Hook de 3 camadas** para:
 
-## Architecture
+1. **Proteger** o capital do varejo contra MEV bots
+2. **Otimizar** yield através de arbitragem automática
+3. **Distribuir** taxas para holders de $BUILDER
+
+---
+
+## 🏗️ Arquitetura
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  IMD OPTIMIZER ARCHITECTURE                                 │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Frontend  │───▶│   Backend   │───▶│  Uniswap V4 │     │
-│  │  (Next.js)  │    │  (Node.js)  │    │   Hooks     │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│         │                  │                  │              │
-│         ▼                  ▼                  ▼              │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Dashboard │    │   Analytics │    │   Yield     │     │
-│  │   Wallet    │    │   Burns     │    │   Optimizer │     │
-│  │   Adoption  │    │   Fees      │    │   LP Mgmt   │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    OPTIMIZER META-HOOK ENGINE                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [👤 Capital do Investidor]                                     │
+│      │                                                          │
+│      ▼                                                          │
+│  ┌─────────────────┐                                            │
+│  │ OPTIMIZER ROUTER│ ← Entry point para swaps                   │
+│  └────────┬────────┘                                            │
+│           │                                                     │
+│           ▼                                                     │
+│  ┌─────────────────────────────────────────────────────┐       │
+│  │           META-HOOK ENGINE (3 CAMADAS)               │       │
+│  │                                                     │       │
+│  │  Layer 1: IDENTITY-FI (beforeSwap)                   │       │
+│  │  → Lê NFT Identity MD / Genesis Key                  │       │
+│  │  → Taxa dinâmica: 0% / 0.1% / 0.5%                  │       │
+│  │                                                     │       │
+│  │  Layer 2: ELASTICITY (afterSwap)                     │       │
+│  │  → Sincroniza $IMD Burns + Standard Reserve          │       │
+│  │                                                     │       │
+│  │  Layer 3: MEV INTERNALIZATION                        │       │
+│  │  → Detecta delta de preço                            │       │
+│  │  → Executa arbitragem internamente                   │       │
+│  │  → Lucro volta para LP pool                          │       │
+│  └─────────────────────────────────────────────────────┘       │
+│           │                                                     │
+│           ▼                                                     │
+│  ┌─────────────────┐                                            │
+│  │ UNISWAP V4      │                                            │
+│  │ SINGLETON       │                                            │
+│  └─────────────────┘                                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+---
 
-### Prerequisites
+## 📦 Contratos (Sepolia Testnet)
 
-- Node.js 18+
-- npm or yarn
-- MetaMask or other Web3 wallet
+| Contrato | Endereço | Descrição |
+|----------|----------|-----------|
+| `OptimizerHook` | `0xc6c965bd164c483e87d0b550671798e9a3602840` | Meta-Hook de 3 camadas |
+| `OptimizerRouter` | `0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240` | Router com proteção MEV |
+| `OptimizerGenesisKey` | `0x...` | NFT ERC-721 (200 supply) |
+| `BuilderStakingVault` | `0x...` | Stake $BUILDER → 60% fees |
+| `MigrationRouter` | `0x...` | Migração atômica entre pools |
 
-### Installation
+---
+
+## 🚀 Quick Start
+
+### Contratos
 
 ```bash
-# Clone repository
-git clone https://github.com/your-username/imd-optimizer.git
-cd imd-optimizer
-
-# Install dependencies
+# Instalar dependências
 npm install
 
-# Install frontend dependencies
+# Compilar contratos
+npx hardhat compile
+
+# Rodar testes
+npx hardhat test
+
+# Deploy Sepolia
+npx hardhat run scripts/deploy-all.js --network sepolia
+```
+
+### Frontend
+
+```bash
 cd frontend
 npm install
-```
-
-### Environment Setup
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your values:
-# - SEPOLIA_RPC_URL: Your Alchemy/Infura RPC URL for Sepolia
-# - MAINNET_RPC_URL: Your Alchemy/Infura RPC URL for Mainnet
-# - DEPLOYER_PRIVATE_KEY: Your deployer wallet private key (WITHOUT 0x prefix)
-# - ETHERSCAN_API_KEY: For contract verification
-```
-
-### Development
-
-```bash
-# Start frontend
-cd frontend
 npm run dev
 
-# Access at http://localhost:3001
+# Acessar: http://localhost:3000
 ```
 
-### Build
+---
 
-```bash
-cd frontend
-npm run build
-npm start
+## 📱 Páginas do Frontend
+
+| Rota | Descrição | Status |
+|------|-----------|--------|
+| `/` | Dashboard — visão geral das pools | ✅ |
+| `/swap` | Protected Swap — swap com proteção MEV | ✅ |
+| `/burns` | Burn Mechanics — eventos de burn on-chain | ✅ |
+| `/arbitrage` | Yield Arbitrage — comparação Hook vs Native | ✅ |
+| `/nft-mint` | Genesis Key — mint do NFT ERC-721 | ✅ |
+| `/staking` | $BUILDER Staking — stake para earn fees | ✅ |
+| `/docs` | Documentação completa | ✅ |
+
+---
+
+## 💰 Distribuição de Taxas
+
+```
+PERFORMANCE FEE (15% do yield):
+├── 60% → $BUILDER Stakers
+├── 20% → Treasury (operação + audits)
+├── 15% → Developers (manutenção)
+└──  5% → Burn (deflação)
+
+FEE TIERS:
+├── Genesis Key holders: 0%
+├── Identity MD holders: 0.1%
+├── Tier BASIC: 15%
+├── Tier PRO: 10%
+├── Tier WHALE: 5%
+└── Default: 20%
 ```
 
-## Features
+---
 
-### Dashboard
-- Real-time pool analytics
-- LP position tracking
-- Yield projections
-- Burn statistics
+## 🔐 Segurança
 
-### Adoption Program
-- Tiered support system (SEED, SPROUT, LEAF, BRANCH, TRUNK)
-- Fee discounts and revenue share
-- Early access to features
-- Governance rights
+- **ReentrancyGuard** em todos os contratos
+- **Slippage Protection** no OptimizerRouter
+- **Block Delay** entre operações do mesmo usuário
+- **Ownership Transfer** com 2-step
+- **Pausable** para emergências
 
-### Analytics
-- Burn tracking
-- Fee analysis
-- Volume monitoring
-- Price TWAP
+---
 
-## Roadmap
+## 📊 Métricas On-Chain
 
-### Phase 1: Beta (Current)
-- [x] Core vault system
-- [x] Analytics dashboard
-- [x] Adoption program
-- [ ] Sepolia deployment
+| Métrica | Valor |
+|---------|-------|
+| **TVL** | Verificar via API `/api/pool-state` |
+| **APY** | Calculado em tempo real |
+| **Burns** | Eventos Trimmed on-chain |
+| **Arbitrage** | Snapshot a cada 30s |
 
-### Phase 2: Mainnet
-- [ ] Yield distribution
-- [ ] Hook integration
-- [ ] Perpetual trading
-- [ ] Oracle system
+---
 
-### Phase 3: Growth
-- [ ] Cross-chain deployment
-- [ ] Additional pools
-- [ ] Advanced derivatives
-- [ ] Mobile app
+## 🌐 Links
 
-## Contributing
+| Recurso | URL |
+|---------|-----|
+| **Frontend** | http://localhost:3000 |
+| **API Pool State** | http://localhost:3000/api/pool-state |
+| **API Burns** | http://localhost:3000/api/burns |
+| **API Arbitrage** | http://localhost:3000/api/arbitrage |
+| **Documentação** | https://github.com/your-org/optimizer |
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+---
 
-## License
+## 📚 Documentação
 
-MIT License - see [LICENSE](LICENSE) for details.
+| Documento | Descrição |
+|-----------|-----------|
+| [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) | Visão completa do ecossistema |
+| [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) | Roadmap de 3 fases |
+| [PITCH-DECK.md](docs/PITCH-DECK.md) | Resumo para investidores |
+| [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) | Arquitetura técnica |
+| [IDENTITY-BRANDING.md](docs/IDENTITY-BRANDING.md) | Identidade Agentic Frog |
 
-## Community
+---
 
-- Twitter: [@surfcoderepeat](https://x.com/surfcoderepeat)
-- Website: [imd.fun](https://imd.fun)
+## 🛠️ Tecnologias
 
-## Disclaimer
+| Camada | Tecnologia |
+|--------|------------|
+| **Smart Contracts** | Solidity 0.8.28, OpenZeppelin 5.x |
+| **Blockchain** | Ethereum (Mainnet + Sepolia) |
+| **DEX** | Uniswap V4 (Singleton Architecture) |
+| **Frontend** | Next.js 16, React 19, Tailwind v4 |
+| **Wallet** | ethers.js v6, MetaMask |
+| **Graph** | The Graph Protocol |
 
-This is experimental software. Use at your own risk. The IMD Protocol team is not responsible for any losses incurred from using this software.
+---
+
+## 📄 Licença
+
+MIT © IMD Protocol
+
+---
+
+## 🔗 Para Investidores
+
+**Documentação completa:** [https://github.com/your-org/optimizer](https://github.com/your-org/optimizer)
+
+**Contato:** [seu-email@exemplo.com]
+
+**Twitter:** [@seu-handle](https://twitter.com/seu-handle)

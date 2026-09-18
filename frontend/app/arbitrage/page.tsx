@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { LiquidityAllocation } from "../components/LiquidityAllocation";
 
 interface ArbitrageData {
   current: {
@@ -108,6 +109,13 @@ export default function Arbitrage() {
   const isHookWinner = current.winner === "hook";
   const hookWinsPct = parseFloat(stats.hookWinRate);
   const nativeWinsPct = parseFloat(stats.nativeWinRate);
+
+  // Pool state for allocation component
+  const poolState = {
+    ethInPool: ((current.hookTVL + current.nativeTVL) / 3000).toFixed(2), // Rough ETH estimate
+    imdInPool: "0",
+    price: (current.hookTVL / Math.max(current.nativeTVL, 1)).toFixed(2),
+  };
 
   // Recalculate simulation for custom investment
   const customSimulation = {
@@ -379,6 +387,9 @@ export default function Arbitrage() {
           <p className="text-[#00ff4140]">• Native Pool wins when trading volume is high (more fees = higher APY)</p>
         </div>
       </div>
+
+      {/* LIQUIDITY ALLOCATION */}
+      <LiquidityAllocation poolState={poolState} />
 
       <div className="text-xs text-[#00ff4140] tracking-wider">
         └────────────────────────────────────────────────────────────────────────┘

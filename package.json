@@ -7,12 +7,16 @@
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "compile": "npx hardhat compile",
-    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
-    "deploy:mainnet": "npx hardhat run scripts/deploy.js --network mainnet",
+    "deploy:sepolia": "npx hardhat run scripts/deploy-all.js --network sepolia",
+    "deploy:mainnet": "npx hardhat run scripts/deploy-all.js --network mainnet",
+    "deploy:local": "npx hardhat run scripts/deploy-all.js --network localhost",
+    "node": "npx hardhat node",
     "verify": "npx hardhat verify --network sepolia",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "test:verbose": "npx hardhat test --verbose"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
     "@uniswap/v4-core": "^1.0.0",
     "dotenv": "^17.4.2"
   },
