@@ -46,6 +46,9 @@ optimizer/src/strategies/
 # Proprietary - Hook contracts (need @uniswap/v4-core)
 hooks-contracts/
 
+# Proprietary - Private contracts (NEVER COMMIT)
+contracts/private/
+
 # MEV Bot (separate project)
 MEV-Bot/
 

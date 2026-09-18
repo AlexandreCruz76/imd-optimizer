@@ -71,6 +71,41 @@
 | `BuilderStakingVault` | `0x...` | Stake $BUILDER → 60% fees |
 | `MigrationRouter` | `0x...` | Atomic migration between pools |
 
+> **Note:** This repository contains only **interfaces** for the smart contracts. The full implementation is proprietary and kept in a private repository. See [contracts/public/](contracts/public/) for interface definitions.
+
+---
+
+## 🔐 Security & Proprietary Protection
+
+### What's Public (This Repository)
+- ✅ Interface definitions (`contracts/public/I*.sol`)
+- ✅ Documentation and architecture
+- ✅ Frontend code
+- ✅ Deployment scripts
+
+### What's Private (Proprietary)
+- 🔒 Full contract implementations (`contracts/private/`)
+- 🔒 MEV detection algorithms
+- 🔒 Price impact calculations
+- 🔒 Optimal routing logic
+- 🔒 Fee optimization math
+- 🔒 Elasticity parameters
+
+### Architecture
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OPTIMIZER PROTOCOL                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  [Public Repository]              [Private Repository]      │
+│  ├── Interfaces (I*.sol)          ├── Full Implementation   │
+│  ├── Documentation                ├── Proprietary Math      │
+│  ├── Frontend                     ├── MEV Algorithms        │
+│  └── Deploy Scripts               └── Off-Chain Logic       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 🚀 Quick Start
