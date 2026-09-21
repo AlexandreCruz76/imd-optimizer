@@ -116,7 +116,16 @@ export default function Dashboard() {
       </div>
 
       {/* CTA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="/oracle" className="terminal-panel p-4 border-glow border-[#00ff41] hover:bg-[#00ff4105] transition-all group">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#00ff41] flex items-center justify-center text-[#0a0a0a] font-bold group-hover:scale-110 transition-transform">O</div>
+            <div>
+              <div className="text-base md:text-lg text-[#00ff41] glow mb-1">ORACLE</div>
+              <div className="text-xs text-[#00ff4160]">MEV Intelligence. Live blockchain scan.</div>
+            </div>
+          </div>
+        </a>
         <a href="/nft-mint" className="terminal-panel p-4 border-glow border-[#00ff41] hover:bg-[#00ff4105] transition-all group">
           <div className="flex items-center gap-3">
             <img src="/pepe/profile.jpeg" alt="Genesis" className="w-10 h-10 rounded-full border border-[#00ff41] group-hover:scale-110 transition-transform" />

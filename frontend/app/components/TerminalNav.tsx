@@ -8,9 +8,10 @@ const links = [
   { href: "/swap", label: "SWAP", shortcut: "F2" },
   { href: "/burns", label: "BURNS", shortcut: "F3" },
   { href: "/arbitrage", label: "ARBITRAGE", shortcut: "F4" },
-  { href: "/nft-mint", label: "GENESIS KEY", shortcut: "F5" },
-  { href: "/staking", label: "STAKING", shortcut: "F6" },
-  { href: "/docs", label: "DOCS", shortcut: "F7" },
+  { href: "/oracle", label: "ORACLE", shortcut: "F5" },
+  { href: "/nft-mint", label: "GENESIS KEY", shortcut: "F6" },
+  { href: "/staking", label: "STAKING", shortcut: "F7" },
+  { href: "/docs", label: "DOCS", shortcut: "F8" },
 ];
 
 export function TerminalNav() {

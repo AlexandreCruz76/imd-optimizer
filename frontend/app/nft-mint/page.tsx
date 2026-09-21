@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "../components/WalletProvider";
 
-const GENESIS_PRICE_ETH = 0.5;
-const BACKER_PRICE_ETH = 1.0;
 const MAX_SUPPLY = 100;
 
 interface KeyInfo {
@@ -190,7 +188,6 @@ export default function NFTMintPage() {
             ▸ GENESIS KEY
           </div>
           <div className="space-y-3">
-            <div className="text-2xl text-[#00ff41] glow">{GENESIS_PRICE_ETH} ETH</div>
             <div className="text-xs text-[#00ff4160]">Supply: 50 keys</div>
             <div className="space-y-2 text-xs">
               <div className="text-[#00ff41]">✓ Taxa ZERO no Optimizer router</div>
@@ -207,7 +204,7 @@ export default function NFTMintPage() {
                   : "bg-[#00ff4120] text-[#00ff4140] cursor-not-allowed"
               }`}
             >
-              {minting ? "MINTING..." : "MINT GENESIS (0.5 ETH)"}
+              {minting ? "MINTING..." : "MINT GENESIS"}
             </button>
           </div>
         </div>
@@ -218,7 +215,6 @@ export default function NFTMintPage() {
             ▸ BACKER KEY (PRIORITY)
           </div>
           <div className="space-y-3">
-            <div className="text-2xl text-[#ffb000]">{BACKER_PRICE_ETH} ETH</div>
             <div className="text-xs text-[#00ff4160]">Supply: 50 keys</div>
             <div className="space-y-2 text-xs">
               <div className="text-[#ffb000]">✓ Tudo do Genesis Key</div>
@@ -235,7 +231,7 @@ export default function NFTMintPage() {
                   : "bg-[#ffb00020] text-[#ffb00040] cursor-not-allowed"
               }`}
             >
-              {minting ? "MINTING..." : "MINT BACKER (1 ETH)"}
+              {minting ? "MINTING..." : "MINT BACKER"}
             </button>
           </div>
         </div>
@@ -297,7 +293,7 @@ export default function NFTMintPage() {
         </div>
         <div className="space-y-2 text-xs text-[#00ff4160]">
           <div>1. Connect wallet (Mainnet)</div>
-          <div>2. Choose Genesis (0.5 ETH) or Backer (1 ETH)</div>
+          <div>2. Choose Genesis or Backer tier</div>
           <div>3. Sign transaction</div>
           <div>4. Receive ERC-721 NFT in your wallet</div>
           <div>5. Use NFT on Optimizer router for ZERO fees</div>

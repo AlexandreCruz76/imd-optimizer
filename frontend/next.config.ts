@@ -2,9 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
+  /* webpack is default in Next.js, turbopack removed */
 };
 
 export default nextConfig;
