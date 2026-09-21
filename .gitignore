@@ -67,6 +67,10 @@ scripts/
 # Internal docs
 docs/*.md
 !docs/investors.html
+!docs/TEST-REPORT.md
+!docs/PUBLIC-TEST-RESULTS.md
+!docs/PROTECTION-GUIDE.md
+!docs/ORACLE-SHARE.md
 
 # Sepolia deployment
 deployments/sepolia/
