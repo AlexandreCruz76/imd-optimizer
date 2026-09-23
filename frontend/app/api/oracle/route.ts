@@ -5,8 +5,8 @@ const PM = "0x000000000004444c5dc75cB358380D2e3dE08A90";
 const SWAP_TOPIC = "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f";
 
 const POOLS = [
-  { id: "0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3", name: "IMD/ETH", decimals: 18, startBlock: 26029794, label: "CappedBurnHook" },
-  { id: "0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba", name: "IMD/USDC", decimals: 6, startBlock: 26029696, label: "Standard (no hook)" },
+  { id: "0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3", name: "IMD/ETH", decimals: 18, nativeSymbol: "ETH", priceUSD: 2500, startBlock: 26029794, label: "CappedBurnHook" },
+  { id: "0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba", name: "IMD/USDC", decimals: 6, nativeSymbol: "USDC", priceUSD: 1, startBlock: 26029696, label: "Standard (no hook)" },
 ];
 
 let cachedData: any = null;
@@ -24,7 +24,7 @@ function parseSwap(log: any) {
   return { block: log.blockNumber, sender, poolId, amount0, amount1, dir: amount0 > 0n ? "sell" : "buy", idx: log.logIndex, txHash: log.transactionHash };
 }
 
-function detectAttacks(swaps: any[], decimals: number) {
+function detectAttacks(swaps: any[], decimals: number, nativeSymbol: string, priceUSD: number) {
   const attacks: any[] = [];
   const divisor = BigInt(10 ** decimals);
 
@@ -38,7 +38,7 @@ function detectAttacks(swaps: any[], decimals: number) {
   function profit(buy: any, sell: any): number {
     const b = Math.abs(Number(buy.amount1)) / Number(divisor);
     const s = Math.abs(Number(sell.amount1)) / Number(divisor);
-    return Math.min(Math.min(b, s) * 0.001, 10);
+    return Math.min(b, s) * 0.001;
   }
 
   // Same-block sandwich
@@ -60,7 +60,7 @@ function detectAttacks(swaps: any[], decimals: number) {
             const p = profit(txs[i], txs[j]);
             attacks.push({
               block: txs[i].block, type: "Sandwich", bot: txs[i].sender,
-              victim: victims[0].sender, profit_eth: p,
+              victim: victims[0].sender, profit_native: p, profit_usd: p * priceUSD,
               entryTX: txs[i].txHash, victimTX: victims[0].txHash, exitTX: txs[j].txHash,
             });
           }
@@ -88,7 +88,8 @@ function detectAttacks(swaps: any[], decimals: number) {
           if (p > 0.0001) {
             attacks.push({
               block: txs[i].block, type: "Cross-block", bot: txs[i].sender,
-              profit_eth: p, entryTX: txs[i].txHash, exitTX: txs[i + 1].txHash,
+              profit_native: p, profit_usd: p * priceUSD,
+              entryTX: txs[i].txHash, exitTX: txs[i + 1].txHash,
               blocks_span: txs[i + 1].block - txs[i].block,
             });
           }
@@ -129,32 +130,35 @@ async function fetchOracleData() {
     }
 
     const swaps = allLogs.map(parseSwap);
-    const attacks = detectAttacks(swaps, pool.decimals);
+    const attacks = detectAttacks(swaps, pool.decimals, pool.nativeSymbol, pool.priceUSD);
 
     const traders: Record<string, number> = {};
     for (const s of swaps) traders[s.sender] = (traders[s.sender] || 0) + 1;
 
     const buys = swaps.filter((s) => s.dir === "buy").length;
     const sells = swaps.filter((s) => s.dir === "sell").length;
-    const totalProfit = attacks.reduce((s: number, a: any) => s + a.profit_eth, 0);
-    const totalRecoverable = totalProfit * 0.85;
+    const totalProfitNative = attacks.reduce((s: number, a: any) => s + a.profit_native, 0);
+    const totalProfitUSD = attacks.reduce((s: number, a: any) => s + a.profit_usd, 0);
+    const totalRecoverableNative = totalProfitNative * 0.85;
+    const totalRecoverableUSD = totalProfitUSD * 0.85;
     const botStats: Record<string, any> = {};
     for (const a of attacks) {
-      if (!botStats[a.bot]) botStats[a.bot] = { count: 0, profit: 0, types: new Set() };
+      if (!botStats[a.bot]) botStats[a.bot] = { count: 0, profit_native: 0, profit_usd: 0, types: new Set() };
       botStats[a.bot].count++;
-      botStats[a.bot].profit += a.profit_eth;
+      botStats[a.bot].profit_native += a.profit_native;
+      botStats[a.bot].profit_usd += a.profit_usd;
       botStats[a.bot].types.add(a.type);
     }
 
     const leaderboard = Object.entries(botStats)
       .map(([addr, s]: [string, any]) => ({
         address: addr, type: [...s.types].join(" | "), attacks: s.count,
-        estimated_profit_eth: s.profit.toFixed(6),
+        profit_native: s.profit_native.toFixed(6), profit_usd: s.profit_usd.toFixed(2),
       }))
-      .sort((a: any, b: any) => parseFloat(b.estimated_profit_eth) - parseFloat(a.estimated_profit_eth));
+      .sort((a: any, b: any) => parseFloat(b.profit_usd) - parseFloat(a.profit_usd));
 
     poolResults.push({
-      pool: { id: pool.id, name: pool.name, label: pool.label, startBlock: pool.startBlock },
+      pool: { id: pool.id, name: pool.name, label: pool.label, startBlock: pool.startBlock, nativeSymbol: pool.nativeSymbol },
       swaps: { total: swaps.length, buys, sells, traders: Object.keys(traders).length },
       mev: {
         attacks_detected: attacks.length,
@@ -165,18 +169,19 @@ async function fetchOracleData() {
         attack_samples: attacks,
       },
       losses: {
-        total_mev_eth: totalProfit.toFixed(6),
-        total_victim_loss_eth: (totalProfit * 0.85).toFixed(6),
-        total_recoverable_eth: totalRecoverable.toFixed(6),
-        estimated_annual_usd: (totalProfit * (365 * 24 * 60 * 60 / 12) / (latest - pool.startBlock) * 2500).toFixed(0),
+        total_mev_native: totalProfitNative.toFixed(6),
+        total_mev_usd: totalProfitUSD.toFixed(2),
+        total_recoverable_native: totalRecoverableNative.toFixed(6),
+        total_recoverable_usd: totalRecoverableUSD.toFixed(2),
+        estimated_annual_usd: (totalProfitUSD * (365 * 24 * 60 * 60 / 12) / (latest - pool.startBlock)).toFixed(0),
       },
     });
   }
 
   // Summary across both pools
   const totalAttacks = poolResults.reduce((s: number, p: any) => s + p.mev.attacks_detected, 0);
-  const totalMEV = poolResults.reduce((s: number, p: any) => s + parseFloat(p.losses.total_mev_eth), 0);
-  const totalRecoverable = poolResults.reduce((s: number, p: any) => s + parseFloat(p.losses.total_recoverable_eth), 0);
+  const totalMEV_USD = poolResults.reduce((s: number, p: any) => s + parseFloat(p.losses.total_mev_usd), 0);
+  const totalRecoverable_USD = poolResults.reduce((s: number, p: any) => s + parseFloat(p.losses.total_recoverable_usd), 0);
   const totalSwaps = poolResults.reduce((s: number, p: any) => s + p.swaps.total, 0);
 
   cachedData = {
@@ -188,8 +193,8 @@ async function fetchOracleData() {
       total_swaps: totalSwaps,
       total_attacks: totalAttacks,
       total_bots: poolResults.reduce((s: number, p: any) => s + p.mev.bots, 0),
-      total_recoverable_eth: totalRecoverable.toFixed(6),
-      total_recoverable_usd: (totalRecoverable * 2500).toFixed(0),
+      total_mev_usd: totalMEV_USD.toFixed(2),
+      total_recoverable_usd: totalRecoverable_USD.toFixed(2),
     },
     pools: poolResults,
     report_generated: new Date().toISOString(),

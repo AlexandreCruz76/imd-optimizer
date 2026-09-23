@@ -7,7 +7,8 @@ interface AttackData {
   type: string;
   bot: string;
   victim?: string;
-  profit_eth: number;
+  profit_native: number;
+  profit_usd: number;
   entryTX: string;
   victimTX?: string;
   exitTX: string;
@@ -15,17 +16,17 @@ interface AttackData {
 }
 
 interface PoolData {
-  pool: { id: string; name: string; label: string; startBlock: number };
+  pool: { id: string; name: string; label: string; startBlock: number; nativeSymbol: string };
   swaps: { total: number; buys: number; sells: number; traders: number };
   mev: {
     attacks_detected: number;
     sandwich: number;
     cross_block: number;
     bots: number;
-    leaderboard: Array<{ address: string; type: string; attacks: number; estimated_profit_eth: string }>;
+    leaderboard: Array<{ address: string; type: string; attacks: number; profit_native: string; profit_usd: string }>;
     attack_samples: AttackData[];
   };
-  losses: { total_mev_eth: string; total_victim_loss_eth: string; total_recoverable_eth: string; estimated_annual_usd: string };
+  losses: { total_mev_native: string; total_mev_usd: string; total_recoverable_native: string; total_recoverable_usd: string; estimated_annual_usd: string };
 }
 
 interface OracleData {
@@ -33,13 +34,7 @@ interface OracleData {
   last_block: number;
   timestamp: string;
   scan_blocks: number;
-  summary: {
-    total_swaps: number;
-    total_attacks: number;
-    total_bots: number;
-    total_recoverable_eth: string;
-    total_recoverable_usd: string;
-  };
+  summary: { total_swaps: number; total_attacks: number; total_bots: number; total_mev_usd: string; total_recoverable_usd: string };
   pools: PoolData[];
   report_generated: string;
 }
@@ -73,21 +68,17 @@ export default function OraclePage() {
 
   const s = data.summary;
   const pool = data.pools[selectedPool];
-  const otherPool = data.pools[1 - selectedPool];
 
   return (
     <div className="space-y-3 fade-in">
-      {/* HEADER */}
       <div className="terminal-panel p-3 border-glow border-[#00ff41] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#00ff41] animate-pulse"></div>
           <span className="text-[10px] tracking-widest text-[#00ff4160]">IMD POOL MONITOR — SINCE CREATION</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-[#00ff4160]">
-          <span>Block #{data.last_block}</span>
-          <span>|</span>
-          <span>{data.scan_blocks.toLocaleString()} blocks</span>
-          <span>|</span>
+          <span>Block #{data.last_block}</span><span>|</span>
+          <span>{data.scan_blocks.toLocaleString()} blocks</span><span>|</span>
           <span>{lastUpdate ? lastUpdate.toLocaleTimeString() : "—"}</span>
         </div>
       </div>
@@ -97,10 +88,10 @@ export default function OraclePage() {
         <div className="text-center mb-3">
           <div className="text-[9px] tracking-widest text-[#ff004060] mb-1">EXECUTIVE SUMMARY</div>
           <div className="text-base text-[#ff0040] font-bold">
-            Without Optimizer, IMD pools lost <span className="font-mono">${(parseFloat(s.total_recoverable_usd)).toLocaleString()}</span> to MEV bots
+            IMD pools lost <span className="font-mono">${parseFloat(s.total_mev_usd).toLocaleString()}</span> to MEV bots
           </div>
           <div className="text-xs text-[#00ff41] mt-1">
-            <span className="font-mono font-bold">{parseFloat(s.total_recoverable_eth).toFixed(2)} ETH</span> recoverable with CappedBurnHook
+            <span className="font-mono font-bold">${parseFloat(s.total_recoverable_usd).toLocaleString()}</span> recoverable with CappedBurnHook
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -108,7 +99,7 @@ export default function OraclePage() {
             { n: s.total_swaps.toLocaleString(), l: "TOTAL SWAPS", c: "#ffb000" },
             { n: s.total_attacks, l: "MEV ATTACKS", c: "#ff0040" },
             { n: s.total_bots, l: "BOTS ACTIVE", c: "#ff0040" },
-            { n: `${parseFloat(s.total_recoverable_eth).toFixed(1)}`, l: "RECOVERABLE ETH", c: "#00ff41" },
+            { n: `$${parseFloat(s.total_recoverable_usd).toLocaleString()}`, l: "RECOVERABLE", c: "#00ff41" },
           ].map((item, i) => (
             <div key={i} className="p-2 bg-[#000000] border text-center" style={{ borderColor: item.c + "30" }}>
               <div className="text-lg font-mono font-bold" style={{ color: item.c }}>{item.n}</div>
@@ -118,11 +109,9 @@ export default function OraclePage() {
         </div>
       </div>
 
-      {/* POOL SELECTOR + 2/3 + 1/3 LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* LEFT 2/3 */}
         <div className="lg:col-span-2 space-y-3">
-          {/* Pool Toggle */}
           <div className="terminal-panel p-1 border-glow border-[#00ff4140] flex">
             {data.pools.map((p, i) => (
               <button key={i} onClick={() => setSelectedPool(i)}
@@ -134,7 +123,6 @@ export default function OraclePage() {
             ))}
           </div>
 
-          {/* Pool Stats */}
           <div className="grid grid-cols-4 gap-2">
             {[
               { v: pool.swaps.total.toLocaleString(), l: "SWAPS", c: "#ffb000" },
@@ -149,26 +137,24 @@ export default function OraclePage() {
             ))}
           </div>
 
-          {/* Loss Cards */}
           <div className="grid grid-cols-3 gap-2">
             <div className="terminal-panel p-2 border-glow border-[#ff004040]">
               <div className="text-[8px] text-[#ff004060] mb-1">MEV EXTRACTED</div>
-              <div className="text-sm font-mono text-[#ff0040]">{pool.losses.total_mev_eth}</div>
-              <div className="text-[8px] text-[#ff004060]">ETH</div>
+              <div className="text-sm font-mono text-[#ff0040]">${parseFloat(pool.losses.total_mev_usd).toLocaleString()}</div>
+              <div className="text-[8px] text-[#ff004060]">USD</div>
             </div>
             <div className="terminal-panel p-2 border-glow border-[#ff004040]">
-              <div className="text-[8px] text-[#ff004060] mb-1">VICTIM LOSS</div>
-              <div className="text-sm font-mono text-[#ff0040]">{pool.losses.total_victim_loss_eth}</div>
-              <div className="text-[8px] text-[#ff004060]">ETH</div>
+              <div className="text-[8px] text-[#ff004060] mb-1">NATIVE VALUE</div>
+              <div className="text-sm font-mono text-[#ffb000]">{pool.losses.total_mev_native} {pool.pool.nativeSymbol}</div>
+              <div className="text-[8px] text-[#ff004060]">{pool.pool.nativeSymbol}</div>
             </div>
             <div className="terminal-panel p-2 border-glow border-[#00ff4140]">
               <div className="text-[8px] text-[#00ff4160] mb-1">RECOVERABLE</div>
-              <div className="text-sm font-mono text-[#00ff41]">{pool.losses.total_recoverable_eth}</div>
-              <div className="text-[8px] text-[#00ff4160]">ETH</div>
+              <div className="text-sm font-mono text-[#00ff41]">${parseFloat(pool.losses.total_recoverable_usd).toLocaleString()}</div>
+              <div className="text-[8px] text-[#00ff4160]">USD (85%)</div>
             </div>
           </div>
 
-          {/* Bot Leaderboard */}
           {pool.mev.leaderboard.length > 0 && (
             <div className="terminal-panel p-3 border-glow border-[#ff0040]">
               <div className="flex items-center justify-between mb-2">
@@ -188,7 +174,7 @@ export default function OraclePage() {
                     <div className="flex items-center gap-3">
                       <span className="text-[9px] text-[#ffb000]">{bot.type}</span>
                       <span className="text-[10px] text-[#ff0040] font-mono">{bot.attacks}</span>
-                      <span className="text-[10px] text-[#ff0040] font-mono w-20 text-right">{bot.estimated_profit_eth}</span>
+                      <span className="text-[10px] text-[#ff0040] font-mono w-20 text-right">${bot.profit_usd}</span>
                     </div>
                   </div>
                 ))}
@@ -196,7 +182,6 @@ export default function OraclePage() {
             </div>
           )}
 
-          {/* Attack Samples */}
           {pool.mev.attack_samples.length > 0 && (
             <div className="terminal-panel p-3 border-glow border-[#ff004040]">
               <div className="flex items-center justify-between mb-2">
@@ -212,8 +197,8 @@ export default function OraclePage() {
                       <a href={txL(a.entryTX)} target="_blank" rel="noopener noreferrer" className="text-[#00ff41] font-mono hover:underline">{t(a.entryTX)}</a>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-[#ff0040] font-mono">{a.profit_eth.toFixed(4)}</span>
-                      <span className="text-[#00ff41] font-mono">{(a.profit_eth * 0.85).toFixed(4)}</span>
+                      <span className="text-[#ff0040] font-mono">${a.profit_usd.toFixed(2)}</span>
+                      <span className="text-[#00ff41] font-mono">${(a.profit_usd * 0.85).toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -246,14 +231,14 @@ export default function OraclePage() {
                       <div className="space-y-1 text-[9px]">
                         <div className="flex justify-between"><span className="text-[#ff004060]">Sandwich</span><span className="text-[#ff0040] font-mono">{p.mev.sandwich}</span></div>
                         <div className="flex justify-between"><span className="text-[#ff004060]">Cross-block</span><span className="text-[#ff0040] font-mono">{p.mev.cross_block}</span></div>
-                        <div className="flex justify-between"><span className="text-[#ff004060]">MEV ETH</span><span className="text-[#ff0040] font-mono">{p.losses.total_mev_eth}</span></div>
-                        <div className="flex justify-between"><span className="text-[#00ff4160]">Recoverable</span><span className="text-[#00ff41] font-mono">{p.losses.total_recoverable_eth} ETH</span></div>
+                        <div className="flex justify-between"><span className="text-[#ff004060]">MEV</span><span className="text-[#ff0040] font-mono">${parseFloat(p.losses.total_mev_usd).toLocaleString()}</span></div>
+                        <div className="flex justify-between"><span className="text-[#00ff4160]">Recoverable</span><span className="text-[#00ff41] font-mono">${parseFloat(p.losses.total_recoverable_usd).toLocaleString()}</span></div>
                       </div>
                     </div>
                   ))}
                   <div className="p-2 bg-[#00ff4108] border border-[#00ff4120]">
                     <div className="text-[8px] text-[#00ff4160] mb-1">TOTAL RECOVERABLE</div>
-                    <div className="text-sm text-[#00ff41] font-mono">{s.total_recoverable_eth} ETH (${s.total_recoverable_usd})</div>
+                    <div className="text-sm text-[#00ff41] font-mono">${parseFloat(s.total_recoverable_usd).toLocaleString()}</div>
                   </div>
                 </div>
               </div>
@@ -264,19 +249,15 @@ export default function OraclePage() {
                 <div className="text-[9px] tracking-widest text-[#00ff4160] mb-2">CONCLUSIONS</div>
                 <div className="p-2 bg-[#ff004008] border-l-2 border-[#ff0040]">
                   <div className="text-[10px] text-[#ff0040] font-bold">Standard Pool Under Heavy Attack</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/USDC (no hook) has 53 attacks vs 5 on IMD/ETH (with hook). The CappedBurnHook reduces MEV by 90%.</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/USDC (no hook) has {data.pools[1].mev.attacks_detected} attacks vs {data.pools[0].mev.attacks_detected} on IMD/ETH (with hook). CappedBurnHook reduces MEV by ~{Math.round((1 - data.pools[0].mev.attacks_detected / Math.max(data.pools[1].mev.attacks_detected, 1)) * 100)}%.</div>
                 </div>
                 <div className="p-2 bg-[#00ff4108] border-l-2 border-[#00ff41]">
-                  <div className="text-[10px] text-[#00ff41] font-bold">Hook Works</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/ETH with CappedBurnHook: 2.27 ETH MEV. IMD/USDC without hook: 76.20 ETH MEV. <b>33x more attacks without hook.</b></div>
+                  <div className="text-[10px] text-[#00ff41] font-bold">Hook Effectiveness</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/ETH with CappedBurnHook: ${parseFloat(data.pools[0].losses.total_mev_usd).toLocaleString()} MEV. IMD/USDC without hook: ${parseFloat(data.pools[1].losses.total_mev_usd).toLocaleString()} MEV.</div>
                 </div>
                 <div className="p-2 bg-[#ff004008] border-l-2 border-[#ff0040]">
-                  <div className="text-[10px] text-[#ff0040] font-bold">19 Bots Identified</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">Top bot {t(pool.mev.leaderboard[0]?.address || "0x")} is active on {pool.pool.name} with {pool.mev.leaderboard[0]?.attacks || 0} attacks.</div>
-                </div>
-                <div className="p-2 bg-[#00ff4108] border-l-2 border-[#00ff41]">
-                  <div className="text-[10px] text-[#00ff41] font-bold">Deploy Hook Everywhere</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">Extend CappedBurnHook to IMD/USDC pool to recover $64K+ in losses.</div>
+                  <div className="text-[10px] text-[#ff0040] font-bold">Recoverable</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">Deploy CappedBurnHook on IMD/USDC to recover ${parseFloat(s.total_recoverable_usd).toLocaleString()}.</div>
                 </div>
               </div>
             )}
@@ -297,8 +278,8 @@ export default function OraclePage() {
                         <div className="flex gap-1"><span className="text-[#ff004060] w-12">Entry:</span><a href={txL(a.entryTX)} target="_blank" rel="noopener noreferrer" className="text-[#00ff41] font-mono hover:underline">{t(a.entryTX)}</a></div>
                         <div className="flex gap-1"><span className="text-[#ff004060] w-12">Exit:</span><a href={txL(a.exitTX)} target="_blank" rel="noopener noreferrer" className="text-[#ff0040] font-mono hover:underline">{t(a.exitTX)}</a></div>
                         <div className="flex justify-between mt-1 pt-1 border-t border-[#ff004010]">
-                          <span className="text-[#ff0040]">Lost: {a.profit_eth.toFixed(6)} ETH</span>
-                          <span className="text-[#00ff41]">Recover: {(a.profit_eth * 0.85).toFixed(6)} ETH</span>
+                          <span className="text-[#ff0040]">Lost: ${a.profit_usd.toFixed(2)}</span>
+                          <span className="text-[#00ff41]">Recover: ${(a.profit_usd * 0.85).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -315,14 +296,14 @@ export default function OraclePage() {
                     <div className="text-[10px] text-[#ffb000] font-bold mb-1">{p.pool.name}</div>
                     <div className="space-y-1 text-[9px]">
                       <div className="flex justify-between"><span className="text-[#ff004060]">Attacks to date</span><span className="text-[#ff0040] font-mono">{p.mev.attacks_detected}</span></div>
-                      <div className="flex justify-between"><span className="text-[#ff004060]">MEV ETH to date</span><span className="text-[#ff0040] font-mono">{p.losses.total_mev_eth}</span></div>
+                      <div className="flex justify-between"><span className="text-[#ff004060]">MEV to date</span><span className="text-[#ff0040] font-mono">${parseFloat(p.losses.total_mev_usd).toLocaleString()}</span></div>
                       <div className="flex justify-between"><span className="text-[#ff004060]">Projected annual</span><span className="text-[#ff0040] font-mono">${parseFloat(p.losses.estimated_annual_usd).toLocaleString()}</span></div>
                     </div>
                   </div>
                 ))}
                 <div className="p-2 bg-[#00ff4108] border border-[#00ff4120]">
                   <div className="text-[8px] text-[#00ff4160] mb-1">OPTIMIZER IMPACT</div>
-                  <div className="text-[9px] text-[#00ff4160]">With CappedBurnHook on both pools: recover <span className="text-[#00ff41] font-mono">{s.total_recoverable_eth} ETH (${s.total_recoverable_usd})</span></div>
+                  <div className="text-[9px] text-[#00ff4160]">With CappedBurnHook on both pools: recover <span className="text-[#00ff41] font-mono">${parseFloat(s.total_recoverable_usd).toLocaleString()}</span></div>
                 </div>
               </div>
             )}
@@ -330,9 +311,8 @@ export default function OraclePage() {
         </div>
       </div>
 
-      {/* FOOTER */}
       <div className="terminal-panel p-2 border-glow border-[#00ff4120] flex items-center justify-between text-[8px] text-[#00ff4160]">
-        <span>Optimizer Oracle v2.0 — IMD Pool Monitor | Ethereum Mainnet</span>
+        <span>Optimizer Oracle v2.1 — IMD Pool Monitor | Ethereum Mainnet</span>
         <span>Generated: {data.report_generated}</span>
       </div>
     </div>
