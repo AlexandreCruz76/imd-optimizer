@@ -36,7 +36,10 @@ async function fetchOracleData() {
     const amount1 = amount1Raw > (1n << 255n) ? amount1Raw - (1n << 256n) : amount1Raw;
     const dir: "buy" | "sell" = amount0 > 0n ? "sell" : "buy";
 
-    swaps.push({ block: log.blockNumber, sender, poolId, amount0, amount1, dir, idx: log.logIndex });
+    swaps.push({
+      block: log.blockNumber, sender, poolId, amount0, amount1, dir,
+      idx: log.logIndex, txHash: log.transactionHash,
+    });
   }
 
   const imdSwaps = swaps.filter((s) => s.poolId === IMD_POOL);
@@ -53,7 +56,6 @@ async function fetchOracleData() {
   const stdAddrs = new Set(stdSwaps.map((s) => s.sender));
   const shared = [...imdAddrs].filter((a) => stdAddrs.has(a));
 
-  // ─── MEV DETECTION ON ALL POOLS ───
   const attacks: any[] = [];
   const botStats: Record<string, any> = {};
 
@@ -73,7 +75,11 @@ async function fetchOracleData() {
     return Math.min(raw, 10);
   }
 
-  // Same-block sandwich: group by block+pool
+  function estimateRecoverable(profitEth: number): number {
+    return profitEth * 0.85;
+  }
+
+  // Same-block sandwich
   const byBlockPool: Record<string, any[]> = {};
   for (const s of swaps) {
     const key = s.block + "|" + s.poolId;
@@ -84,7 +90,6 @@ async function fetchOracleData() {
   for (const [, txs] of Object.entries(byBlockPool)) {
     if (txs.length < 3) continue;
     txs.sort((a: any, b: any) => a.idx - b.idx);
-
     for (let i = 0; i < txs.length - 2; i++) {
       for (let j = i + 2; j < txs.length; j++) {
         if (txs[i].sender === txs[j].sender && txs[i].dir === "buy" && txs[j].dir === "sell" &&
@@ -93,11 +98,13 @@ async function fetchOracleData() {
           if (victims.length > 0) {
             const profitEth = estimateProfit(txs[i], txs[j]);
             const victimLoss = profitEth / victims.length;
-
             attacks.push({
               block: txs[i].block, type: "Sandwich", bot: txs[i].sender,
               victim: victims[0].sender, pool: txs[i].poolId,
               profit_eth: profitEth, victim_loss_eth: victimLoss,
+              recoverable_eth: estimateRecoverable(profitEth),
+              txHash: txs[i].txHash, victim_txHash: victims[0].txHash,
+              exit_txHash: txs[j].txHash,
             });
             if (!botStats[txs[i].sender]) botStats[txs[i].sender] = { count: 0, profit: 0, types: new Set(), pools: new Set() };
             botStats[txs[i].sender].count++;
@@ -110,7 +117,7 @@ async function fetchOracleData() {
     }
   }
 
-  // Cross-block sandwich: same sender+pool, BUY→SELL within 3 blocks
+  // Cross-block sandwich
   const bySenderPool: Record<string, any[]> = {};
   for (const s of swaps) {
     const key = s.sender + "|" + s.poolId;
@@ -126,7 +133,6 @@ async function fetchOracleData() {
           txs[i].poolId === txs[i + 1].poolId &&
           Math.abs(txs[i].block - txs[i + 1].block) <= 3 &&
           isSandwichPair(txs[i], txs[i + 1])) {
-        // Must have OTHER traders between the two
         const victims = swaps.filter((s: any) =>
           s.sender !== txs[i].sender && s.poolId === txs[i].poolId &&
           s.block >= txs[i].block && s.block <= txs[i + 1].block &&
@@ -140,7 +146,9 @@ async function fetchOracleData() {
               attacks.push({
                 block: txs[i].block, type: "Cross-block Sandwich", bot: txs[i].sender,
                 pool: txs[i].poolId, profit_eth: profitEth, victim_loss_eth: profitEth * 0.7,
-                blocks_span: txs[i + 1].block - txs[i].block,
+                recoverable_eth: estimateRecoverable(profitEth),
+                txHash: txs[i].txHash, victim_txHash: victims[0]?.txHash || "",
+                exit_txHash: txs[i + 1].txHash, blocks_span: txs[i + 1].block - txs[i].block,
               });
               if (!botStats[txs[i].sender]) botStats[txs[i].sender] = { count: 0, profit: 0, types: new Set(), pools: new Set() };
               botStats[txs[i].sender].count++;
@@ -156,6 +164,7 @@ async function fetchOracleData() {
 
   const totalMEVExtracted = attacks.reduce((s: number, a: any) => s + a.profit_eth, 0);
   const totalVictimLoss = attacks.reduce((s: number, a: any) => s + a.victim_loss_eth, 0);
+  const totalRecoverable = attacks.reduce((s: number, a: any) => s + a.recoverable_eth, 0);
   const shieldableValue = totalMEVExtracted;
   const blocksPerYear = (365 * 24 * 60 * 60) / 12;
   const estimatedAnnualLoss = shieldableValue * (blocksPerYear / 500);
@@ -167,6 +176,10 @@ async function fetchOracleData() {
       estimated_profit_eth: s.profit.toFixed(6), pools_active: s.pools.size,
     }))
     .sort((a: any, b: any) => parseFloat(b.estimated_profit_eth) - parseFloat(a.estimated_profit_eth));
+
+  const uniquePools = new Set(attacks.map((a: any) => a.pool));
+  const uniqueVictims = new Set(attacks.map((a: any) => a.victim).filter(Boolean));
+  const uniqueBots = Object.keys(botStats);
 
   cachedData = {
     status: "live", chain: 1, last_block: latest,
@@ -181,31 +194,43 @@ async function fetchOracleData() {
       top5: Object.entries(stdTraders).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5).map(([addr, swaps]) => ({ addr, swaps })),
     },
     cross_pool: { shared_bots: shared.length, addresses: shared },
+    summary: {
+      total_swaps: swaps.length,
+      unique_pools: uniquePools.size,
+      unique_traders: new Set(swaps.map((s) => s.sender)).size,
+      unique_victims: uniqueVictims.size,
+      unique_bots: uniqueBots.length,
+      scan_period_hours: ((500 * 12) / 3600).toFixed(1),
+    },
     mev: {
       attacks_detected: attacks.length,
       sandwich_attacks: attacks.filter((a: any) => a.type === "Sandwich").length,
       cross_block_sandwiches: attacks.filter((a: any) => a.type === "Cross-block Sandwich").length,
-      bots_detected: Object.keys(botStats).length,
+      bots_detected: uniqueBots.length,
       leaderboard: leaderboard.slice(0, 10),
-      attack_samples: attacks.slice(0, 10),
+      attack_samples: attacks.slice(0, 20),
     },
     losses: {
       total_mev_extracted_eth: totalMEVExtracted.toFixed(6),
       total_victim_loss_eth: totalVictimLoss.toFixed(6),
+      total_recoverable_eth: totalRecoverable.toFixed(6),
       lp_fee_loss_eth: lpFeeLoss.toFixed(6),
       shieldable_value_eth: shieldableValue.toFixed(6),
       estimated_annual_loss_eth: estimatedAnnualLoss.toFixed(2),
       estimated_annual_loss_usd: (estimatedAnnualLoss * 2500).toFixed(0),
+      eth_price_usd: 2500,
     },
     recommendation: {
       action: attacks.length > 0 ? "ACTIVATE_HOOK" : "PREVENTIVE_DEPLOY",
       priority: attacks.length > 10 ? "CRITICAL" : attacks.length > 0 ? "HIGH" : "MEDIUM",
       reason: attacks.length > 0
-        ? `${attacks.length} sandwich attacks detected across ${new Set(attacks.map((a: any) => a.pool)).size} pools`
+        ? `${attacks.length} sandwich attacks detected across ${uniquePools.size} pools — ${uniqueVictims.size} victims lost $${(totalVictimLoss * 2500).toFixed(0)}`
         : "No active attacks, but market makers create MEV opportunity",
       shieldable_value_eth: shieldableValue.toFixed(6),
+      recoverable_eth: totalRecoverable.toFixed(6),
       hook_address: "0xc6c965bd164c483e87d0b550671798e9a3602840",
     },
+    report_generated: new Date().toISOString(),
   };
 
   lastUpdate = now;
