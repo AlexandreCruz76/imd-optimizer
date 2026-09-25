@@ -38,6 +38,13 @@ cache/
 artifacts/
 typechain-types/
 
+# ============================================
+# PRIVATE / INTERNAL — NEVER COMMIT TO PUBLIC
+# ============================================
+
+# Optimizer Consciousness Hub (agents, managers, memory, consciousness, internal knowledge)
+.optimizer/
+
 # Proprietary - Core algorithms (DO NOT COMMIT)
 optimizer/src/hookPoolAnalyzer.ts
 optimizer/src/optimizer.ts
@@ -52,6 +59,19 @@ contracts/private/
 # MEV Bot (separate project)
 MEV-Bot/
 
+# Internal docs & research (PRIVATE)
+docs/
+research/
+.optimizer/
+
+# Deploy scripts with sensitive data
+deploy/
+deploy-deploy/
+scripts/
+
+# Internal deployment configs
+deployments/
+
 # Secrets & keys
 *.secret
 *.key
@@ -59,18 +79,47 @@ MEV-Bot/
 secrets.json
 credentials.json
 
-# Deploy scripts with sensitive data
-deploy/
-deploy-deploy/
-scripts/
+# ============================================
+# PUBLIC — SAFE TO COMMIT
+# ============================================
 
-# Internal docs
-docs/*.md
-!docs/investors.html
-!docs/TEST-REPORT.md
-!docs/PUBLIC-TEST-RESULTS.md
-!docs/PROTECTION-GUIDE.md
-!docs/ORACLE-SHARE.md
+# Public contracts (interfaces only)
+!contracts/public/
 
-# Sepolia deployment
-deployments/sepolia/
+# Frontend application
+!frontend/
+
+# Public deployment configs (Sepolia only)
+!deployments/sepolia.json
+!deployments/oracle-sepolia.json
+
+# Root documentation (public)
+!README.md
+!README-HOOKS.md
+
+# Root config files
+!hardhat.config.js
+!tsconfig.json
+!package.json
+!package-lock.json
+!.env.example
+!.gitignore
+
+# Source engine (public)
+!src/
+
+# Tests
+!test/
+
+# Deploy hooks script
+!deploy-hooks.js
+
+# ============================================
+# DATA & LOGS (PRIVATE)
+# ============================================
+data/
+logs/
+*.log
+
+# Code snapshots (private)
+.optimizer/data/code-snapshots/
