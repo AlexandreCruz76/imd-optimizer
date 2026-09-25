@@ -1,0 +1,9 @@
+{
+  "network": "sepolia",
+  "oracleAddress": "0x70a49c8dC0EEb818E3673D2c3FB4ac2bB213180d",
+  "deployer": "0x067fFf62022B1fF522f0624f4a03E42Fb6cBA0B0",
+  "initialNodes": [
+    "0x067fFf62022B1fF522f0624f4a03E42Fb6cBA0B0"
+  ],
+  "timestamp": "2026-09-21T07:03:36.548Z"
+}

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optimizer Oracle - Architecture & Process Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #00ff41;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 40px 0;
+      border-bottom: 1px solid #00ff4130;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 24px;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .header p {
+      color: #00ff4160;
+      font-size: 12px;
+    }
+    .section {
+      max-width: 1200px;
+      margin: 0 auto 60px;
+    }
+    .section-title {
+      font-size: 16px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #00ff41;
+      border-left: 3px solid #00ff41;
+      padding-left: 15px;
+      margin-bottom: 30px;
+    }
+    .diagram-container {
+      background: #111;
+      border: 1px solid #00ff4130;
+      padding: 30px;
+      margin-bottom: 30px;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .mermaid svg {
+      max-width: 100%;
+    }
+    .legend {
+      background: #0d0d0d;
+      border: 1px solid #00ff4120;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .legend-title {
+      font-size: 12px;
+      color: #00ff4160;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border: 1px solid #00ff4140;
+    }
+    .code-block {
+      background: #0a0a0a;
+      border: 1px solid #00ff4120;
+      padding: 15px;
+      font-size: 11px;
+      color: #00ff4160;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px 15px;
+      text-align: left;
+      border-bottom: 1px solid #00ff4120;
+      font-size: 11px;
+    }
+    th {
+      color: #00ff4160;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    td { color: #00ff41; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Optimizer Oracle</h1>
+    <p>MEV Threat Intelligence Node — Architecture & Process Diagrams</p>
+    <p style="margin-top: 10px; color: #00ff4140;">Uniswap V4 Meta-Hook Engine | Chain: Ethereum Mainnet (1)</p>
+  </div>
+
+  <!-- SECTION 1: System Architecture -->
+  <div class="section">
+    <h2 class="section-title">1. System Architecture</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+graph TB
+    subgraph "ETHEREUM MAINNET (Chain ID: 1)"
+        RPC["Public RPC<br/>ethereum-rpc.publicnode.com"]
+        PM["PoolManager<br/>0x000000000004444c5dc75cB358380D2e3dE08A90"]
+        SWAP["Swap Events<br/>Topic: 0x40e9cecb..."]
+        IMD["IMD/ETH Pool<br/>CappedBurnHook"]
+        STD["ETH/USDC Pool<br/>Standard Reference"]
+    end
+
+    subgraph "ORACLE SCRIPTS (Node.js)"
+        SCAN["mev-oracle-scan.js<br/>MEV Scanner"]
+        NET["network-intelligence.js<br/>Network Analytics"]
+        POOL["pool-analysis.js<br/>Pool Intelligence"]
+        MAP["uniswap-v4-mapping.js<br/>Ecosystem Mapping"]
+    end
+
+    subgraph "API LAYER"
+        API1["oracle-api.js<br/>Standalone API :3001"]
+        API2["/api/oracle/route.ts<br/>Next.js API Route"]
+        CACHE["Cache Layer<br/>TTL: 60s"]
+    end
+
+    subgraph "FRONTEND"
+        PAGE["Oracle Page<br/>/oracle"]
+        DASH["Dashboard Cards<br/>/"]
+    end
+
+    RPC --> PM
+    PM --> SWAP
+    SWAP --> IMD
+    SWAP --> STD
+
+    PM --> SCAN
+    PM --> NET
+    PM --> POOL
+    PM --> MAP
+
+    SCAN --> API1
+    NET --> API1
+    POOL --> API1
+    MAP --> API1
+
+    API1 --> CACHE
+    API2 --> CACHE
+    CACHE --> PAGE
+    CACHE --> DASH
+
+    style RPC fill:#1a1a1a,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style PM fill:#1a1a1a,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style SWAP fill:#1a1a1a,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style IMD fill:#1a1a1a,stroke:#ffb000,stroke-width:2px,color:#ffb000
+    style STD fill:#1a1a1a,stroke:#ffb000,stroke-width:2px,color:#ffb000
+    style SCAN fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style NET fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style POOL fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style MAP fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style API1 fill:#0d0d0d,stroke:#ff0040,stroke-width:2px,color:#ff0040
+    style API2 fill:#0d0d0d,stroke:#ff0040,stroke-width:2px,color:#ff0040
+    style CACHE fill:#0d0d0d,stroke:#ff0040,stroke-width:2px,color:#ff0040
+    style PAGE fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+    style DASH fill:#0d0d0d,stroke:#00ff41,stroke-width:2px,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Data Pipeline -->
+  <div class="section">
+    <h2 class="section-title">2. Data Pipeline Flow</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart LR
+    A["RPC Request<br/>getLogs()"] --> B["Raw Event Logs<br/>Swap Topics"]
+    B --> C["Parse Events<br/>Decode Topics/Data"]
+    C --> D["Filter Contracts<br/>Remove Known"]
+    D --> E["Classify Swaps<br/>Buy/Sell Direction"]
+    E --> F["Pool Grouping<br/>by Pool ID"]
+    F --> G["Trader Analytics<br/>Frequency/Pools"]
+    G --> H["MEV Detection<br/>Sandwich/Front-run"]
+    H --> I["Cross-Pool Intel<br/>Arbitrage Detection"]
+    I --> J["Recommendations<br/>Deploy/Prevent"]
+    J --> K["API Response<br/>JSON Output"]
+    K --> L["Frontend Display<br/>Terminal UI"]
+
+    style A fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style B fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style C fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style D fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style E fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style F fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style G fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style H fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style I fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style J fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style K fill:#0d0d0d,stroke:#00ff41,color:#00ff41
+    style L fill:#0d0d0d,stroke:#00ff41,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 3: MEV Detection Process -->
+  <div class="section">
+    <h2 class="section-title">3. MEV Detection Process</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart TB
+    subgraph "SANDWICH DETECTION"
+        S1["Sort by Block + LogIndex"] --> S2["Find BUY → SELL Pairs"]
+        S2 --> S3{"Same Sender?<br/>Same Pool?"}
+        S3 -->|Yes| S4["Identify Victims<br/>Between Transactions"]
+        S3 -->|No| S5["Skip"]
+        S4 --> S6{"Victims Found?<br/>Within 3 Blocks?"}
+        S6 -->|Yes| S7["Calculate Profit<br/>Estimate Victim Loss"]
+        S6 -->|No| S8["Cross-block Check"]
+        S8 --> S9{"BUY→SELL<br/>Within 5 Blocks?"}
+        S9 -->|Yes| S7
+        S9 -->|No| S10["Not Attack"]
+        S7 --> S11["Record Attack<br/>Classify Bot"]
+    end
+
+    subgraph "FRONT-RUN DETECTION"
+        F1["Group by Block"] --> F2{"Tx Count ≥ 3?"}
+        F2 -->|Yes| F3["Sort by txHash"]
+        F3 --> F4{"Same Direction?<br/>Sequential LogIndex?"}
+        F4 -->|Yes| F5["Estimate Profit<br/>(0.3% of Volume)"]
+        F4 -->|No| F6["Skip"]
+        F5 --> F7{"Profit > 0.001 ETH?"}
+        F7 -->|Yes| F8["Record Front-run"]
+        F7 -->|No| F9["Ignore"]
+    end
+
+    subgraph "CROSS-POOL ARBITRAGE"
+        C1["Group Swaps by Block"] --> C2["Filter IMD Pool Swaps"]
+        C2 --> C3["Filter Standard Pool Swaps"]
+        C3 --> C4{"Same Sender?<br/>Opposite Directions?"}
+        C4 -->|Yes| C5["Record Arbitrage<br/>Calculate Value"]
+        C4 -->|No| C6["Not Arbitrage"]
+    end
+
+    style S1 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S2 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S3 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style S4 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S7 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S11 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style F1 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style F8 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style C1 fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style C5 fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Bot Classification -->
+  <div class="section">
+    <h2 class="section-title">4. Bot Classification Logic</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart TB
+    START["Analyze Sender<br/>Swap History"] --> Q1{"Swap Frequency<br/>> 10?"}
+    Q1 -->|No| RETAIL["RETAIL TRADER<br/>Low frequency, 1-2 pools"]
+    Q1 -->|Yes| Q2{"Pools Traded<br/>> 5?"}
+    Q2 -->|No| BOT_SINGLE["SINGLE-POOL BOT<br/>High freq, limited pools"]
+    Q2 -->|Yes| Q3{"BUY→SELL Pairs<br/>> 0?"}
+    Q3 -->|Yes| SANDWICH["SANDWICH BOT<br/>Classic MEV pattern"]
+    Q3 -->|No| Q4{"Pools > 5<br/>AND No Pairs?"}
+    Q4 -->|Yes| MM["MARKET MAKER<br/>Multi-pool, balanced"]
+    Q4 -->|No| BOT_HF["HIGH-FREQ BOT<br/>Complex pattern"]
+
+    SANDWICH --> CLASS["CLASSIFICATION:<br/>• Type: Sandwich<br/>• Risk: HIGH<br/>• Action: BLOCK"]
+    MM --> CLASS2["CLASSIFICATION:<br/>• Type: Market Maker<br/>• Risk: MEDIUM<br/>• Action: MONITOR"]
+    BOT_SINGLE --> CLASS3["CLASSIFICATION:<br/>• Type: Single-Pool Bot<br/>• Risk: LOW-MEDIUM<br/>• Action: WATCH"]
+    BOT_HF --> CLASS4["CLASSIFICATION:<br/>• Type: High-Freq Bot<br/>• Risk: MEDIUM<br/>• Action: ANALYZE"]
+    RETAIL --> CLASS5["CLASSIFICATION:<br/>• Type: Retail<br/>• Risk: NONE<br/>• Action: PROTECT"]
+
+    style START fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style Q1 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style Q2 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style Q3 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style Q4 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style SANDWICH fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style MM fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style BOT_SINGLE fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style BOT_HF fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style RETAIL fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style CLASS fill:#0d0d0d,stroke:#ff0040,color:#ff0040
+    style CLASS2 fill:#0d0d0d,stroke:#ffb000,color:#ffb000
+    style CLASS3 fill:#0d0d0d,stroke:#ffb000,color:#ffb000
+    style CLASS4 fill:#0d0d0d,stroke:#ffb000,color:#ffb000
+    style CLASS5 fill:#0d0d0d,stroke:#00ff41,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 5: API Architecture -->
+  <div class="section">
+    <h2 class="section-title">5. API Architecture</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as User Browser
+    participant F as Frontend (Next.js)
+    participant A as API Route (/api/oracle)
+    participant C as Cache (60s TTL)
+    participant R as RPC Provider
+    participant P as PoolManager
+
+    U->>F: GET /oracle
+    F->>A: fetch('/api/oracle')
+    A->>C: Check Cache
+    
+    alt Cache HIT
+        C-->>A: Return cached data
+    else Cache MISS
+        A->>R: getLogs(SWAP_TOPIC)
+        R->>P: eth_getLogs
+        P-->>R: Event logs
+        R-->>A: Raw logs
+        A->>A: Parse & Analyze
+        A->>C: Store result
+    end
+    
+    A-->>F: JSON Response
+    F-->>U: Render Terminal UI
+    
+    Note over U,P: Auto-refresh every 60s
+
+    style U fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style F fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style A fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style C fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style R fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style P fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 6: Organogram -->
+  <div class="section">
+    <h2 class="section-title">6. Organogram — Component Hierarchy</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+graph TB
+    ROOT["Optimizer Protocol<br/>Uniswap V4 Meta-Hook Engine"]
+    
+    ROOT --> SMART["Smart Contracts"]
+    ROOT --> ORACLE["MEV Oracle System"]
+    ROOT --> FRONTEND["Frontend Application"]
+    ROOT --> DOCS["Documentation"]
+    
+    SMART --> HOOK["CappedBurnHook<br/>0xc6c965bd..."]
+    SMART --> ROUTER["OptimizerRouter<br/>0x4fAfa381..."]
+    SMART --> INTERFACES["Public Interfaces<br/>(7 files)"]
+    SMART --> PRIVATE["Private Implementation<br/>(7 files)"]
+    
+    ORACLE --> SCRIPTS["Oracle Scripts"]
+    ORACLE --> API["API Layer"]
+    ORACLE --> ANALYSIS["Analysis Modules"]
+    
+    SCRIPTS --> S1["mev-oracle-scan.js"]
+    SCRIPTS --> S2["network-intelligence.js"]
+    SCRIPTS --> S3["pool-analysis.js"]
+    SCRIPTS --> S4["uniswap-v4-mapping.js"]
+    SCRIPTS --> S5["oracle-api.js"]
+    
+    API --> A1["/api/oracle/route.ts"]
+    API --> A2["oracle-api.js :3001"]
+    
+    ANALYSIS --> AN1["Sandwich Detection"]
+    ANALYSIS --> AN2["Front-run Detection"]
+    ANALYSIS --> AN3["Cross-pool Arbitrage"]
+    ANALYSIS --> AN4["Bot Classification"]
+    ANALYSIS --> AN5["Volume Analytics"]
+    
+    FRONTEND --> P1["/oracle<br/>MEV Dashboard"]
+    FRONTEND --> P2["/swap<br/>Token Swap"]
+    FRONTEND --> P3["/burns<br/>Burn Analytics"]
+    FRONTEND --> P4["/arbitrage<br/>Opportunity Finder"]
+    FRONTEND --> P5["/staking<br/>IMD Staking"]
+    FRONTEND --> P6["/nft-mint<br/>NFT Minting"]
+    
+    DOCS --> D1["TEST-REPORT.md"]
+    DOCS --> D2["PROTECTION-GUIDE.md"]
+    DOCS --> D3["ORACLE-README.md"]
+    DOCS --> D4["ORACLE-SHARE.md"]
+
+    style ROOT fill:#0d0d0d,stroke:#00ff41,stroke-width:3px,color:#00ff41
+    style SMART fill:#0d0d0d,stroke:#00ff41,color:#00ff41
+    style ORACLE fill:#0d0d0d,stroke:#ff0040,color:#ff0040
+    style FRONTEND fill:#0d0d0d,stroke:#00ff41,color:#00ff41
+    style DOCS fill:#0d0d0d,stroke:#ffb000,color:#ffb000
+    style HOOK fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style ROUTER fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style INTERFACES fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+    style PRIVATE fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S1 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S2 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S3 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S4 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S5 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style A1 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style A2 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style AN1 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style AN2 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style AN3 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style AN4 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style AN5 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 7: File Structure -->
+  <div class="section">
+    <h2 class="section-title">7. File Structure & Responsibilities</h2>
+    
+    <div class="diagram-container">
+      <pre class="mermaid">
+graph LR
+    subgraph "SCRIPTS"
+        direction TB
+        S1["mev-oracle-scan.js<br/>━━━━━━━━━━━━━━━<br/>• Scan 50 blocks<br/>• Detect sandwich<br/>• Bot leaderboard<br/>• Output: JSON"]
+        S2["network-intelligence.js<br/>━━━━━━━━━━━━━━━<br/>• Scan 200 blocks<br/>• Pool analytics<br/>• Trader classification<br/>• Output: JSON"]
+        S3["pool-analysis.js<br/>━━━━━━━━━━━━━━━<br/>• IMD pool deep-dive<br/>• Standard reference<br/>• Cross-pool intel<br/>• Output: JSON"]
+        S4["uniswap-v4-mapping.js<br/>━━━━━━━━━━━━━━━<br/>• Scan 5000 blocks<br/>• All V4 pools<br/>• Activity mapping<br/>• Output: JSON"]
+        S5["oracle-api.js<br/>━━━━━━━━━━━━━━━<br/>• HTTP server :3001<br/>• 60s cache<br/>• CORS enabled<br/>• Endpoints: /, /health"]
+    end
+
+    subgraph "API ROUTES"
+        direction TB
+        R1["/api/oracle/route.ts<br/>━━━━━━━━━━━━━━━<br/>• Next.js API<br/>• Same logic as S5<br/>• Integrated with FE"]
+    end
+
+    subgraph "PAGES"
+        direction TB
+        P1["/oracle/page.tsx<br/>━━━━━━━━━━━━━━━<br/>• Terminal-style UI<br/>• Auto-refresh 60s<br/>• Pool comparison<br/>• Cross-pool intel"]
+    end
+
+    S1 --> R1
+    S2 --> R1
+    S3 --> R1
+    S4 --> R1
+    S5 --> R1
+    R1 --> P1
+
+    style S1 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S2 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S3 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S4 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style S5 fill:#1a1a1a,stroke:#ff0040,color:#ff0040
+    style R1 fill:#1a1a1a,stroke:#ffb000,color:#ffb000
+    style P1 fill:#1a1a1a,stroke:#00ff41,color:#00ff41
+      </pre>
+    </div>
+  </div>
+
+  <!-- SECTION 8: Data Flow Table -->
+  <div class="section">
+    <h2 class="section-title">8. Data Flow Summary</h2>
+    
+    <div class="diagram-container">
+      <table>
+        <tr>
+          <th>Stage</th>
+          <th>Input</th>
+          <th>Process</th>
+          <th>Output</th>
+        </tr>
+        <tr>
+          <td>1. Collection</td>
+          <td>Ethereum RPC</td>
+          <td>eth_getLogs(SWAP_TOPIC)</td>
+          <td>Raw event logs</td>
+        </tr>
+        <tr>
+          <td>2. Parsing</td>
+          <td>Event logs</td>
+          <td>Decode topics[1]=poolId, topics[2]=sender, data=amounts</td>
+          <td>Structured swap objects</td>
+        </tr>
+        <tr>
+          <td>3. Filtering</td>
+          <td>Swaps</td>
+          <td>Remove known contracts (V4 Settled, Uniswap Router)</td>
+          <td>User swaps only</td>
+        </tr>
+        <tr>
+          <td>4. Classification</td>
+          <td>Swaps</td>
+          <td>Determine buy/sell from amount0 direction</td>
+          <td>Labeled swaps</td>
+        </tr>
+        <tr>
+          <td>5. Grouping</td>
+          <td>Labeled swaps</td>
+          <td>Group by poolId, sender, block</td>
+          <td>Pool & trader stats</td>
+        </tr>
+        <tr>
+          <td>6. MEV Detection</td>
+          <td>Grouped data</td>
+          <td>Pattern matching: sandwich, front-run, arbitrage</td>
+          <td>Attack list + bot classification</td>
+        </tr>
+        <tr>
+          <td>7. Intelligence</td>
+          <td>MEV results</td>
+          <td>Cross-pool analysis, volume estimation</td>
+          <td>Recommendations</td>
+        </tr>
+        <tr>
+          <td>8. API Response</td>
+          <td>Analysis</td>
+          <td>JSON serialization + cache</td>
+          <td>Structured JSON</td>
+        </tr>
+        <tr>
+          <td>9. Display</td>
+          <td>JSON</td>
+          <td>React component rendering</td>
+          <td>Terminal-style UI</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 9: Contract Addresses -->
+  <div class="section">
+    <h2 class="section-title">9. Key Addresses</h2>
+    
+    <div class="diagram-container">
+      <table>
+        <tr>
+          <th>Component</th>
+          <th>Address</th>
+          <th>Chain</th>
+        </tr>
+        <tr>
+          <td>PoolManager</td>
+          <td style="color:#00ff41">0x000000000004444c5dc75cB358380D2e3dE08A90</td>
+          <td>Mainnet</td>
+        </tr>
+        <tr>
+          <td>CappedBurnHook</td>
+          <td style="color:#00ff41">0xc6c965bd164c483e87d0b550671798e9a3602840</td>
+          <td>Mainnet</td>
+        </tr>
+        <tr>
+          <td>OptimizerRouter</td>
+          <td style="color:#00ff41">0x4fAfa38104A1c61250B5EC2e1f0cC24C90F99240</td>
+          <td>Sepolia</td>
+        </tr>
+        <tr>
+          <td>IMD Token</td>
+          <td style="color:#00ff41">0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7</td>
+          <td>Mainnet</td>
+        </tr>
+        <tr>
+          <td>IMD Pool ID</td>
+          <td style="color:#ffb000">0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3</td>
+          <td>Mainnet</td>
+        </tr>
+        <tr>
+          <td>Standard Pool ID</td>
+          <td style="color:#ffb000">0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba</td>
+          <td>Mainnet</td>
+        </tr>
+        <tr>
+          <td>V4 Settled (filter)</td>
+          <td style="color:#ff0040">0x0000000aa232009084bd71a5797d089aa4edfad4</td>
+          <td>Mainnet</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="section">
+    <div class="legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #00ff4120; border-color: #00ff41;"></div>
+        <span>Safe / Standard Process</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ffb00020; border-color: #ffb000;"></div>
+        <span>Warning / Attention Required</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ff004020; border-color: #ff0040;"></div>
+        <span>Critical / MEV Detected</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1a1a1a',
+        primaryTextColor: '#00ff41',
+        primaryBorderColor: '#00ff41',
+        lineColor: '#00ff4160',
+        secondaryColor: '#0d0d0d',
+        tertiaryColor: '#0a0a0a',
+        fontFamily: 'Courier New, monospace',
+      },
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis',
+      },
+      sequence: {
+        useMaxWidth: true,
+        actorMargin: 50,
+        messageFontSize: 12,
+      },
+    });
+  </script>
+
+</body>
+</html>
