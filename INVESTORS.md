@@ -103,7 +103,7 @@
 | Metric | Description | 6-Month Target |
 |--------|-------------|----------------|
 | **Users** | Unique wallets | 10,000+ |
-| **NFTs** | Genesis Keys minted | 200/200 |
+| **NFTs** | Genesis Keys minted | 100/100 |
 | **Stakers** | $BUILDER staked | 1M+ tokens |
 | **Pools** | Active pools | 5+ |
 
@@ -125,7 +125,8 @@
 - [ ] Mainnet Deploy
 - [ ] Formal audit (Trail of Bits / OpenZeppelin)
 - [ ] The Graph Integration
-- [ ] Genesis Key NFT Launch
+- [ ] Genesis Key NFT Launch (opens with BETA on mainnet — price/date announced then)
+- [ ] Full codebase open-source (BETA milestone)
 - [ ] $BUILDER Staking Launch
 
 ### Phase 3: Scale (Q1 2027)
@@ -149,11 +150,17 @@
 | **Investors** | 15% | 1 year (3 months cliff) |
 | **Liquidity** | 10% | Unlocked |
 
-### Genesis Key NFT
+### Genesis Key NFT — Tier Distribution Plan
 
-| Supply | Price | Benefits |
-|--------|-------|----------|
-| **200** | 0.5 ETH | 0% fees + MEV share |
+| Tier | Allocation | Benefits |
+|------|-----------|----------|
+| **Genesis** | First-come, first-served | 0% fees + MEV share + governance |
+| **Backer** | First-come, first-served | Priority access + 2× governance |
+| **Total supply** | **100** (`MAX_SUPPLY`, test-verified) | — |
+
+> Price and mint date are intentionally not published — announced together with
+> the BETA mainnet release, when the full codebase opens
+> (see [README — Open Source at BETA](README.md#-open-source-at-beta-mainnet)).
 
 ---
 
@@ -182,10 +189,12 @@
 
 For investors seeking technical depth:
 
-1. [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) — Full ecosystem view
-2. [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) — Detailed roadmap
-3. [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) — Technical architecture
-4. [PITCH-DECK.md](docs/PITCH-DECK.md) — Full presentation
+1. [README.md](README.md) — Architecture, tests, tier distribution & open-source plan
+2. [PITCH_INVESTIDOR.md](PITCH_INVESTIDOR.md) — Executive pitch
+3. [README-HOOKS.md](README-HOOKS.md) — Hooks overview
+4. [contracts/public/](contracts/public/) — Public interfaces
+
+> Full architecture & strategy documentation ships with the open-source BETA release.
 
 ---
 

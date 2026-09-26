@@ -65,13 +65,14 @@
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| `OptimizerHook` | `0xc6c965bd164c483e87d0b550671798e9a3602840` | 3-Layer Meta-Hook |
-| `OptimizerRouter` | `0x4fAfa38104A1c61250B5EC2e1F0cC24C90F99240` | Router with MEV protection |
-| `OptimizerGenesisKey` | `0x...` | NFT ERC-721 (200 supply) |
-| `BuilderStakingVault` | `0x...` | Stake $BUILDER → 60% fees |
-| `MigrationRouter` | `0x...` | Atomic migration between pools |
+| `OptimizerVaultV2` | `0xBc6Dc23FFbCDFe1fCa602361eb566a299a5036e1` | ERC-4626 vault (tier fees, 101 tests) |
+| `OptimizerRouter` | `0x4b614E3eb18551ef0f1e65891fb9dABD4a397926` | Router with MEV protection |
+| `IMEVOracle` | `0x70a49c8dC0EEb818E3673D2c3FB4ac2bB213180d` | Bot registry (ECDSA-attested) |
+| `OptimizerGenesisKey` | deploy via `scripts/` | ERC-721 — `MAX_SUPPLY = 100` |
 
-> **Note:** This repository contains only **interfaces** for the smart contracts. The full implementation is proprietary and kept in a private repository. See [contracts/public/](contracts/public/) for interface definitions.
+> **Note:** This repository contains **interfaces** (`contracts/public/`) + tests + frontend.
+> Full implementations open together with the BETA mainnet release — see
+> [Open Source at BETA](#-open-source-at-beta-mainnet).
 
 ---
 
@@ -172,6 +173,61 @@ FEE TIERS:
 
 ---
 
+## 🗂️ Tier Distribution Plan
+
+### Genesis Key (ERC-721 — `MAX_SUPPLY = 100`)
+
+| Tier | Allocation | Benefits |
+|------|-----------|----------|
+| **Genesis** | First-come, first-served until cap | 0% swap fees + MEV share + governance |
+| **Backer** | First-come, first-served until cap | Priority access + 2× governance weight |
+| **Total** | **100 keys** (verified by test suite) | — |
+
+> Price and mint date are intentionally **not published** — they are announced
+> together with the BETA mainnet release (see below).
+
+### Vault Subscription Tiers (fees on yield)
+
+| Tier | Fee | Deposit Range |
+|------|-----|---------------|
+| FREE | 20% | no minimum |
+| BASIC | 15% | ≥ 0.1 ETH |
+| PRO | 10% | ≥ 1 ETH |
+| WHALE | 5% | ≥ 10 ETH |
+
+### Adoption Support Tiers (community-funded mainnet deployment)
+
+| Tier | Min | Fee Discount | Revenue Share | Governance |
+|------|-----|--------------|---------------|------------|
+| 🌱 SEED | 0.005 ETH | 3% | 0.5% | — |
+| 🌿 SPROUT | 0.01 ETH | 5% | 1% | — |
+| 🍃 LEAF | 0.025 ETH | 8% | 2% | — |
+| 🌳 BRANCH | 0.05 ETH | 12% | 3.5% | ✅ |
+| 🏛️ TRUNK | 0.1 ETH | 20% | 5% | ✅ |
+
+---
+
+## 🔓 Open Source at BETA (Mainnet)
+
+**Commitment:** when the BETA deploys to Ethereum mainnet, the full codebase opens
+— contract implementations (`contracts/private/`), scanners, oracle scripts and
+forensic tooling.
+
+**Why open BEFORE the final proof:**
+
+1. **Resources and expectations are created before the result.** An open BETA lets
+   builders, LPs and auditors evaluate, replicate and fund the protocol *before*
+   the shadow-mode results are final — not after.
+2. **Verification replaces trust.** The forensic numbers published on X are already
+   reproducible: `node scripts/forensic-final.js` re-scans mainnet and returns the
+   same pool statistics and tx hashes.
+3. **Public audit.** Opening the code at BETA turns every security researcher into
+   a free auditor — the strongest signal a pre-revenue protocol can give.
+
+Until then: interfaces, tests and frontend are public; contracts stay on Sepolia.
+
+---
+
 ## 🔐 Security
 
 - **ReentrancyGuard** on all contracts
@@ -227,14 +283,15 @@ FEE TIERS:
 
 | Document | Description |
 |----------|-------------|
-| [TEST-REPORT.md](docs/TEST-REPORT.md) | Full test results & protection strategy |
-| [PUBLIC-TEST-RESULTS.md](docs/PUBLIC-TEST-RESULTS.md) | Public test summary |
-| [ORACLE-SHARE.md](docs/ORACLE-SHARE.md) | Oracle documentation |
-| [UNIVERSE-OPTIMIZER.md](docs/UNIVERSE-OPTIMIZER.md) | Full ecosystem view |
-| [PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) | 3-phase roadmap |
-| [PITCH-DECK.md](docs/PITCH-DECK.md) | Investor summary |
-| [ARCHITECTURE-V2.md](docs/ARCHITECTURE-V2.md) | Technical architecture |
-| [IDENTITY-BRANDING.md](docs/IDENTITY-BRANDING.md) | Agentic Frog identity |
+| [INVESTORS.md](INVESTORS.md) | Investor guide & roadmap |
+| [PITCH_INVESTIDOR.md](PITCH_INVESTIDOR.md) | Pitch — exec summary |
+| [README-HOOKS.md](README-HOOKS.md) | Hooks overview |
+| [contracts/public/](contracts/public/) | Public interfaces (I*.sol) |
+| [test/](test/) | Full test suite (101 tests) |
+| [frontend/README.md](frontend/README.md) | Frontend setup |
+
+> Full architecture & strategy documentation ships with the open-source BETA
+> release (see [Open Source at BETA](#-open-source-at-beta-mainnet)).
 
 ---
 

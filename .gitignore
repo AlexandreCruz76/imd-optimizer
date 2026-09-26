@@ -45,6 +45,10 @@ typechain-types/
 # Optimizer Consciousness Hub (agents, managers, memory, consciousness, internal knowledge)
 .optimizer/
 
+# AI agent tooling (internal)
+.opencode/
+opencode.json
+
 # Proprietary - Core algorithms (DO NOT COMMIT)
 optimizer/src/hookPoolAnalyzer.ts
 optimizer/src/optimizer.ts

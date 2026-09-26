@@ -18,7 +18,7 @@ The system monitors APYs in real-time and moves liquidity to the pool paying mor
 
 | Item | Status |
 |------|--------|
-| Smart contracts | Deployed and tested (Sepolia), 161 tests passing |
+| Smart contracts | Deployed and tested (Sepolia), 101 tests passing |
 | Vault (ERC-4626) | Working — deposit/withdraw/sweep |
 | Frontend | 13 pages with real-time on-chain data |
 | Data pipeline | Custom event indexer (no The Graph dependency) |
@@ -81,7 +81,7 @@ Swaps 24h:     283 (Hook: 96 + Native: 187)
 
 ### "What's the risk?"
 - Non-custodial: investor maintains control
-- Contracts already audited (161 tests, 0 vulnerabilities)
+- Contracts already audited (101 tests, 0 vulnerabilities)
 - Liquidity on Uniswap V4 (battle-tested protocol)
 - Main risk: impermanent loss (mitigated by optimizer)
 

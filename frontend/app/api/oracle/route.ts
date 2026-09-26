@@ -5,8 +5,10 @@ const PM = "0x000000000004444c5dc75cB358380D2e3dE08A90";
 const SWAP_TOPIC = "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f";
 
 const POOLS = [
-  { id: "0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3", name: "IMD/ETH", decimals: 18, nativeSymbol: "ETH", priceUSD: 2500, startBlock: 26029794, label: "CappedBurnHook" },
-  { id: "0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba", name: "IMD/USDC", decimals: 6, nativeSymbol: "USDC", priceUSD: 1, startBlock: 26029696, label: "Standard (no hook)" },
+  { id: "0xb07d640fd9e2eb9dc81b953c8e4fd006bdfeaf276010fb5418eb763ca15abfb3", name: "IMD/ETH", decimals: 18, nativeSymbol: "ETH", priceUSD: 2500, startBlock: 26029063, label: "CappedBurnHook" },
+  // Verificado on-chain em 26/09/2026 (scripts/forensic-final.js): receipts mostram USDT+WETH,
+  // preço implícito ~2440 USDT/ETH. NÃO é IMD/USDC — rótulo anterior estava errado.
+  { id: "0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba", name: "ETH/USDT", decimals: 6, nativeSymbol: "USDT", priceUSD: 1, startBlock: 25800000, label: "Standard (no hook)" },
 ];
 
 let cachedData: any = null;
@@ -115,8 +117,9 @@ async function fetchOracleData() {
   for (const pool of POOLS) {
     const allLogs: any[] = [];
     const fromBlock = pool.startBlock;
+    let failedChunks = 0;
 
-    // Scan in chunks from pool creation to now
+    // Scan in chunks from pool start to now
     for (let from = fromBlock; from <= latest; from += chunk) {
       const to = Math.min(from + chunk - 1, latest);
       try {
@@ -125,7 +128,9 @@ async function fetchOracleData() {
           fromBlock: from, toBlock: to,
         });
         allLogs.push(...logs);
-      } catch {}
+      } catch {
+        failedChunks++; // RPC público nega blocos antigos (archive) — contamos, não escondemos
+      }
       await new Promise((r) => setTimeout(r, 120));
     }
 
@@ -159,6 +164,7 @@ async function fetchOracleData() {
 
     poolResults.push({
       pool: { id: pool.id, name: pool.name, label: pool.label, startBlock: pool.startBlock, nativeSymbol: pool.nativeSymbol },
+      scan: { complete: failedChunks === 0, failed_chunks: failedChunks, note: failedChunks > 0 ? "RPC público bloqueou blocos antigos (archive) — números cobrem apenas a janela servida" : undefined },
       swaps: { total: swaps.length, buys, sells, traders: Object.keys(traders).length },
       mev: {
         attacks_detected: attacks.length,
@@ -187,8 +193,9 @@ async function fetchOracleData() {
   cachedData = {
     status: "live", chain: 1, last_block: latest,
     timestamp: new Date().toISOString(),
-    scan_from: "pool_creation",
-    scan_blocks: latest - 26029696,
+    scan_from: "configured_start_block",
+    scan_blocks: latest - 25800000,
+    scan_honesty: "Detecção/leitura on-chain apenas. Nenhuma interceptação foi executada. Pools: IMD/ETH (hook) e ETH/USDT (standard — par verificado via receipts em 26/09/2026).",
     summary: {
       total_swaps: totalSwaps,
       total_attacks: totalAttacks,

@@ -248,16 +248,16 @@ export default function OraclePage() {
               <div className="space-y-3">
                 <div className="text-[9px] tracking-widest text-[#00ff4160] mb-2">CONCLUSIONS</div>
                 <div className="p-2 bg-[#ff004008] border-l-2 border-[#ff0040]">
-                  <div className="text-[10px] text-[#ff0040] font-bold">Standard Pool Under Heavy Attack</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/USDC (no hook) has {data.pools[1].mev.attacks_detected} attacks vs {data.pools[0].mev.attacks_detected} on IMD/ETH (with hook). CappedBurnHook reduces MEV by ~{Math.round((1 - data.pools[0].mev.attacks_detected / Math.max(data.pools[1].mev.attacks_detected, 1)) * 100)}%.</div>
+                  <div className="text-[10px] text-[#ff0040] font-bold">Standard Pool: {data.pools[1].mev.attacks_detected} Attack Patterns</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">ETH/USDT (no hook) in the scanned window. Detection only — no interception performed.</div>
                 </div>
                 <div className="p-2 bg-[#00ff4108] border-l-2 border-[#00ff41]">
-                  <div className="text-[10px] text-[#00ff41] font-bold">Hook Effectiveness</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">IMD/ETH with CappedBurnHook: ${parseFloat(data.pools[0].losses.total_mev_usd).toLocaleString()} MEV. IMD/USDC without hook: ${parseFloat(data.pools[1].losses.total_mev_usd).toLocaleString()} MEV.</div>
+                  <div className="text-[10px] text-[#00ff41] font-bold">IMD/ETH Hook Pool</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">{data.pools[0].mev.attacks_detected} patterns on CappedBurnHook pool. Pools differ in asset, volume and age — no controlled comparison is possible off-chain. Effectiveness requires Shadow Mode on mainnet.</div>
                 </div>
                 <div className="p-2 bg-[#ff004008] border-l-2 border-[#ff0040]">
-                  <div className="text-[10px] text-[#ff0040] font-bold">Recoverable</div>
-                  <div className="text-[9px] text-[#00ff4160] mt-1">Deploy CappedBurnHook on IMD/USDC to recover ${parseFloat(s.total_recoverable_usd).toLocaleString()}.</div>
+                  <div className="text-[10px] text-[#ff0040] font-bold">Recoverable (Heuristic)</div>
+                  <div className="text-[9px] text-[#00ff4160] mt-1">${parseFloat(s.total_recoverable_usd).toLocaleString()} estimated in scanned window (0.1% of min leg × 0.85). Theory — not yet recovered on-chain.</div>
                 </div>
               </div>
             )}
