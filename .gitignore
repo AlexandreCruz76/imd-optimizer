@@ -49,6 +49,9 @@ typechain-types/
 .opencode/
 opencode.json
 
+# Admin panel (never commit)
+archive/admin/
+
 # Proprietary - Core algorithms (DO NOT COMMIT)
 optimizer/src/hookPoolAnalyzer.ts
 optimizer/src/optimizer.ts
