@@ -10,11 +10,11 @@ const links = [
   { href: "/arbitrage", label: "ARBITRAGE", shortcut: "F4" },
   { href: "/oracle", label: "ORACLE", shortcut: "F5" },
   { href: "/nft-mint", label: "GENESIS KEY", shortcut: "F6" },
-  { href: "/staking", label: "STAKING", shortcut: "F7" },
-  { href: "/docs", label: "DOCS", shortcut: "F8" },
+  { href: "/staking", label: "STAKING", shortcut: "F8" },
+  { href: "/docs", label: "DOCS", shortcut: "F7" },
 ];
 
-export function TerminalNav() {
+export function TerminalNav({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: React.Dispatch<React.SetStateAction<string>> }) {
   const pathname = usePathname();
 
   return (
@@ -26,13 +26,21 @@ export function TerminalNav() {
         </span>
       </Link>
       {links.map((link) => {
-        const isActive = pathname === link.href;
+        const isShortcut = activeTab === link.label;
         return (
           <Link
             key={link.href}
             href={link.href}
+            onClick={(e) => {
+              e.preventDefault();
+              if (link.label === "DOCS") {
+                setActiveTab("DOCS");
+              }
+            }}
             className={`px-3 py-1 text-xs tracking-wider transition-all shrink-0 ${
-              isActive
+              activeTab === link.label
+                ? "bg-[#00ff41] text-[#0a0a0a] font-bold"
+                : pathname === link.href
                 ? "bg-[#00ff41] text-[#0a0a0a] font-bold"
                 : "text-[#00ff4170] hover:text-[#00ff41] hover:bg-[#00ff4110]"
             }`}
