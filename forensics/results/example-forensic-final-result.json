@@ -1,0 +1,175 @@
+{
+  "date": "2026-09-26T14:49:45.640Z",
+  "rpc": "https://ethereum.public.blockpi.network/v1/rpc/public",
+  "latest_block": 26062329,
+  "scan_range": "25800000→26062329",
+  "target": {
+    "swaps": 155636,
+    "first_block": 25800002,
+    "last_block": 26062329,
+    "senders": 469,
+    "sum_abs_amount0_18dec": "35374084025929785102859",
+    "sum_abs_amount1_6dec": "86327936006797",
+    "implied_price": 2440.428872637952,
+    "first_tx": "0x3cfecf0ce847fd1c14d0b6f1642b14daa9c3cd0762c5d666694b69eccc3d4e7c",
+    "last_tx": "0xba3874adff7f3ad112a28b4b8e2a926dce400f0037fd7aee7f9e002f5e02da4e"
+  },
+  "hook": {
+    "swaps": 4531,
+    "first_block": 26029063,
+    "senders": 106
+  },
+  "native_pool": {
+    "swaps": 4953,
+    "first_block": 25887334,
+    "senders": 110
+  },
+  "target_liquidity": {
+    "events": 381,
+    "providers": 10,
+    "net_delta": "-64790107109320261"
+  },
+  "initialize": [],
+  "mev": {
+    "total": 4427,
+    "sandwiches": 695,
+    "cross_block": 3732,
+    "unique_bots": 102,
+    "top_bots": [
+      [
+        "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+        1528
+      ],
+      [
+        "0x80c554fbe15940fc3ce305cd56a108993c178dbd",
+        460
+      ],
+      [
+        "0x0889e9327b98d7d1be3c301a4585ff3330502c9a",
+        354
+      ],
+      [
+        "0x93c30e6e09f698cfea99b09b5166ed90cfaedd17",
+        247
+      ],
+      [
+        "0x8f10b468b06c6fd214b65f87778827f7d113f996",
+        231
+      ],
+      [
+        "0xcaf0beadeaefc66fef60ac6526ab566d58c8647a",
+        187
+      ],
+      [
+        "0x22ec88b9ff78c6f2458ab1a7aa8bb99d84bd4b86",
+        181
+      ],
+      [
+        "0x111116053f09d34a7eae8102887004445176ca11",
+        174
+      ],
+      [
+        "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+        141
+      ],
+      [
+        "0x666fedd4cdd4e890a5ad20e7b60975409435a64a",
+        129
+      ]
+    ],
+    "verified_samples": [
+      {
+        "type": "Sandwich",
+        "block": 25800326,
+        "bot": "0x80c554fbe15940fc3ce305cd56a108993c178dbd",
+        "front_tx": "0xca69e28650d6776fd6bc4da1aecb241e0a1516732de1ecaa018da8ccf049b4d5",
+        "victim": "0x163f3103de041d25464e2c8a4f8f3187ec1856e0",
+        "victim_tx": "0x7ff32e4c6d5aee8932fe34bf40936f76bdbc0d9c8958f31881fe3980152e99af",
+        "back_tx": "0xbcac169e87b9851bda9677f77be75e88b6a4c3e4c3a9d17d3c6a955d9f054d7e"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25800389,
+        "bot": "0x78dcc4a041eda70fa946458e98c7436f9e7fb25e",
+        "front_tx": "0x6ff6dc69e974788cd6dda3cacecf8fe24fe8e6258807985326cee4a7b8c069be",
+        "victim": "0x163f3103de041d25464e2c8a4f8f3187ec1856e0",
+        "victim_tx": "0xa5da145e5886712110075a24389e07accdad7bb5b079576c093783d370b33c62",
+        "back_tx": "0x3bdac58c6fb6ff2a4e930ce77d1aedc27a270a7910dac9ad6fa859a2797ee179"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25800389,
+        "bot": "0x78dcc4a041eda70fa946458e98c7436f9e7fb25e",
+        "front_tx": "0x727603c944688ed733ef8594739fe75b608d40855c7b03caab79a845dee171c9",
+        "victim": "0x163f3103de041d25464e2c8a4f8f3187ec1856e0",
+        "victim_tx": "0xa5da145e5886712110075a24389e07accdad7bb5b079576c093783d370b33c62",
+        "back_tx": "0x3bdac58c6fb6ff2a4e930ce77d1aedc27a270a7910dac9ad6fa859a2797ee179"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25800417,
+        "bot": "0x163f3103de041d25464e2c8a4f8f3187ec1856e0",
+        "front_tx": "0xbaf0a7c3c8ecdf9b16361ade46042d798b8792d573bd7adf05a5e6902db2276f",
+        "victim": "0xe679f6513e7cafdcb997f5b7678d785c04827208",
+        "victim_tx": "0x0a1a3a839dcd037beb05ad58f9b175a4237aaff84d660e7545fc40b985475102",
+        "back_tx": "0x631a9c9dcaaf71249603851e9724324a1b0ae4751c4afef7948208419c07fdff"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25800690,
+        "bot": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+        "front_tx": "0xbf0eddb28732f7699b9eff34a218ca62638c1ee12ddd9bb388f9658a76be8f00",
+        "victim": "0x80c554fbe15940fc3ce305cd56a108993c178dbd",
+        "victim_tx": "0xb949f702e6d338ca2be060c14466366bfa84ce8e88ca32e1abd8ab0d0f686f2a",
+        "back_tx": "0x934fdecae96662e5d88c94fb3c05ef7bd34d6fe9818bb6e12865062741ee8fd4"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25800782,
+        "bot": "0x0889e9327b98d7d1be3c301a4585ff3330502c9a",
+        "front_tx": "0xfbd70d3cfeb5d90d63753021e1190ddd42c0cfc4c9c8a19ebc7421e0d1c5b96f",
+        "victim": "0x163f3103de041d25464e2c8a4f8f3187ec1856e0",
+        "victim_tx": "0xe5dfae917fb905b0e9b6647bc6c8f0f9cb25ecb4cf3bb55ffc93cbae0996feaf",
+        "back_tx": "0xf0b8453bc43ceb00ec5aaff865e6e27f5888290e068daad90db8a196ccf64605"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25801005,
+        "bot": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+        "front_tx": "0xda44214744dc130049d9c703e0b27c1ab49f3df7f49a34f28848db39dc25563a",
+        "victim": "0x0889e9327b98d7d1be3c301a4585ff3330502c9a",
+        "victim_tx": "0x0231fc4c9f5105d840fc3f9e927a7b7cd5fb16dab6414f283f0f137b9fc4ab8b",
+        "back_tx": "0x716e5e166e501e8e1362663d76f51a756dd49d67b08b114b2df19375e902143e"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25801500,
+        "bot": "0x80c554fbe15940fc3ce305cd56a108993c178dbd",
+        "front_tx": "0x39b45b1644a615ea7837608cb9bcea74b4e1553279265b5366245e518905fadc",
+        "victim": "0x0889e9327b98d7d1be3c301a4585ff3330502c9a",
+        "victim_tx": "0x6f40281f908c5e4605371b025e5ff117f7a7c8609e1b8e92f43a571707305055",
+        "back_tx": "0x6b84b758f666dd2bc8dc6d8cab5f33922b4f07ecf1abfe003d9b2515447d004e"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25802342,
+        "bot": "0x5aae4d2f360e156de3416936049837a7bb685588",
+        "front_tx": "0x423ed1267836dd6c09e71dacfadeb6897a31cf8089bf1c53a44fee426b48ef1d",
+        "victim": "0x0889e9327b98d7d1be3c301a4585ff3330502c9a",
+        "victim_tx": "0xbd8a40768aa78cbfa26987b67bfb27c21030909d19bef2caa7f433b409050572",
+        "back_tx": "0x7448096c4bcdbda0c49887927d8521635da4a9a0f76ad2221f81e9c47c0fbdf2"
+      },
+      {
+        "type": "Sandwich",
+        "block": 25802626,
+        "bot": "0x9205a569b0ff45df1e4f5ae48e21bc7f0656f0bb",
+        "front_tx": "0x2e506d3fe5eb56ea92f24d22d7bdcbd236d3be3232d4ee2792fe254cbdc96445",
+        "victim": "0x8f10b468b06c6fd214b65f87778827f7d113f996",
+        "victim_tx": "0xbc0566b9cb2c46a8276b12cbf019614e20746f993a5e7f36771315946b03b605",
+        "back_tx": "0x85b61294e612a2a26ec4a45216b88e606cf5c66a9ad58f93a4e4815da25f41c2"
+      }
+    ]
+  },
+  "usdc_pools_recent": [],
+  "imd_usdc_exists_recent": false
+}
