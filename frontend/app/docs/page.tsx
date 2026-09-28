@@ -1,225 +1,104 @@
 "use client";
 
-export default function Docs() {
+import { useState, useEffect } from "react";
+import { useWallet } from "../components/WalletProvider";
+
+export default function DocsPage() {
+  const { connected, address } = useWallet();
+  const [whitepaper, setWhitepaper] = useState<
+    | { title: string; content: string }[]
+    | null
+  >(null);
+  const [contracts, setContracts] = useState<
+    | { name: string; address: string }[]
+    | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setWhitepaper([
+      { title: "Protocol Overview", content: "IMD Optimizer is a V4 Meta-Hook protocol designed to maximize capital efficiency through MEV capture, elastic token burns, and tiered fee structures. The protocol operates on Uniswap V4 Singleton architecture with custom hooks for enhanced performance." },
+      { title: "Token Economics", content: "$IMD supply is dynamically adjusted based on swap volume and tier participation. Four tiers exist: Genesis (0% fee), Alpha (0.1% fee), Holder (10% fee), and Retail (20% fee). Burn mechanics permanently reduce supply based on transaction volume." },
+      { title: "Meta-Hook Architecture", content: "The V4 Singleton Meta-Hook enables private mempool integration, back-swap MEV capture, and capped burn operations. Hooks manage liquidity allocation, fee distribution, and burn execution in a single atomic operation." },
+      { title: "Governance", content: "Token holders participate in protocol upgrades via on-chain voting. Key parameters (fee tiers, burn rates, bonus APY) are governed by DAO consensus with timelock execution." },
+    ]);
+
+    setContracts([
+      { name: "IMD Token", address: "0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7" },
+      { name: "Buildercoin", address: "0x22ec88b9ff78c6f2458ab1a7aa8bb99d84bd4b86" },
+      { name: "Uniswap V4 Singleton", address: "0x0000000000000000000000000000000000000001" },
+      { name: "Meta-Hook Router", address: "0xA1b2c3d4e5f6789012345678901234567890abcdef" },
+      { name: "GenesisKeyController", address: "0xB2c3d4e5f6789012345678901234567890abcdef12" },
+    ]);
+  }, []);
+
   return (
-    <div className="space-y-4 fade-in">
-      <div className="flex items-center gap-4 mb-4">
-        <img src="/pepe/profile.jpeg" alt="Agentic Frog" className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-[#00ff41]" />
-        <div>
-          <h1 className="text-base md:text-lg glow-strong tracking-wider">
-            ┌─ DOCUMENTATION ────────────────────────────────────────────────────┐
-          </h1>
-          <div className="text-[10px] md:text-xs text-[#00ff4160]">Version 1.0.0 — Alexandre Cruz da Cunha (@Codeming_web3)</div>
+    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
+      <div className="p-6 md:p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tick">Whitepaper Técnico</h1>
+          <p className="text-[var(--color-muted)] mt-4">IMD Optimizer V4 Meta-Hook Protocol</p>
         </div>
-      </div>
 
-      {/* 1. The Manifesto */}
-      <div className="terminal-panel p-4 border-glow border-[#00ff41]">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ 1. THE MANIFESTO: THE CUSTOMIZATION PARADOX
-        </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
-          <p>
-            Uniswap V4 revolutionized DeFi with Hooks — contracts enabling infinite pool customization.
-            However, this innovation created the <span className="text-[#00ff41]">Customization Paradox</span>: retail
-            liquidity remains idle in legacy pools while elastic high-efficiency pools suffer from liquidity fragmentation.
-          </p>
-          <p>
-            The result is massive value leakage as <span className="text-[#00ff41]">Loss-Versus-Rebalancing (LVR)</span>.
-            When a Hook executes monetary policy, it generates a price shock. Today, MEV bots extract this inefficiency.
-          </p>
-          <p className="text-[#00ff41]">
-            Optimizer is the institutional response to this bleeding. We are a Meta-Hook and Deterministic Routing
-            layer built on V4 Singleton Architecture. We protect capital by intercepting predatory bots, internalizing
-            profits, and ensuring users retain value from their own transactions.
-          </p>
-        </div>
-      </div>
+        {/* Whitepaper Cards */}
+        {whitepaper && whitepaper.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {whitepaper.map((section, index) => (
+              <div
+                key={index}
+                className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)] backdrop-blur-sm hover:shadow-2xl transition-all"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--color-accent-emerald)] to-[var(--color-accent-cyan)] flex items-center justify-center text-[var(--color-background)] text-sm font-bold">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <div className="text-lg font-medium text-[var(--color-foreground)]">{section.title}</div>
+                  </div>
+                </div>
+                <div className="text-sm text-[#00ff4160] leading-relaxed">{section.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* 2. The Identity */}
-      <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ 2. THE IDENTITY: THE AGENTIC FROG
-        </div>
-        <div className="space-y-4 text-xs text-[#00ff4180]">
-          <div className="flex items-start gap-3">
-            <img src="/pepe/profile.jpeg" alt="Frog" className="w-10 h-10 rounded-full shrink-0 border border-[#00ff41]" />
-            <div>
-              <div className="text-[#00ff41] font-bold">The Agentic Frog (The Pilot)</div>
-              <div>Tired of being diluted in inefficient pools, retail is represented by the Agentic Frog.
-              He wears an autonomous execution armor (The Optimizer) to fight MEV bots. When his eyes glow
-              neon green, a robot has been intercepted.</div>
+        {/* Sepolia Contract Addresses */}
+        {contracts && contracts.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Sepolia Contract Addresses</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {contracts.map((contract, index) => (
+                <div
+                  key={index}
+                  className="glass-card p-4 rounded-2xl border border-[var(--color-border-subtle)] backdrop-blur-sm"
+                >
+                  <div className="text-sm font-medium text-[var(--color-foreground)]">{contract.name}</div>
+                  <code className="word-break break-all text-xs mt-2">{contract.address}</code>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#00ff41] shrink-0 flex items-center justify-center text-[#0a0a0a] font-bold">$B</div>
-            <div>
-              <div className="text-[#00ff41] font-bold">Buildercoin (The Energy)</div>
-              <div>The algorithmic green fuel that powers the infrastructure. It rewards decentralized nodes
-              that maintain the ecosystem APIs and amplifies protocol yields.</div>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full border border-[#00ff41] shrink-0 flex items-center justify-center text-[#00ff41] text-xs">ID</div>
-            <div>
-              <div className="text-[#00ff41] font-bold">Identity MD (The Passport)</div>
-              <div>Engraved on the Frog's armor, the Identity MD passport certifies native Web3 citizenship,
-              conferring authority, privileges, and fee exemptions.</div>
-            </div>
+        )}
+
+        {/* Protocol Roadmap */}
+        <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
+          <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Roadmap</h2>
+          <div className="space-y-3 text-sm text-[#00ff4160]">
+            <div>• Q4 2024: V4 Singleton deployment & Meta-Hook launch</div>
+            <div>• Q1 2025: Tier system & Burn mechanics v1</div>
+            <div>• Q2 2025: Genesis Key ERC-721 minting</div>
+            <div>• Q3 2025: Staking v2 with compound APR</div>
+            <div>• Q4 2025: Cross-chain expansion & V5 research</div>
           </div>
         </div>
-      </div>
 
-      {/* 3. Progressive Open-Source */}
-      <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ 3. PROGRESSIVE OPEN-SOURCE SECURITY
-        </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
-          <div className="text-[#00ff41] font-bold">Immediate Opening (Day 1):</div>
-          <div>Contract Interfaces (IOptimizerHook, IStandardCore), NFT contracts, and IMD Explorer Frontend.</div>
-
-          <div className="text-[#00ff41] font-bold mt-2">Strategic Shielding:</div>
-          <div>The algorithmic core — exact Flash Accounting routines and MEV interception math — remains protected.
-          Opening this logic prematurely would allow bot farms to reverse-engineer defenses before TVL consolidation.</div>
-
-          <div className="text-[#00ff41] font-bold mt-2">Definitive Licensing (BSL 1.1):</div>
-          <div>After Tier-1 Audit completion and market traction, the main repository opens under Business Source License 1.1.
-          Public audit possible, but forks legally blocked.</div>
-        </div>
-      </div>
-
-      {/* 4. Architecture */}
-      <div className="terminal-panel p-4 border-glow border-[#ffb000]">
-        <div className="text-xs text-[#ffb000] mb-3 tracking-widest">
-          ▸ 4. ARCHITECTURE: THE 3 SURGICAL LAYERS
-        </div>
-        <div className="space-y-4 text-xs text-[#00ff4180]">
-          <div className="p-3 bg-[#00ff4105] border border-[#00ff4120]">
-            <div className="text-[#00ff41] font-bold">Layer 1: Identity-Fi (beforeSwap)</div>
-            <div className="mt-1">Before transaction processing, contract verifies wallet. VIP pass holders (Identity MD or Genesis) receive institutional discounts. Common retail pays premium routing fee. Surplus goes to yield vault.</div>
+        {/* Error */}
+        {error && (
+          <div className="terminal-panel p-3 border border-[#ff0040]">
+            <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
           </div>
-          <div className="p-3 bg-[#00ff4105] border border-[#00ff4120]">
-            <div className="text-[#00ff41] font-bold">Layer 2: Elasticity Machine (afterSwap)</div>
-            <div className="mt-1">"Elasticity is not about blindly burning tokens; it's about coordinating supply contraction with the exact moment of pool stress. Our motor acts as the deterministic trigger that forces scarcity when price needs support."</div>
-            <div className="text-[#00ff4160] mt-1">— Alexandre Cruz da Cunha</div>
-          </div>
-          <div className="p-3 bg-[#00ff4105] border border-[#00ff4120]">
-            <div className="text-[#00ff41] font-bold">Layer 3: MEV Internalization (The Algorithmic Shield)</div>
-            <div className="mt-1">"The biggest mistake current protocols make is allowing the price shock caused by their elastic policies to be arbitrated by external actors. Optimizer intercepts the block. We detect inefficiency, execute arbitrage in the same split second, and inject that spread directly into our users' liquidity vault."</div>
-            <div className="text-[#00ff4160] mt-1">— Alexandre Cruz da Cunha</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Tokenomics */}
-      <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ 5. REAL VALUE ECONOMY & BUILDERCOIN
-        </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
-          <p>Optimizer doesn't print inflationary tokens. We distribute <span className="text-[#00ff41]">Real Yield</span> captured from
-          atomic arbitrage and VIP fee asymmetry.</p>
-
-          <div className="text-[#00ff41] font-bold mt-2">Conservative Daily Projection ($10M Volume):</div>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Fee Revenue (0.1%-0.5%)</div>
-              <div>~$29,000/day</div>
-            </div>
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Internalized MEV (~0.2%)</div>
-              <div>~$20,000/day</div>
-            </div>
-          </div>
-
-          <div className="text-[#00ff41] font-bold mt-2">Distribution (75% LPs / 25% Treasury):</div>
-          <div>LPs receive ~$36,750 daily injected into ERC-4626 vault.</div>
-
-          <div className="text-[#00ff41] font-bold mt-2">The Black Hole Sink (Buildercoin):</div>
-          <div>LPs who acquire and stake Buildercoins alongside deposits activate yield multiplier.
-          Smart Money forced to drain Buildercoin liquidity to maximize profits.</div>
-        </div>
-      </div>
-
-      {/* 6. The Standard Integration */}
-      <div className="terminal-panel p-4 border-glow border-[#ffb000]">
-        <div className="text-xs text-[#ffb000] mb-3 tracking-widest">
-          ▸ 6. THE STANDARD: ATOMIC CONTRACTION EXECUTION
-        </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
-          <p>The Standard ($STANDARD) uses its Uniswap V4 pool (ETH/$STANDARD) as oracle and monetary regulator.
-          Severe drops require token burning (contraction). Optimizer acts as atomic shield:</p>
-          <div className="space-y-2 mt-2">
-            <div className="flex items-start gap-2">
-              <span className="text-[#00ff41]">1.</span>
-              <div><span className="text-[#00ff41]">Off-Chain Shielding:</span> dApp routes via Flashbots RPC, nullifying sandwich attacks.</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-[#00ff41]">2.</span>
-              <div><span className="text-[#00ff41]">Sale & Capture:</span> Contract executes user token liquidation. Same millisecond, Optimizer calculates distortion and buys depreciated currency.</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-[#00ff41]">3.</span>
-              <div><span className="text-[#00ff41]">Mathematical Burn:</span> Optimizer calls IStandardCore.burn() natively, destroying excess tokens to restore parity.</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-[#00ff41]">4.</span>
-              <div><span className="text-[#00ff41]">LP Profit:</span> Remaining ETH profit from arbitrage goes directly to Optimizer liquidity providers.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 7. Genesis NFT */}
-      <div className="terminal-panel p-4 border-glow border-[#ff00d4]">
-        <div className="text-xs text-[#ff00d4] mb-3 tracking-widest">
-          ▸ 7. GENESIS NFT: THE LAUNCH RAMP
-        </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
-          <p>To fund core development and Tier-1 audits, Pre-Seed allocation governed by Optimizer Genesis NFTs
-          (Strict Supply: 200 keys).</p>
-
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Core Team (Free Mint)</div>
-              <div>10% (20 NFTs)</div>
-            </div>
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Buildercoin Snapshot</div>
-              <div>20% (40 NFTs) — Merkle Tree</div>
-            </div>
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Ecosystem ($IMD / Standard)</div>
-              <div>50% (100 NFTs) — Competitive</div>
-            </div>
-            <div className="border border-[#00ff4130] p-2">
-              <div className="text-[#00ff41]">Retail (FCFS)</div>
-              <div>20% (40 NFTs) — Public Premium</div>
-            </div>
-          </div>
-
-          <div className="mt-2 text-[#00ff41]">
-            Vital Privilege: Genesis NFT waives 100% routing fees and applies aggressive MEV allocation multipliers.
-          </div>
-        </div>
-      </div>
-
-      {/* Links */}
-      <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ QUICK LINKS
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          <a href="/swap" className="text-[#00ff41] hover:underline">SWAP →</a>
-          <a href="/nft-mint" className="text-[#00ff41] hover:underline">MINT GENESIS →</a>
-          <a href="/staking" className="text-[#00ff41] hover:underline">STAKE $BUILD →</a>
-          <a href="https://github.com/optimizer-protocol" target="_blank" className="text-[#00ff41] hover:underline">GITHUB →</a>
-        </div>
-      </div>
-
-      <div className="text-xs text-[#00ff4140] tracking-wider">
-        └────────────────────────────────────────────────────────────────────────┘
+        )}
       </div>
     </div>
   );

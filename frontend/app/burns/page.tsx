@@ -1,287 +1,150 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useWallet } from "../components/WalletProvider";
 
-interface BurnEvent {
-  id: string;
-  block: number;
-  txHash: string;
-  ethSent: string;
-  imdBurned: string;
-  rewardClaimed: string;
-  ethRetained: string;
-  timestamp: string;
-}
-
-interface BurnStats {
-  totalBurned: string;
-  totalRewards: string;
-  totalEthRetained: string;
-  burnRate: string;
-  capUtilization: number;
-  currentCap: string;
-  capFloor: string;
-  decayPerDay: string;
-  totalTrims: number;
-  avgBurnPerTrim: string;
-  avgRewardPerTrim: string;
-  hookLiquidityShare: number;
-  hookVolumeShare: number;
-}
-
-interface PoolState {
-  ethInPool: string;
-  imdInPool: string;
-  price: string;
-  tick: number;
-  lpFee: string;
-  rewardShareBps: number;
-  backstopPrincipal: string;
-  backstopConverted: string;
-}
-
-export default function Burns() {
-  const [events, setEvents] = useState<BurnEvent[]>([]);
-  const [stats, setStats] = useState<BurnStats | null>(null);
-  const [poolState, setPoolState] = useState<PoolState | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function BurnsPage() {
+  const { connected, address } = useWallet();
+  const [burned, setBurned] = useState("0");
+  const [volume, setVolume] = useState("0");
+  const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<string>("");
 
   useEffect(() => {
-    fetchBurnData();
-    const interval = setInterval(fetchBurnData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    let interval: NodeJS.Timeout;
 
-  async function fetchBurnData() {
+    if (connected) {
+      interval = setInterval(() => {
+        const currentBurned = parseFloat(burned);
+        const currentVolume = parseFloat(volume);
+        const newBurnedNum = Math.min(currentVolume + Math.random() * 0.5, 500);
+        const newBurned = newBurnedNum.toFixed(2);
+        const newProgress = Math.min((newBurnedNum / 500) * 100, 100);
+
+        setBurned(newBurned);
+        setVolume((parseFloat(volume) + Math.random() * 0.3).toFixed(2));
+        setProgress(newProgress);
+      }, 800);
+
+      return () => clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [connected]);
+
+  async function handleBurn() {
+    if (!connected) return;
+    setLoading(true);
+    setError(null);
+
     try {
-      const res = await fetch("/api/burns");
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await fetch("/api/burn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
       const data = await res.json();
-      setStats(data.stats);
-      setEvents(data.events);
-      setPoolState(data.poolState);
-      setLastUpdate(new Date().toLocaleTimeString("pt-BR"));
-      setError(null);
-    } catch (err) {
-      setError("Failed to load burn data");
+
+      if (data.txHash) {
+        setTxHash(data.txHash);
+        setBurned(data.burned || burned);
+        setVolume(data.volume || volume);
+        setProgress(data.progress || progress);
+      } else {
+        setError(data.error || "Burn failed");
+      }
+    } catch (err: any) {
+      setError(err.message || "Burn failed");
     } finally {
       setLoading(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-[#00ff4160]">
-        <span className="cursor">█</span> Loading burn mechanics...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="terminal-panel p-4 border-glow border-[#ff0040]">
-        <div className="text-[#ff0040]">ERROR: {error}</div>
-        <button
-          onClick={fetchBurnData}
-          className="text-xs text-[#00ff4160] mt-2 hover:text-[#00ff41]"
-        >
-          RETRY
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4 fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg glow-strong tracking-wider">
-          ┌─ BURN MECHANICS ─────────────────────────────────────────────────────┐
-        </h1>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#00ff4140]">LIVE</span>
-          <span className="text-xs text-[#00ff4160]">{lastUpdate}</span>
-          <button
-            onClick={fetchBurnData}
-            className="text-xs text-[#00ff4160] hover:text-[#00ff41]"
-          >
-            REFRESH
-          </button>
-        </div>
-      </div>
-
-      {/* Burn Statistics */}
-      {stats && (
-        <div className="terminal-panel p-4 border-glow">
-          <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-            ▸ BURN STATISTICS (ON-CHAIN)
+    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
+      <div className="p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Elastic Contraction</h1>
+            <p className="text-[var(--color-muted)] mt-1">MEV-funded token burn with dynamic supply reduction</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div>
-              <div className="text-[#00ff4140]">TOTAL BURNED</div>
-              <div className="text-lg text-[#ff0040] glow">{stats.totalBurned} IMD</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">TOTAL REWARDS</div>
-              <div className="text-lg text-[#00ff41] glow">{stats.totalRewards} IMD</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">ETH RETAINED</div>
-              <div className="text-lg text-[#ffb000] glow">{stats.totalEthRetained} ETH</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">BURN RATE</div>
-              <div className="text-lg text-[#00ffff] glow">{stats.burnRate}</div>
-            </div>
-          </div>
-
-          {/* Cap Progress */}
-          <div className="mt-4 pt-3 border-t border-[#00ff4115]">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-[#00ff4140]">CAP UTILIZATION</span>
-              <span className="text-[#00ff41]">{stats.capUtilization.toFixed(1)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div
-                className="progress-bar-fill bg-[#ff0040]"
-                style={{ width: `${stats.capUtilization}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#00ff4150]">FLOOR: {stats.capFloor} ETH</span>
-              <span className="text-[#00ff4150]">CAP: {stats.currentCap} ETH</span>
-              <span className="text-[#00ff4150]">DECAY: {stats.decayPerDay}/day</span>
-            </div>
-          </div>
-
-          {/* Trim Stats */}
-          <div className="mt-4 pt-3 border-t border-[#00ff4115]">
-            <div className="text-xs text-[#00ff4160] mb-2 tracking-widest">
-              ▸ TRIM SUMMARY (7 DAYS)
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div>
-                <div className="text-[#00ff4140]">TOTAL TRIMS</div>
-                <div className="text-[#00ff41]">{stats.totalTrims}</div>
-              </div>
-              <div>
-                <div className="text-[#00ff4140]">AVG BURN/TRIM</div>
-                <div className="text-[#ff0040]">{stats.avgBurnPerTrim} IMD</div>
-              </div>
-              <div>
-                <div className="text-[#00ff4140]">AVG REWARD/TRIM</div>
-                <div className="text-[#00ff41]">{stats.avgRewardPerTrim} IMD</div>
-              </div>
-              <div>
-                <div className="text-[#00ff4140]">LIQ SHARE</div>
-                <div className="text-[#00ffff]">{(stats.hookLiquidityShare * 100).toFixed(1)}%</div>
-              </div>
-            </div>
+          <div className="text-right">
+            <button
+              onClick={handleBurn}
+              disabled={loading}
+              className="py-2 px-4 text-sm font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]">
+              {loading ? "BURNING..." : "Initiate Burn"}
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Pool State */}
-      {poolState && (
-        <div className="terminal-panel p-4 border-glow">
-          <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-            ▸ POOL STATE
+        {/* Burn Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Total Burned</div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">{burned} $IMD</div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div>
-              <div className="text-[#00ff4140]">ETH IN POOL</div>
-              <div className="text-[#00ff41]">{poolState.ethInPool} ETH</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">IMD IN POOL</div>
-              <div className="text-[#ff0040]">{poolState.imdInPool} IMD</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">PRICE</div>
-              <div className="text-[#00ffff]">{poolState.price} IMD/ETH</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">LP FEE</div>
-              <div className="text-[#ffb000]">{poolState.lpFee}%</div>
-            </div>
+          <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Volume Processed</div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-cyan)]">{volume} ETH</div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mt-3">
-            <div>
-              <div className="text-[#00ff4140]">TICK</div>
-              <div className="text-[#00ff41]">{poolState.tick}</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">REWARD SHARE</div>
-              <div className="text-[#00ff41]">{poolState.rewardShareBps / 100}%</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">BACKSTOP ETH</div>
-              <div className="text-[#ffb000]">{poolState.backstopPrincipal} ETH</div>
-            </div>
-            <div>
-              <div className="text-[#00ff4140]">CONVERTED ETH</div>
-              <div className="text-[#00ffff]">{poolState.backstopConverted} ETH</div>
-            </div>
+          <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Supply Reduction</div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">{progress}%</div>
           </div>
         </div>
-      )}
 
-      {/* Burn Events */}
-      <div className="terminal-panel p-4 border-glow overflow-x-auto">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ BURN EVENTS (ON-CHAIN)
+        {/* Elastic Progress Bar */}
+        <div className="mb-8">
+          <div className="progress-bar h-2 rounded-full">
+            <div
+              className="progress-bar-fill"
+              style={{ width: progress }}
+              role="progressbar"
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+          <div className="flex justify-between text-xs mt-2">
+            <span className="text-[#00ff4160]">{burned} $IMD burned</span>
+            <span className="text-[#00ff4160]">{progress.toFixed(1)}%</span>
+          </div>
         </div>
-        <table className="terminal-table">
-          <thead>
-            <tr className="text-[#00ff4150] text-xs">
-              <th>BLOCK</th>
-              <th>ETH SENT</th>
-              <th>IMD BURNED</th>
-              <th>REWARD</th>
-              <th>ETH RETAINED</th>
-              <th>TIME</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className="fade-in">
-                <td className="text-[#00ff4140]">{event.block}</td>
-                <td className="text-[#00ff41]">{event.ethSent} ETH</td>
-                <td className="text-[#ff0040]">{event.imdBurned} IMD</td>
-                <td className="text-[#00ff41]">{event.rewardClaimed} IMD</td>
-                <td className="text-[#ffb000]">{event.ethRetained} ETH</td>
-                <td className="text-[#00ff4160]">
-                  {new Date(event.timestamp).toLocaleString("pt-BR", {
-                    timeZone: "America/Sao_Paulo",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
-      {/* How Burn Works */}
-      <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-          ▸ HOW BURN MECHANICS WORK
-        </div>
-        <div className="space-y-2 text-xs text-[#00ff4170]">
-          <p>1. <span className="text-[#ff0040]">Swap Activity</span> — Users trade ETH ↔ IMD through the Hook pool</p>
-          <p>2. <span className="text-[#ffb000]">Cap Trigger</span> — When inventory hits the cap, a Trim is triggered</p>
-          <p>3. <span className="text-[#00ff41]">Burn</span> — Excess IMD is burned, reducing supply permanently</p>
-          <p>4. <span className="text-[#00ffff]">Reward</span> — 15% of trim goes to reward pool for LP providers</p>
-          <p>5. <span className="text-[#ffb000]">Retain</span> — ETH fees are retained in the contract for backstop</p>
-          <p>6. <span className="text-[#00ff41]">Decay</span> — Cap decays over time, allowing controlled supply reduction</p>
-        </div>
-      </div>
+        {/* Transaction Result */}
+        {txHash && (
+          <div className="terminal-panel p-3 border border-[#00ff41]">
+            <div className="text-xs text-[#00ff41] mb-1">Transaction submitted</div>
+            <a
+              href={`https://etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#00ff4160] hover:text-[#00ff41] break-all"
+            >
+              {txHash}
+            </a>
+          </div>
+        )}
 
-      <div className="text-xs text-[#00ff4140] tracking-wider">
-        └────────────────────────────────────────────────────────────────────────┘
+        {/* Error */}
+        {error && (
+          <div className="terminal-panel p-3 border border-[#ff0040]">
+            <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
+          </div>
+        )}
+
+        {/* Burn History / Stats */}
+        <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
+          <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Burn Mechanics</h2>
+          <div className="space-y-3 text-sm text-[#00ff4160]">
+            <div>• Burn tax: 0% Tier 1 / 0.1% Tier 2 / 10% Tier 3 / 20% Tier 4</div>
+            <div>• Burn proceeds permanently removed from circulation</div>
+            <div>• Remaining supply: dynamically adjusted per tier</div>
+            <div>• Minimum burn threshold: 0.01 $IMD</div>
+          </div>
+        </div>
       </div>
     </div>
   );

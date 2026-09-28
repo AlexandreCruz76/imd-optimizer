@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 
-export const BACKGROUNDS = {
-  hero: "bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e]",
-};
+/* Backgrounds definitions - used directly in classNames */
+export const heroBackground = "bg-gradient-to-br from-[#0B0E14] via-[#1a1a2e] to-[#16213e]";
+
+export type BackgroundKey = "hero";
 
 export const SectionBackground = ({
-  variant,
+  variant = "hero",
 }: {
-  variant: keyof typeof BACKGROUNDS;
+  variant?: BackgroundKey;
 }) => {
   const [visible, setVisible] = useState(false);
 
@@ -18,9 +19,12 @@ export const SectionBackground = ({
     return () => clearTimeout(timer);
   }, []);
 
+  /* Usa a key correta para lookup */
+  const bg = variant === "hero" ? heroBackground : "bg-gradient-to-br from-[#0B0E14] via-[#1a1a2e] to-[#16213e]";
+
   return (
     <div
-      className={`min-h-[400px] ${BACKGROUNDS[variant]} rounded-2xl overflow-hidden`}
+      className={`min-h-[400px] ${bg} rounded-2xl overflow-hidden`}
     >
       {visible && (
         <div className="absolute inset-0 opacity-20 blur-xl" />
