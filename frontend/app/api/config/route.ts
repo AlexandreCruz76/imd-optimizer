@@ -14,10 +14,13 @@ export async function GET() {
     imdToken: process.env.IMD_TOKEN_ADDRESS || "",
     standardToken: process.env.STANDARD_TOKEN_ADDRESS || "",
     weth: process.env.WETH_ADDRESS || "",
+
+    // OptimizerRouter (Sepolia) — swap real
+    optimizerRouter: process.env.OPTIMIZER_ROUTER_ADDRESS || "",
     
     // Network config
     chainId: 11155111,
-    rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-rpc.publicnode.com",
+    rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
     
     // Pool parameters
     hookFeeTier: 10000,

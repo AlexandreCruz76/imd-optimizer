@@ -1,9 +1,13 @@
 {
   "network": "sepolia",
   "deployer": "0x067fFf62022B1fF522f0624f4a03E42Fb6cBA0B0",
-  "OptimizerVaultV2": "0xBc6Dc23FFbCDFe1fCa602361eb566a299a5036e1",
-  "OptimizerRouter": "0x4b614E3eb18551ef0f1e65891fb9dABD4a397926",
-  "MockStandardCore": "0xf82C114B725D2ADBaaFA3316C3Ef02963760c6DC",
-  "MockPool": "0x0F935FAc80A329ac92DFB8f5a617f831c23Bc4ef",
-  "deployedAt": "2026-09-17T23:21:07.549Z"
+  "OptimizerRouter": "0x91b4d44908B0deeaeFe65afF074051635B65cC81",
+  "OptimizerVaultV2": "0x39Ecb3990e994538c1D983420e8d4Faf99C2C9BF",
+  "MockStandardCore": "0xadea80101534a8d02832123fe90A33832f224169",
+  "MockStandardToken": "0x8a095f673d49970641aF3B0fD9e4313DAdC9700C",
+  "MockWETH": "0xe51512ebC6972c4306fbD1D8E35887D918DF1823",
+  "MockPool": "0x13076fBbc9Db59bf099f293EbC6b7391a6248d05",
+  "routerFundedEth": "0.03",
+  "deployedAt": "2026-09-29T10:44:37.176Z",
+  "note": "Deploy real — contratos com codigo na Sepolia (verifique em sepolia.etherscan.io)"
 }
