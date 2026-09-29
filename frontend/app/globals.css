@@ -75,10 +75,10 @@ body {
 }
 
 .glass-card {
-  border: 1px solid #FFFFFF10;
-  background: rgba(26, 34, 45, 0.6);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid #FFFFFF1A;
+  background: rgba(14, 19, 30, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* Glow effects */

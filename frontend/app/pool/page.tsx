@@ -323,8 +323,21 @@ export default function MetaHookPoolPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] p-4 md:p-8 fade-in">
-      <div className="max-w-6xl mx-auto space-y-4">
+    <div className="min-h-screen bg-[#0B0E14] p-4 md:p-8 fade-in relative">
+      {/* Ambient Agentic Artwork Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <img
+          src="/images/avatar.jpg"
+          alt="Agent Background"
+          className="w-full h-full object-cover object-center opacity-35 transition-opacity duration-500"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/images/imd.jpg";
+          }}
+        />
+        {/* Subtle dark vignette around edges only */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,#070A0F/40_70%,#070A0F/90_100%)]" />
+      </div>
+      <div className="max-w-6xl mx-auto space-y-4 relative z-10">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-base md:text-lg font-medium text-[#E8E8E8] tracking-wider font-mono">
