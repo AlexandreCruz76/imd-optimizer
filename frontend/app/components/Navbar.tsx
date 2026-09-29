@@ -10,6 +10,8 @@ const navLinks = [
   { href: "#value-funnel", label: "Value Funnel" },
   { href: "#metrics-burns", label: "Metrics & Burns" },
   { href: "#architecture", label: "Architecture" },
+  { href: "/swap", label: "Swap" },
+  { href: "/pool", label: "Meta Hook Pool" },
 ];
 
 export function Navbar() {
@@ -17,7 +19,11 @@ export function Navbar() {
   const [hasMetaMask, setHasMetaMask] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setHasMetaMask(typeof window !== "undefined" && !!window.ethereum);
+    const t = setTimeout(
+      () => setHasMetaMask(typeof window !== "undefined" && !!window.ethereum),
+      0
+    );
+    return () => clearTimeout(t);
   }, []);
 
   return (
