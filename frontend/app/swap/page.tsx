@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
-import { PoolPairIcon } from "../components/PoolIcons";
 
-const TOKENS = [
+type Token = {
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
+  color: string;
+  logo?: string;
+};
+
+const TOKENS: Token[] = [
   {
     symbol: "IMD",
     name: "IMD Token",
@@ -26,8 +35,7 @@ const TOKENS = [
     name: "Wrapped Ether",
     address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
     decimals: 18,
-    color: "#67C23A",
-    logo: "/images/weth.jpg",
+    color: "#8C9EFF",
   },
   {
     symbol: "USDC",
@@ -35,64 +43,312 @@ const TOKENS = [
     address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     decimals: 6,
     color: "#2775CA",
-    logo: "/images/usdc.jpg",
   },
 ];
 
-const POOLS = [
-  {
-    id: 1,
-    name: "IMD/ETH V4 Hook",
-    tokens: ["IMD", "WETH"],
-    tvl: "$85.3M",
-    volume24h: "$4.2M",
-    fee: "0.05%",
-    apr: "12.4%",
-    type: "hook",
-  },
-  {
-    id: 2,
-    name: "BUILDER/USDC V4 Native",
-    tokens: ["BUILDER", "USDC"],
-    tvl: "$32.1M",
-    volume24h: "$1.8M",
-    fee: "0.30%",
-    apr: "8.7%",
-    type: "native",
-  },
-];
+// Demo UI rates (USD) used for the quote estimate until the on-chain
+// quote path (OptimizerRouter.exactInputSingle) is wired in.
+const PRICES_USD: Record<string, number> = {
+  IMD: 0.1,
+  BUILDER: 0.5,
+  WETH: 2400,
+  USDC: 1,
+};
+
+// Assumed pool depth for the demo price-impact model.
+const LIQUIDITY_USD = 5_000_000;
+
+const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
+
+const SLIPPAGE_PRESETS = ["0.1", "0.5", "1.0"];
+
+const FEE_TIER = { pct: "0.05%", label: "V4 Hook" };
+
+function shortAddr(addr: string) {
+  return addr.slice(0, 6) + "…" + addr.slice(-4);
+}
+
+function fmt(n: number, decimals = 6): string {
+  if (!isFinite(n) || n === 0) return "0";
+  if (n > 0 && n < 1e-6) return n.toExponential(2);
+  return n.toLocaleString("en-US", { maximumFractionDigits: decimals });
+}
+
+function TokenLogo({ token, size = 32 }: { token: Token; size?: number }) {
+  const [broken, setBroken] = useState(false);
+  const showImg = token.logo && !broken;
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 font-bold"
+      style={{
+        width: size,
+        height: size,
+        background: token.color + "22",
+        border: `1px solid ${token.color}55`,
+        color: token.color,
+        fontSize: size * 0.42,
+      }}
+    >
+      {showImg ? (
+        <img
+          src={token.logo}
+          alt={token.symbol}
+          className="w-full h-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      ) : token.symbol === "WETH" ? (
+        "Ξ"
+      ) : token.symbol === "USDC" ? (
+        "$"
+      ) : (
+        token.symbol.slice(0, 2)
+      )}
+    </span>
+  );
+}
+
+function TokenSelector({
+  token,
+  other,
+  onSelect,
+}: {
+  token: Token;
+  other: Token;
+  onSelect: (t: Token) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = TOKENS.filter(
+    (t) =>
+      t.symbol.toLowerCase().includes(query.toLowerCase()) ||
+      t.name.toLowerCase().includes(query.toLowerCase()) ||
+      t.address.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <>
+      <button
+        onClick={() => {
+          setQuery("");
+          setOpen(true);
+        }}
+        className="flex items-center gap-2 rounded-2xl bg-[#0B0E14]/80 border border-white/[0.10] hover:border-[#00F58C]/40 pl-2 pr-3 py-2 transition-colors"
+      >
+        <TokenLogo token={token} size={26} />
+        <span className="text-sm font-semibold text-[#E8E8E8] font-mono">
+          {token.symbol}
+        </span>
+        <span className="text-[10px] text-[#6B7A88]">▾</span>
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="glass-card rounded-3xl w-full max-w-sm p-4 border border-white/[0.10]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-[#E8E8E8] tracking-wider">
+                SELECT TOKEN
+              </span>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-[#6B7A88] hover:text-[#E8E8E8] text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name or paste address"
+              className="w-full bg-[#0B0E14] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-[#E8E8E8] placeholder-[#6B7A88] outline-none focus:border-[#00F58C]/50 mb-3 font-mono"
+            />
+
+            <div className="space-y-1 max-h-72 overflow-y-auto">
+              {filtered.map((t) => {
+                const disabled = t.symbol === other.symbol;
+                return (
+                  <button
+                    key={t.symbol}
+                    disabled={disabled}
+                    onClick={() => {
+                      onSelect(t);
+                      setOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                      disabled
+                        ? "opacity-30 cursor-not-allowed"
+                        : "hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    <TokenLogo token={t} size={32} />
+                    <span className="text-left">
+                      <span className="block text-sm font-semibold text-[#E8E8E8] font-mono">
+                        {t.symbol}
+                      </span>
+                      <span className="block text-[10px] text-[#6B7A88]">
+                        {t.name}
+                      </span>
+                    </span>
+                    <span className="ml-auto text-[10px] text-[#6B7A88] font-mono">
+                      {shortAddr(t.address)}
+                    </span>
+                  </button>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="text-xs text-[#6B7A88] text-center py-4">
+                  No tokens found
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  color,
+  mono = true,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-[#6B7A88]">{label}</span>
+      <span
+        className={`${mono ? "font-mono" : ""}`}
+        style={{ color: color || "#E8E8E8" }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default function SwapPage() {
-  const { connected, address } = useWallet();
-  const [tokenIn, setTokenIn] = useState(TOKENS[0]);
-  const [tokenOut, setTokenOut] = useState(TOKENS[2]); // WETH default
+  const { connected, connecting, connect, address, provider } = useWallet();
+  const [tokenIn, setTokenIn] = useState<Token>(TOKENS[0]);
+  const [tokenOut, setTokenOut] = useState<Token>(TOKENS[2]);
   const [amount, setAmount] = useState("");
-  const [feeTier, setFeeTier] = useState<string>("0.05%");
   const [slippage, setSlippage] = useState("0.5");
+  const [customSlippage, setCustomSlippage] = useState("");
+  const [deadline, setDeadline] = useState("20");
+  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
-  const [selectedPool, setSelectedPool] = useState<typeof POOLS[number] | null>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [balances, setBalances] = useState<Record<string, string>>({});
 
-  const selectedFee = POOLS.find((p) => p.fee === "0.05%") || POOLS[0];
+  const effectiveSlippage = customSlippage !== "" ? customSlippage : slippage;
+  const slipNum = Math.min(Math.max(parseFloat(effectiveSlippage) || 0, 0), 50);
+  const isCustom = customSlippage !== "";
 
-  function handleSelectToken(token: { symbol: string; name: string; address: string; decimals: number; color: string; logo: string }, type: "in" | "out") {
-    if (type === "in") {
-      setTokenIn(token);
-    } else {
-      setTokenOut(token);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = setTimeout(() => {
+      const s = localStorage.getItem("imd_slippage");
+      const d = localStorage.getItem("imd_deadline");
+      if (s) {
+        if (SLIPPAGE_PRESETS.includes(s)) setSlippage(s);
+        else setCustomSlippage(s);
+      }
+      if (d) setDeadline(d);
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("imd_slippage", effectiveSlippage);
+      localStorage.setItem("imd_deadline", deadline);
     }
+  }, [effectiveSlippage, deadline]);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadBalances() {
+      if (!connected || !provider || !address) return;
+      const toFetch = [tokenIn, tokenOut].filter(
+        (t) => !(t.address.toLowerCase() in balances)
+      );
+      for (const t of toFetch) {
+        try {
+          const contract = new ethers.Contract(t.address, ERC20_ABI, provider);
+          const raw: bigint = await contract.balanceOf(address);
+          if (alive) {
+            setBalances((prev) => ({
+              ...prev,
+              [t.address.toLowerCase()]: parseFloat(
+                ethers.formatUnits(raw, t.decimals)
+              ).toFixed(4),
+            }));
+          }
+        } catch {
+          if (alive) {
+            setBalances((prev) => ({
+              ...prev,
+              [t.address.toLowerCase()]: "—",
+            }));
+          }
+        }
+      }
+    }
+    loadBalances();
+    return () => {
+      alive = false;
+    };
+  }, [connected, provider, address, tokenIn, tokenOut, balances]);
+
+  const amountNum = parseFloat(amount) || 0;
+  const rate = useMemo(() => {
+    const pIn = PRICES_USD[tokenIn.symbol] ?? 0;
+    const pOut = PRICES_USD[tokenOut.symbol] ?? 0;
+    return pOut > 0 ? pIn / pOut : 0;
+  }, [tokenIn, tokenOut]);
+
+  const outAmount = amountNum * rate;
+  const minReceived = outAmount * (1 - slipNum / 100);
+  const usdValue = amountNum * (PRICES_USD[tokenIn.symbol] ?? 0);
+  const priceImpact = Math.min((usdValue / LIQUIDITY_USD) * 100, 50);
+
+  function handleSelectIn(t: Token) {
+    if (t.symbol === tokenOut.symbol) setTokenOut(tokenIn);
+    setTokenIn(t);
   }
 
-  function handleSwapTokens() {
-    const temp = tokenIn;
+  function handleSelectOut(t: Token) {
+    if (t.symbol === tokenIn.symbol) setTokenIn(tokenOut);
+    setTokenOut(t);
+  }
+
+  function handleReverse() {
     setTokenIn(tokenOut);
-    setTokenOut(temp);
+    setTokenOut(tokenIn);
+    setAmount(outAmount > 0 ? String(parseFloat(outAmount.toPrecision(6))) : "");
+  }
+
+  function setSlippagePreset(v: string) {
+    setSlippage(v);
+    setCustomSlippage("");
   }
 
   async function handleSwap() {
-    if (!amount || !connected) return;
+    if (!amountNum || !connected) return;
     setLoading(true);
     setError(null);
     setTxHash(null);
@@ -106,8 +362,11 @@ export default function SwapPage() {
           tokenIn: tokenIn.address,
           tokenOut: tokenOut.address,
           amount,
-          feeTier,
-          slippage,
+          standardAmount: amount,
+          minAmountOut: minReceived.toFixed(6),
+          feeTier: FEE_TIER.pct,
+          slippage: effectiveSlippage,
+          deadline,
           address,
         }),
       });
@@ -127,231 +386,336 @@ export default function SwapPage() {
     }
   }
 
+  const highSlip = slipNum > 5;
+  const lowSlip = slipNum < 0.1;
+  const impactColor =
+    priceImpact > 3 ? "#FF567E" : priceImpact > 1 ? "#FFB000" : "#00F58C";
+
+  const btnState = !connected
+    ? "connect"
+    : !amountNum
+    ? "enter"
+    : loading
+    ? "loading"
+    : "swap";
+
   return (
     <div className="space-y-4 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/pepe/profile.jpeg" alt="Swap" className="w-8 h-8 rounded-full border border-[#00F58C]" />
-          <h1 className="text-base md:text-lg font-medium text-[#E8EAE9] tracking-wider">
+          <img
+            src="/pepe/profile.jpeg"
+            alt="Swap"
+            className="w-8 h-8 rounded-full border border-[#00F58C]"
+          />
+          <h1 className="text-base md:text-lg font-medium text-[#E8E8E8] tracking-wider">
             ┌─ PROTECTED SWAP ────────────────────────────────────────────────────┐
           </h1>
         </div>
-        <span className="text-xs text-[#6B7A88]/40">Uniswap V4</span>
+        <span className="text-xs text-[#6B7A88]/60">Uniswap V4</span>
       </div>
 
-      {/* Wallet warning */}
-      {!connected && (
-        <div className="terminal-panel p-3 border border-[#3A4150]">
-          <div className="text-xs text-[#6B7A88] text-center">
-            Connect your wallet to swap
-          </div>
-        </div>
-      )}
-
-      {connected && (
-        <div className="max-w-md mx-auto">
-          {/* Swap Card */}
-          <div className="rounded-3xl bg-[#121721]/90 border border-white/[0.06] backdrop-blur-xl p-6 max-w-md mx-auto shadow-xl">
-            {/* Pool Selector */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              {/* You Pay */}
-              <div className="flex-1">
-                <PoolPairIcon
-                  token0Symbol={tokenOut.symbol}
-                  token1Symbol={tokenIn.symbol}
-                  token0Logo={tokenOut.logo}
-                  token1Logo={tokenIn.logo}
-                  tierFee={selectedFee?.fee}
-                />
-                <div className="mt-2">
-                  <div className="text-xs text-[#6B7A88] mb-1">You Pay</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg" style={{ color: tokenIn.color }}>{tokenIn.logo} {tokenIn.symbol}</span>
-                    <span className="text-[10px] text-[#6B7A88]">{tokenIn.name}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* You Receive */}
-              <div className="flex-1">
-                <PoolPairIcon
-                  token0Symbol={tokenIn.symbol}
-                  token1Symbol={tokenOut.symbol}
-                  token0Logo={tokenIn.logo}
-                  token1Logo={tokenOut.logo}
-                  tierFee={selectedFee?.fee}
-                />
-                <div className="mt-2">
-                  <div className="text-xs text-[#6B7A88] mb-1">You Receive</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg" style={{ color: tokenOut.color }}>{tokenOut.logo} {tokenOut.symbol}</span>
-                    <span className="text-[10px] text-[#6B7A88]">{tokenOut.name}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Pool Table Selector */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {POOLS.map((pool) => (
-                <div
-                  key={pool.id}
-                  onClick={() => setSelectedPool(pool)}
-                  className={selectedPool && selectedPool.id === pool.id
-                    ? "rounded-xl border border-[#00F58C]/50 bg-[#00F58C]/5 transition-colors cursor-pointer"
-                    : "rounded-xl border border-white/[0.04] bg-[#121721] transition-colors cursor-pointer"
-                }
-                >
-                  <div className="p-3 flex items-center gap-2">
-                    <PoolPairIcon
-                      token0Symbol={pool.tokens[0]}
-                      token1Symbol={pool.tokens[1]}
-                      token0Logo={TOKENS.find((t) => t.symbol === pool.tokens[0])?.logo}
-                      token1Logo={TOKENS.find((t) => t.symbol === pool.tokens[1])?.logo}
-                    />
-                    <span className="text-sm font-medium text-[#E8EAE9]">{pool.name}</span>
-                  </div>
-                  <div className="p-1 text-xs">
-                    <div className="text-[#6B7A88] mb-1">TVL</div>
-                    <div className="font-mono text-[#00F58C]">{pool.tvl}</div>
-                    <div className="text-[#6B7A88]">Vol 24h</div>
-                    <div className="font-mono text-[#00F5FF]">{pool.volume24h}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Swap Card */}
+      <div className="max-w-md mx-auto w-full">
+        <div className="glass-card rounded-3xl p-5 border border-white/[0.08] shadow-2xl">
+          {/* Card header: title + settings */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs tracking-[0.25em] text-[#6B7A88] font-mono">
+              SWAP
+            </span>
+            <button
+              onClick={() => setShowSettings((v) => !v)}
+              title="Transaction settings"
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all ${
+                showSettings
+                  ? "border-[#00F58C]/60 bg-[#00F58C]/10 text-[#00F58C]"
+                  : "border-white/[0.08] text-[#6B7A88] hover:text-[#E8E8E8] hover:border-white/[0.20]"
+              }`}
+            >
+              ⚙
+            </button>
           </div>
 
-          {/* Fee Tier */}
-          <div className="mb-4">
-            <label className="text-xs text-[#6B7A88] mb-1 block">Fee Tier</label>
-            <div className="grid grid-cols-3 gap-2">
-              {POOLS[0].fee === "0.05%" ? (
-                POOLS.map((pool) => (
-                  <button
-                    key={pool.id}
-                    onClick={() => setFeeTier(pool.fee)}
-                    className="py-1 px-2 border text-center transition-all text-[9px]"
+          {/* Settings panel */}
+          {showSettings && (
+            <div className="rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-3 mb-4 space-y-3 fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[#6B7A88]">
+                  Slippage tolerance
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {SLIPPAGE_PRESETS.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setSlippagePreset(v)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                        !isCustom && slippage === v
+                          ? "border-[#00F58C]/60 bg-[#00F58C]/10 text-[#00F58C]"
+                          : "border-white/[0.08] text-[#6B7A88] hover:border-white/[0.20]"
+                      }`}
+                    >
+                      {v}%
+                    </button>
+                  ))}
+                  <div
+                    className={`flex items-center rounded-lg border px-2 py-1 ${
+                      isCustom
+                        ? "border-[#00F58C]/60 bg-[#00F58C]/10"
+                        : "border-white/[0.08]"
+                    }`}
                   >
-                    <div className="font-bold text-[#00F58C]">{pool.fee}</div>
-                    <div className="text-[8px] text-[#6B7A88]">{pool.type === "hook" ? "V4 Hook" : "V4 Native"}</div>
-                  </button>
-                ))
-              ) : (
-                <p className="text-xs text-[#6B7A88]">Fee tiers not configured</p>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="50"
+                      step="0.01"
+                      value={customSlippage}
+                      onChange={(e) => setCustomSlippage(e.target.value)}
+                      placeholder=">"
+                      className="w-12 bg-transparent text-xs font-mono text-[#E8E8E8] placeholder-[#6B7A88] outline-none text-right"
+                    />
+                    <span className="text-xs text-[#6B7A88] ml-0.5">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {highSlip && (
+                <div className="text-[10px] text-[#FFB000]">
+                  High slippage — you may receive significantly less than
+                  expected.
+                </div>
               )}
+              {lowSlip && (
+                <div className="text-[10px] text-[#FF567E]">
+                  Very low slippage — your transaction is likely to fail.
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[#6B7A88]">
+                  Transaction deadline
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    max="4320"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-16 bg-[#0B0E14] border border-white/[0.08] rounded-lg px-2 py-1 text-xs font-mono text-[#E8E8E8] outline-none focus:border-[#00F58C]/50 text-right"
+                  />
+                  <span className="text-xs text-[#6B7A88]">min</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* You Pay */}
+          <div className="rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-[#6B7A88]">You pay</span>
+              <span className="text-[10px] font-mono text-[#6B7A88]">
+                Balance: {balances[tokenIn.address.toLowerCase()] ?? "—"}
+                {connected &&
+                  balances[tokenIn.address.toLowerCase()] &&
+                  balances[tokenIn.address.toLowerCase()] !== "—" && (
+                    <button
+                      onClick={() =>
+                        setAmount(balances[tokenIn.address.toLowerCase()] || "")
+                      }
+                      className="ml-1.5 text-[#00F58C] hover:underline"
+                    >
+                      MAX
+                    </button>
+                  )}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-[#E8E8E8] placeholder-[#6B7A88]/50 outline-none"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-[#6B7A88]">
+                  {usdValue > 0 ? `≈ $${fmt(usdValue, 2)}` : ""}
+                </span>
+                <TokenSelector
+                  token={tokenIn}
+                  other={tokenOut}
+                  onSelect={handleSelectIn}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Amount Input */}
-          <div className="mb-4">
-            <label className="text-xs text-[#6B7A88] mb-1 block">
-              Amount
-            </label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              className="w-full bg-[#0A0D12] border border-[#2A3040]/40 p-3 text-sm text-[#E8EAE9] focus:border-[#00F58C] outline-none"
+          {/* Reverse button */}
+          <div className="flex justify-center -my-2.5 relative z-10">
+            <button
+              onClick={handleReverse}
+              title="Switch tokens"
+              className="w-10 h-10 rounded-xl glass-card border border-white/[0.12] flex items-center justify-center text-[#00F58C] text-lg hover:border-[#00F58C]/60 hover:rotate-180 transition-all duration-300"
+            >
+              ⇅
+            </button>
+          </div>
+
+          {/* You Receive */}
+          <div className="rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-[#6B7A88]">You receive</span>
+              <span className="text-[10px] font-mono text-[#6B7A88]">
+                Balance: {balances[tokenOut.address.toLowerCase()] ?? "—"}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0 text-2xl font-mono text-[#E8E8E8]">
+                {amountNum > 0 ? fmt(outAmount) : <span className="text-[#6B7A88]/50">0.00</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-[#6B7A88]">
+                  {outAmount > 0
+                    ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
+                    : ""}
+                </span>
+                <TokenSelector
+                  token={tokenOut}
+                  other={tokenIn}
+                  onSelect={handleSelectOut}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="mt-3 rounded-2xl bg-[#0B0E14]/40 border border-white/[0.04] px-4 py-3 space-y-1.5">
+            <InfoRow
+              label="Rate"
+              value={`1 ${tokenIn.symbol} = ${fmt(rate, 6)} ${tokenOut.symbol}`}
+            />
+            <InfoRow
+              label="Price impact"
+              value={amountNum > 0 ? `${priceImpact.toFixed(2)}%` : "—"}
+              color={amountNum > 0 ? impactColor : undefined}
+            />
+            <InfoRow
+              label="Minimum received"
+              value={
+                amountNum > 0
+                  ? `${fmt(minReceived, 6)} ${tokenOut.symbol}`
+                  : "—"
+              }
+              color="#00F58C"
+            />
+            <InfoRow
+              label="Slippage tolerance"
+              value={`${effectiveSlippage}%`}
+              color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
+            />
+            <InfoRow
+              label="Pool fee"
+              value={`${FEE_TIER.pct} (${FEE_TIER.label})`}
+            />
+            <InfoRow
+              label="Route"
+              value={`${tokenIn.symbol} → ${tokenOut.symbol}`}
+            />
+            <InfoRow
+              label="Deadline"
+              value={`${deadline} min`}
             />
           </div>
 
-          {/* Slippage */}
-          <div className="mb-4">
-            <label className="text-xs text-[#6B7A88] mb-1 block">Slippage</label>
-            <div className="flex gap-2">
-              {["0.1", "0.5", "1.0", "2.0"].map((val) => (
-                <button
-                  key={val}
-                  onClick={() => setSlippage(val)}
-                  className={`flex-1 py-1 text-xs border transition-all ${slippage === val ? "border-[#00F58C] bg-[#00F58C]/10 text-[#00F58C]" : "border-white/[0.10] text-[#6B7A88] hover:border-[#00F58C]/30"}`}
-                >
-                  {val}%
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Execute Button */}
+          {/* CTA */}
           <button
-            onClick={handleSwap}
-            disabled={loading || !amount}
-            className={`w-full py-3 text-sm font-medium tracking-wider transition-all ${!loading && amount ? "bg-[#00F58C] text-[#0A0D12] hover:bg:#00CC33 transition-all" : "bg-white/[0.10] text-[#6B7A88] cursor-not-allowed"}`}
+            onClick={btnState === "connect" ? connect : handleSwap}
+            disabled={btnState === "enter" || btnState === "loading"}
+            className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono transition-all ${
+              btnState === "swap"
+                ? "bg-[#00F58C] text-[#0B0E14] hover:bg-[#00FF9E] shadow-[0_0_30px_rgba(0,245,140,0.25)]"
+                : btnState === "connect"
+                ? "bg-[#00F58C]/90 text-[#0B0E14] hover:bg-[#00F58C]"
+                : btnState === "loading"
+                ? "bg-[#00F58C]/20 text-[#00F58C] cursor-wait"
+                : "bg-white/[0.06] text-[#6B7A88] cursor-not-allowed"
+            }`}
           >
-            {loading ? "EXECUTING..." : `Swap via Meta-Hook`}
+            {btnState === "connect"
+              ? connecting
+                ? "CONNECTING..."
+                : "CONNECT WALLET"
+              : btnState === "enter"
+              ? "ENTER AN AMOUNT"
+              : btnState === "loading"
+              ? "SWAPPING..."
+              : "SWAP"}
           </button>
-        </div>
-      )}
 
-      {/* Info Panel */}
-      {connected && (
-        <div className="mt-6 space-y-4">
-          {/* Transaction Result */}
-          {txHash && (
-            <div className="terminal-panel p-3 border border-[#00F58C]/30">
-              <div className="text-xs text-[#00F58C] mb-1">Transaction submitted</div>
-              <a
-                href={`https://etherscan.io/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#00F58C]/80 hover:text-[#00F58C] break-all"
-              >
-                {txHash}
-              </a>
-              {result && (
-                <div className="mt-2 space-y-1 text-xs">
-                  <div className="text-[#6B7A88]">Received: <span className="text-[#00F58C]">{result.ethReceived} {tokenOut.symbol}</span></div>
-                  <div className="text-[#6B7A88]">MEV Captured: <span className="text-[#00F58C]">{result.mevCaptured} {tokenIn.symbol}</span></div>
-                </div>
-              )}
+          {!connected && (
+            <div className="mt-3 text-[10px] text-[#6B7A88] text-center">
+              Connect your wallet to swap
             </div>
           )}
+        </div>
 
-          {/* Error */}
-          {error && (
-            <div className="terminal-panel p-3 border border-[#FF567E]/30">
-              <div className="text-xs text-[#FF567E]">ERROR: {error}</div>
+        {/* Transaction result */}
+        {txHash && (
+          <div className="glass-card rounded-2xl p-4 mt-4 border border-[#00F58C]/30 fade-in">
+            <div className="text-xs text-[#00F58C] mb-1 font-mono">
+              ✓ TRANSACTION SUBMITTED
             </div>
-          )}
+            <a
+              href={`https://etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#00F58C]/80 hover:text-[#00F58C] break-all font-mono"
+            >
+              {txHash}
+            </a>
+            {result && (
+              <div className="mt-2 space-y-1 text-xs">
+                <InfoRow
+                  label="Received"
+                  value={`${String(result.ethReceived ?? "—")} ${tokenOut.symbol}`}
+                  color="#00F58C"
+                />
+                <InfoRow
+                  label="MEV Captured"
+                  value={`${String(result.mevCaptured ?? "—")} ${tokenIn.symbol}`}
+                  color="#00F58C"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Fee Summary */}
-          <div className="terminal-panel p-4 border-glow">
-            <div className="text-xs text-[#6B7A88] mb-3 tracking-widest">
-              ▸ SWAP SUMMARY
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[#6B7A88]">Pair:</span>
-                <span className="text-[#E8EAE9]">{tokenIn.symbol} → {tokenOut.symbol}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#6B7A88]">Fee Tier:</span>
-                <span className="text-[#00F58C]">{selectedFee?.fee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#6B7A88]">Slippage:</span>
-                <span className="text-[#00F58C]">{slippage}%</span>
-              </div>
+        {/* Error */}
+        {error && (
+          <div className="glass-card rounded-2xl p-4 mt-4 border border-[#FF567E]/30 fade-in">
+            <div className="text-xs text-[#FF567E] font-mono">
+              ERROR: {error}
             </div>
           </div>
+        )}
 
-          {/* How it works */}
-          <div className="terminal-panel p-4 border-glow">
-            <div className="text-xs text-[#6B7A88] mb-3 tracking-widest">
-              ▸ HOW IT WORKS
-            </div>
-            <div className="space-y-2 text-xs text-[#6B7A88]">
-              <div>1. You sell {tokenIn.symbol} for {tokenOut.symbol}</div>
-              <div>2. Router captures price distortion (MEV)</div>
-              <div>3. Back-swap buys {tokenIn.symbol} on the dip</div>
-              <div>4. Tokens burned via CappedBurnHook</div>
-              <div>5. Profit goes to LP vault as yield</div>
-            </div>
+        {/* How it works */}
+        <div className="glass-card rounded-2xl p-4 mt-4 border border-white/[0.06]">
+          <div className="text-xs text-[#6B7A88] mb-3 tracking-widest font-mono">
+            ▸ HOW IT WORKS
+          </div>
+          <div className="space-y-2 text-xs text-[#6B7A88]">
+            <div>1. You sell {tokenIn.symbol} for {tokenOut.symbol}</div>
+            <div>2. Router captures price distortion (MEV)</div>
+            <div>3. Back-swap buys {tokenIn.symbol} on the dip</div>
+            <div>4. Tokens burned via CappedBurnHook</div>
+            <div>5. Profit goes to LP vault as yield</div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

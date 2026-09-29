@@ -2,13 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { standardAmount, minAmountOut, address } = body;
+  const {
+    tokenIn,
+    tokenOut,
+    amount,
+    standardAmount,
+    minAmountOut,
+    feeTier,
+    slippage,
+    deadline,
+    address,
+  } = body;
 
   if (!address) {
     return NextResponse.json({ error: "Address required" }, { status: 400 });
   }
 
-  if (!standardAmount || parseFloat(standardAmount) <= 0) {
+  const inAmount = standardAmount || amount;
+  if (!inAmount || parseFloat(inAmount) <= 0) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
@@ -20,11 +31,17 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: true,
     txHash: mockTxHash,
-    standardAmount,
-    ethReceived: (parseFloat(standardAmount) * 0.99).toFixed(4),
-    mevCaptured: (parseFloat(standardAmount) * 0.02).toFixed(4),
-    burnAmount: (parseFloat(standardAmount) * 0.02).toFixed(4),
-    yieldDistributed: (parseFloat(standardAmount) * 0.001).toFixed(4),
-    message: `Executed protected sell and burn for ${standardAmount} $STANDARD`,
+    tokenIn,
+    tokenOut,
+    standardAmount: inAmount,
+    minAmountOut: minAmountOut || null,
+    feeTier: feeTier || null,
+    slippage: slippage || null,
+    deadline: deadline || null,
+    ethReceived: (parseFloat(inAmount) * 0.99).toFixed(4),
+    mevCaptured: (parseFloat(inAmount) * 0.02).toFixed(4),
+    burnAmount: (parseFloat(inAmount) * 0.02).toFixed(4),
+    yieldDistributed: (parseFloat(inAmount) * 0.001).toFixed(4),
+    message: `Executed protected swap for ${inAmount}`,
   });
 }
