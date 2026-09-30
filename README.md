@@ -160,7 +160,7 @@ PERFORMANCE FEE (15% of yield):
 ├── 60% → $BLD Stakers
 ├── 20% → Treasury (operations + audits)
 ├── 15% → Developers (maintenance)
-└──  5% → Burn (deflation)
+└──  5% → Buy-and-Burn (ETH → $IMD → BurnExecutor)
 
 FEE TIERS:
 ├── Genesis Key holders: 0%

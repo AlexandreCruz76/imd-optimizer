@@ -114,6 +114,33 @@ describe("OptimizerVaultV2 — split oficial DEC-017 (60/20/15/5)", function () 
     await vault.waitForDeployment();
   });
 
+  // Stack do Buy-and-Burn: venue mock (ETH → $IMD), $IMD de mercado e
+  // hook (contador público totalIMDBurnedByOptimizer)
+  async function deployBuyAndBurnStack() {
+    const [, , , , burnExec] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const imd = await MockERC20.deploy("Standard IMD", "IMD");
+    const Pool = await ethers.getContractFactory("MockUniswapV4Pool");
+    const venue = await Pool.deploy(await imd.getAddress());
+    await imd.mint(await venue.getAddress(), ethers.parseEther("10"));
+
+    const Hook = await ethers.getContractFactory("OptimizerHookV2");
+    const hook = await Hook.deploy(
+      await vault.getAddress(),
+      owner.address,
+      owner.address,
+      owner.address,
+      owner.address
+    );
+    await vault.setHook(await hook.getAddress());
+    await vault.setBuyAndBurn(
+      await imd.getAddress(),
+      await venue.getAddress()
+    );
+    return { imd, venue, hook, burnExec };
+  }
+
   describe("Deployment", function () {
     it("Should set router correctly", async function () {
       expect(await vault.router()).to.equal(owner.address);
@@ -233,7 +260,7 @@ describe("OptimizerVaultV2 — split oficial DEC-017 (60/20/15/5)", function () 
       );
     });
 
-    it("distributeSplit: só owner, só com destinatários configurados", async function () {
+    it("distributeSplit: só owner; 5% via Buy-and-Burn ($IMD ao executor, nunca ETH)", async function () {
       await vault.connect(owner).receiveYield({ value: ONE });
 
       await expect(
@@ -243,15 +270,18 @@ describe("OptimizerVaultV2 — split oficial DEC-017 (60/20/15/5)", function () 
         "stakingVault not set"
       );
 
+      const { imd, hook, burnExec } = await deployBuyAndBurnStack();
+
       await vault.setSplitRecipients(
         user1.address,
         user2.address,
         stranger.address,
-        owner.address
+        burnExec.address
       );
 
       const b1 = await ethers.provider.getBalance(user1.address);
       const b2 = await ethers.provider.getBalance(user2.address);
+      const bBurn = await ethers.provider.getBalance(burnExec.address);
 
       await expect(vault.distributeSplit()).to.emit(vault, "SplitDistributed");
 
@@ -261,9 +291,77 @@ describe("OptimizerVaultV2 — split oficial DEC-017 (60/20/15/5)", function () 
       expect(
         (await ethers.provider.getBalance(user2.address)) - b2
       ).to.equal((ONE * 2000n) / 10000n);
+
+      const bExp =
+        ONE -
+        (ONE * 6000n) / 10000n -
+        (ONE * 2000n) / 10000n -
+        (ONE * 1500n) / 10000n;
+
+      // Fatia de 5%: NUNCA ETH nativo ao BurnExecutor (ajuste)
+      expect(
+        (await ethers.provider.getBalance(burnExec.address)) - bBurn
+      ).to.equal(0);
+      // $IMD exato comprado a mercado (mock 1:1) → executor
+      expect(await imd.balanceOf(burnExec.address)).to.equal(bExp);
+      // Contador público soma o valor exato
+      expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+      // Cofre esvaziado (95% em ETH + 5% gasto na venue)
       expect(
         await ethers.provider.getBalance(await vault.getAddress())
       ).to.equal(0);
+      expect(await vault.burnAccrued()).to.equal(0);
+    });
+
+    it("buyAndBurn: guarda de config, permissão livre e contador (sem distributeSplit)", async function () {
+      await vault.connect(owner).receiveYield({ value: ONE });
+
+      const [, , , , burnExec] = await ethers.getSigners();
+      await vault.setSplitRecipients(
+        user1.address,
+        user2.address,
+        stranger.address,
+        burnExec.address
+      );
+
+      // Sem venue/token/hook: toda queima precisa somar ao contador público
+      await expect(vault.connect(stranger).buyAndBurn()).to.be.revertedWith(
+        "Buy-and-burn not configured"
+      );
+      await expect(vault.setBuyBurnSlippageBps(2001)).to.be.revertedWith(
+        "Slippage too high"
+      );
+
+      const { imd, venue, hook } = await deployBuyAndBurnStack();
+      await expect(
+        vault.setBuyAndBurn(ethers.ZeroAddress, await venue.getAddress())
+      ).to.be.revertedWith("Invalid config");
+
+      // Permissível a qualquer conta (destinatário fixo em config)
+      await expect(vault.connect(stranger).buyAndBurn()).to.emit(
+        vault,
+        "BuyAndBurn"
+      );
+
+      const bExp =
+        ONE -
+        (ONE * 6000n) / 10000n -
+        (ONE * 2000n) / 10000n -
+        (ONE * 1500n) / 10000n;
+
+      // Só a fatia de 5% foi mexida — os outros balgos ficam intactos
+      expect(await vault.burnAccrued()).to.equal(0);
+      expect(await vault.stakersAccrued()).to.equal((ONE * 6000n) / 10000n);
+      expect(await vault.treasuryAccrued()).to.equal((ONE * 2000n) / 10000n);
+      expect(await vault.devsAccrued()).to.equal((ONE * 1500n) / 10000n);
+      expect(await imd.balanceOf(burnExec.address)).to.equal(bExp);
+      expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+      // Cofre reteve os 95% restantes
+      expect(
+        await ethers.provider.getBalance(await vault.getAddress())
+      ).to.equal(ONE - bExp);
+      // Nada acumulado → no-op (não reverte)
+      await expect(vault.buyAndBurn()).to.not.be.reverted;
     });
   });
 

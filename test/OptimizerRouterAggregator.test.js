@@ -89,6 +89,25 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
     await deployStack();
   });
 
+  // Configura o Buy-and-Burn (ajuste da fatia de 5%): hook = contador público,
+  // venue = pool mock (ETH → $IMD), token = $IMD de mercado.
+  async function configureBuyAndBurn() {
+    const Hook = await ethers.getContractFactory("OptimizerHookV2");
+    const hook = await Hook.deploy(
+      await vault.getAddress(),
+      owner.address,
+      ethers.ZeroAddress,
+      ethers.ZeroAddress,
+      ethers.ZeroAddress
+    );
+    await vault.setHook(await hook.getAddress());
+    await vault.setBuyAndBurn(
+      await token.getAddress(),
+      await pool.getAddress()
+    );
+    return hook;
+  }
+
   // ==================== VENDA SIMPLES: TAXA ÚNICA → COFRE ====================
 
   it("venda 100 STANDARD: líquido exato e taxa 0,05% integralmente ao cofre (split 60/20/15/5)", async function () {
@@ -164,7 +183,62 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
     expect(ev.args.feeTotal).to.equal(feeTotal);
   });
 
-  it("distributeSplit: envia cada baldo ao destinatário correto (60/20/15/5)", async function () {
+  it("distributeSplit: 60/20/15 em ETH e fatia de 5% via Buy-and-Burn (nunca ETH ao burn)", async function () {
+    const amount = ethers.parseEther("100");
+    const [sqrt] = await (await router.getPoolState()).slice(0, 1);
+    const gross = quoteEth(amount, sqrt);
+    const feeTotal = (gross * FEE_BPS) / BPS;
+    const minOut = ((gross - feeTotal) * 90n) / 100n;
+    await router.connect(user1).executeProtectedSellAndBurn(amount, minOut);
+
+    const [_, __, ___, stakers, treasury, devs, burn] =
+      await ethers.getSigners();
+    const hook = await configureBuyAndBurn();
+    await vault.setSplitRecipients(
+      stakers.address,
+      treasury.address,
+      devs.address,
+      burn.address
+    );
+
+    const sExp = (feeTotal * STAKERS_BPS) / BPS;
+    const tExp = (feeTotal * TREASURY_BPS) / BPS;
+    const dExp = (feeTotal * DEVS_BPS) / BPS;
+    const bExp = feeTotal - sExp - tExp - dExp;
+
+    const before = await Promise.all(
+      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
+    );
+    const poolBefore = await ethOf(await pool.getAddress());
+    const burnTokenBefore = await token.balanceOf(burn.address);
+
+    await expect(vault.distributeSplit()).to.emit(vault, "SplitDistributed");
+
+    const after_ = await Promise.all(
+      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
+    );
+    expect(after_[0] - before[0]).to.equal(sExp);
+    expect(after_[1] - before[1]).to.equal(tExp);
+    expect(after_[2] - before[2]).to.equal(dExp);
+    // Fatia de 5%: NUNCA ETH nativo ao BurnExecutor (ajuste)
+    expect(after_[3] - before[3]).to.equal(0);
+    // O ETH da fatia foi à venue e voltou como $IMD (mock 1:1) → executor
+    expect((await ethOf(await pool.getAddress())) - poolBefore).to.equal(bExp);
+    expect((await token.balanceOf(burn.address)) - burnTokenBefore).to.equal(
+      bExp
+    );
+    // Contador público soma o valor exato da compra
+    expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+    expect(await ethOf(await vault.getAddress())).to.equal(0);
+    expect(await vault.stakersAccrued()).to.equal(0);
+
+    // Segunda chamada: nada acumulado → reverte
+    await expect(vault.distributeSplit()).to.be.revertedWith(
+      "Nothing accrued"
+    );
+  });
+
+  it("buyAndBurn: guarda de config, qualquer conta dispara e contador soma o valor exato", async function () {
     const amount = ethers.parseEther("100");
     const [sqrt] = await (await router.getPoolState()).slice(0, 1);
     const gross = quoteEth(amount, sqrt);
@@ -186,26 +260,43 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
     const dExp = (feeTotal * DEVS_BPS) / BPS;
     const bExp = feeTotal - sExp - tExp - dExp;
 
-    const before = await Promise.all(
-      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
-    );
-
-    await expect(vault.distributeSplit()).to.emit(vault, "SplitDistributed");
-
-    const after_ = await Promise.all(
-      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
-    );
-    expect(after_[0] - before[0]).to.equal(sExp);
-    expect(after_[1] - before[1]).to.equal(tExp);
-    expect(after_[2] - before[2]).to.equal(dExp);
-    expect(after_[3] - before[3]).to.equal(bExp);
-    expect(await ethOf(await vault.getAddress())).to.equal(0);
-    expect(await vault.stakersAccrued()).to.equal(0);
-
-    // Segunda chamada: nada acumulado → reverte
+    // Sem config: nenhuma queima escapa sem ir ao contador público
     await expect(vault.distributeSplit()).to.be.revertedWith(
-      "Nothing accrued"
+      "Buy-and-burn not configured"
     );
+    await expect(vault.connect(user1).buyAndBurn()).to.be.revertedWith(
+      "Buy-and-burn not configured"
+    );
+    await expect(
+      vault.setBuyAndBurn(ethers.ZeroAddress, await pool.getAddress())
+    ).to.be.revertedWith("Invalid config");
+
+    const hook = await configureBuyAndBurn();
+    const burnEthBefore = await ethOf(burn.address);
+    const vaultBefore = await ethOf(await vault.getAddress());
+
+    // Qualquer conta dispara (destinatário fixo em config)
+    await expect(vault.connect(user1).buyAndBurn())
+      .to.emit(vault, "BuyAndBurn")
+      .and.to.emit(hook, "BuyAndBurnCounted")
+      .withArgs(bExp, await anyValue());
+
+    // Só a fatia de 5% foi mexida — os outros balgos ficam intactos
+    expect(await vault.burnAccrued()).to.equal(0);
+    expect(await vault.stakersAccrued()).to.equal(sExp);
+    expect(await vault.treasuryAccrued()).to.equal(tExp);
+    expect(await vault.devsAccrued()).to.equal(dExp);
+    // Executor recebe $IMD exato, NUNCA ETH
+    expect(await token.balanceOf(burn.address)).to.equal(bExp);
+    expect((await ethOf(burn.address)) - burnEthBefore).to.equal(0);
+    // Contador público soma o valor exato
+    expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+    // Cofre reteve os 95%; a fatia de 5% saiu em ETH para a venue
+    expect((await ethOf(await vault.getAddress())) - vaultBefore).to.equal(
+      -bExp
+    );
+    // Nada acumulado → no-op (não reverte)
+    await expect(vault.buyAndBurn()).to.not.be.reverted;
   });
 
   // ==================== ROTA MULTI-HOP (DEC-017) ====================
@@ -605,3 +696,8 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
     ).to.be.revertedWith("Invalid vault");
   });
 });
+
+// matcher local: aceita qualquer valor no assert de evento
+function anyValue() {
+  return (val) => val !== undefined && val !== null;
+}

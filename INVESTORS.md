@@ -45,7 +45,7 @@
    - 60% → $BLD Stakers
    - 20% → Treasury
    - 15% → Developers
-   - 5% → Burn
+   - 5% → Buy-and-Burn (ETH → $IMD → BurnExecutor)
 
 ### Revenue Projections
 

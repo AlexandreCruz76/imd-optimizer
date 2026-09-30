@@ -188,6 +188,11 @@ export default function BurnsPage() {
               • Auto-burn na interceptação (DEC-017): $IMD interceptado é
               queimado e contabilizado em totalIMDBurnedByOptimizer
             </div>
+            <div>
+              • Buy-and-Burn (fatia de 5%): o ETH do Burn Budget compra $IMD a
+              mercado, vai ao BurnExecutor e soma o valor exato a
+              totalIMDBurnedByOptimizer — nunca queima ETH nativo
+            </div>
             <div>• Remaining supply: dynamically adjusted per tier</div>
             <div>• Minimum burn threshold: 0.01 $IMD</div>
           </div>

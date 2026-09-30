@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
 
 /**
  * Suíte DEC-017 do OptimizerHookV2:
@@ -369,6 +369,97 @@ describe("OptimizerHookV2 — DEC-017 (interceptação, burn, contador)", functi
     expect(await hook.totalIMDBurnedByOptimizer()).to.equal(0);
     expect(await ethOf(await vault.getAddress())).to.equal(
       ethers.parseEther("2")
+    );
+  });
+
+  it("recordBuyAndBurn: apenas o cofre reporta (guarda do contador público)", async function () {
+    const vaultAddr = await vault.getAddress();
+
+    await expect(
+      hook.connect(stranger).recordBuyAndBurn(ethers.parseEther("1"))
+    ).to.be.revertedWith("Not vault");
+    await expect(
+      hook.connect(user).recordBuyAndBurn(ethers.parseEther("1"))
+    ).to.be.revertedWith("Not vault");
+
+    // Simula o cofre (endereço do contrato) para os caminhos autorizados
+    await owner.sendTransaction({
+      to: vaultAddr,
+      value: ethers.parseEther("1"),
+    });
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [vaultAddr],
+    });
+    const vaultSigner = await ethers.getSigner(vaultAddr);
+
+    await expect(
+      hook.connect(vaultSigner).recordBuyAndBurn(0)
+    ).to.be.revertedWith("Zero amount");
+
+    await expect(
+      hook.connect(vaultSigner).recordBuyAndBurn(ethers.parseEther("7"))
+    )
+      .to.emit(hook, "BuyAndBurnCounted")
+      .withArgs(ethers.parseEther("7"), await anyValue());
+    expect(await hook.totalIMDBurnedByOptimizer()).to.equal(
+      ethers.parseEther("7")
+    );
+
+    await network.provider.request({
+      method: "hardhat_stopImpersonatingAccount",
+      params: [vaultAddr],
+    });
+  });
+
+  it("contador agrega auto-burn da interceptação + Buy-and-Burn do cofre (valor exato)", async function () {
+    // 1) Interceptação: 1000 $IMD auto-queimados
+    await hook.afterSwap(
+      user.address,
+      true,
+      ethers.parseEther("100"),
+      ethers.parseEther("90"),
+      SQRT,
+      0,
+      "0x"
+    );
+    expect(await hook.totalIMDBurnedByOptimizer()).to.equal(
+      ethers.parseEther("1000")
+    );
+
+    // 2) Buy-and-Burn do cofre: fatia de 5% de 2 ETH = 0,1 ETH → $IMD
+    const Pool = await ethers.getContractFactory("MockUniswapV4Pool");
+    const pool = await Pool.deploy(await token.getAddress());
+    await token.mint(await pool.getAddress(), ethers.parseEther("100"));
+    await vault.setBuyAndBurn(
+      await token.getAddress(),
+      await pool.getAddress()
+    );
+
+    const burnEthBefore = await ethOf(burnRecipient.address);
+    await expect(vault.distributeSplit())
+      .to.emit(vault, "BuyAndBurn")
+      .and.to.emit(hook, "BuyAndBurnCounted")
+      .withArgs(ethers.parseEther("0.1"), await anyValue());
+
+    // Fatia de 5%: executor recebe $IMD exato, NUNCA ETH
+    expect(await token.balanceOf(burnRecipient.address)).to.equal(
+      ethers.parseEther("0.1")
+    );
+    expect(
+      (await ethOf(burnRecipient.address)) - burnEthBefore
+    ).to.equal(0);
+    expect(await vault.burnAccrued()).to.equal(0);
+    // Split completo distribuído; cofre sem saldo
+    expect(await ethOf(await vault.getAddress())).to.equal(0);
+    expect(await vault.stakersAccrued()).to.equal(0);
+
+    // Contador público agrega as duas origens com valor exato
+    expect(await hook.totalIMDBurnedByOptimizer()).to.equal(
+      ethers.parseEther("1000.1")
+    );
+    expect(await token.balanceOf(BURN_DEAD)).to.equal(
+      ethers.parseEther("1000")
     );
   });
 });
