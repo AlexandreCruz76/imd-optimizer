@@ -20,6 +20,13 @@ export async function GET() {
 
     // OptimizerHookV2 (Sepolia) — contador de auto-burn DEC-017
     optimizerHook: process.env.OPTIMIZER_HOOK_ADDRESS || "",
+
+    // OptimizerGenesisKey (Sepolia) — Buildercoin NFT 501 / 0.05 ETH (DEC-020)
+    genesisKey: process.env.GENESIS_KEY_ADDRESS || "",
+
+    // Venues de arbitragem intra-par (Regra 2): Pool A sem hook / Pool B com hook
+    arbVenueBuy: process.env.ARB_VENUE_BUY_ADDRESS || "",
+    arbVenueSell: process.env.ARB_VENUE_SELL_ADDRESS || "",
     
     // Network config
     chainId: 11155111,

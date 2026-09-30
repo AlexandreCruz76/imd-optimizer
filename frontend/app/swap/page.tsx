@@ -63,7 +63,9 @@ const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
 const ROUTER_ABI = [
   "function getPoolState() view returns (uint160, int24, bool)",
   "function getStats() view returns (uint256,uint256,uint256,uint256,uint256)",
-  "function feeBps() view returns (uint256)",
+  "function identityTier(address) view returns (uint8)",
+  "function swapFeeBps(address) view returns (uint256)",
+  "function successFeeBps(address) view returns (uint256)",
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
   "function executeProtectedSellAndBurn(uint256 standardAmount, uint256 minAmountOut) external",
@@ -86,6 +88,8 @@ interface SepoliaInfo {
     sqrtPriceX96: bigint;
     venueEth: bigint;
     feeBps: number;
+  tier: number;
+  successFeeBps: number;
   minDelay: number;
   lastOpBlock: number;
   blockNumber: number;
@@ -97,7 +101,9 @@ interface SepoliaInfo {
 
 const SLIPPAGE_PRESETS = ["0.1", "0.5", "1.0"];
 
-const FEE_TIER = { pct: "0.05%", label: "V4 Hook" };
+// Identity-Fi (DEC-020): faixa de taxa de swap 0.00%–0.50% conforme o Tier
+const FEE_TIER = { pct: "0.00%–0.50%", label: "Identity-Fi Tier" };
+const TIER_LABELS = ["Alpha", "Partner", "Holder", "Retail"];
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
@@ -376,11 +382,13 @@ export default function SwapPage() {
         hasMint = false;
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, provider);
-      const [state, stats, feeBps, minDelay, lastOp, bn, poolAddr] =
+      const [state, stats, tierRaw, feeRaw, successRaw, minDelay, lastOp, bn, poolAddr] =
         await Promise.all([
           router.getPoolState(),
           router.getStats(),
-          router.feeBps(),
+          router.identityTier(address),
+          router.swapFeeBps(address),
+          router.successFeeBps(address),
           router.minBlockDelay(),
           router.lastOperationBlock(address),
           provider.getBlockNumber(),
@@ -396,7 +404,9 @@ export default function SwapPage() {
         hasMint,
         sqrtPriceX96: state[0] as bigint,
         venueEth,
-        feeBps: Number(feeBps),
+        feeBps: Number(feeRaw),
+        tier: Number(tierRaw),
+        successFeeBps: Number(successRaw),
         minDelay: Number(minDelay),
         lastOpBlock: Number(lastOp),
         blockNumber: bn,
@@ -698,6 +708,21 @@ export default function SwapPage() {
                 </div>
               )}
 
+      {/* Identity-Fi status (DEC-020): taxa do Tier + proteção */}
+      <div className="max-w-md mx-auto w-full flex items-center justify-between rounded-xl border border-[#00F58C]/30 bg-[#00F58C]/10 px-3 py-2 text-xs font-mono">
+        <span className="text-[#00F58C]">
+          Your Swap Fee:{" "}
+          {realMode && sep
+            ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${sep.tier + 1} (${
+                TIER_LABELS[sep.tier] ?? "Retail"
+              })`
+            : "0.00% – 0.50% (pelo Tier Identity-Fi)"}
+        </span>
+        <span className={realMode ? "text-[#00F58C]" : "text-[#FFB000]"}>
+          V4 MEV Protection: {realMode ? "ACTIVE" : "DEMO"}
+        </span>
+      </div>
+
       {/* Swap Card */}
       <div className="max-w-md mx-auto w-full">
         <div className="glass-card rounded-3xl p-5 border border-white/[0.08] shadow-2xl">
@@ -992,19 +1017,12 @@ export default function SwapPage() {
                   color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
                 />
                 <InfoRow
-                  label="Protocol fee"
+                  label="Your Swap Fee (Identity-Fi Tier)"
                   value={
                     sep
-                      ? `${(sep.feeBps / 100).toFixed(2)}%${
-                          realQuote
-                            ? ` (${fmt(
-                                parseFloat(
-                                  ethers.formatUnits(realQuote.fee, 18)
-                                ),
-                                6
-                              )} ETH)`
-                            : ""
-                        }`
+                      ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${
+                          sep.tier + 1
+                        }${realQuote ? ` (${fmt(parseFloat(ethers.formatUnits(realQuote.fee, 18)), 6)} ETH)` : ""}`
                       : "—"
                   }
                 />

@@ -3,7 +3,8 @@ const { ethers, network } = require("hardhat");
 
 /**
  * Suíte DEC-017 do OptimizerHookV2:
- * - Identity Fees congeladas (Alpha): só a taxa base de 0,05% do Router
+ * - Identity Fees congeladas (Alpha): só a taxa de swap do Router
+ *   (tier Identity-Fi por utilizador — DEC-020)
  * - Interceptação (afterSwap, impacto ≥50 bps OU bot do oracle):
  *   ETH → cofre INTEGRAL (split 60/20/15/5 exclusivo do cofre)
  *   $IMD → auto-burn (burn() ou fallback 0x…dEaD) + contador público
@@ -294,7 +295,7 @@ describe("OptimizerHookV2 — DEC-017 (interceptação, burn, contador)", functi
     expect(sqrtAfter).to.equal(SQRT);
 
     // Antes/depois da troca: hook não acumula taxa nenhuma
-    // (a única taxa é a de 0,05% do Router — sem dupla taxação)
+    // (a única taxa é a de swap do Router — sem dupla taxação)
     expect(await hook.getTotalFeesCollected()).to.equal(0);
     expect(await hook.totalFeesCollected()).to.equal(0);
   });

@@ -1,21 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
 
-const MAX_SUPPLY = 100;
+// DEC-020: Buildercoin NFT — 501 supply, 0.05 ETH, Tier 1 (Alpha)
+const MAX_SUPPLY = 501;
+const GENESIS_ABI = [
+  "function mintGenesis() payable",
+  "function mintBacker() payable",
+  "function totalSupply() view returns (uint256)",
+];
 
 interface KeyInfo {
+  tokenId?: number;
   tier: string;
   mintedAt: number;
   totalMEVReceived: string;
   active: boolean;
 }
 
+interface MintStatus {
+  deployed: boolean;
+  mintOpen: boolean;
+  totalMinted: number;
+  maxSupply: number;
+  genesisPrice: string;
+  backerPrice: string;
+  targetRaise: string;
+}
+
+const DEFAULT_STATUS: MintStatus = {
+  deployed: false,
+  mintOpen: false,
+  totalMinted: 0,
+  maxSupply: MAX_SUPPLY,
+  genesisPrice: "0.05",
+  backerPrice: "1.0",
+  targetRaise: "25.05 ETH",
+};
+
 export default function NFTMintPage() {
-  const { connected, address, chainId } = useWallet();
-  const [mintOpen, setMintOpen] = useState(false);
-  const [totalMinted, setTotalMinted] = useState(0);
+  const { connected, address, chainId, signer } = useWallet();
+  const [status, setStatus] = useState<MintStatus>(DEFAULT_STATUS);
+  const [genesisAddr, setGenesisAddr] = useState("");
   const [loading, setLoading] = useState(true);
   const [minting, setMinting] = useState(false);
   const [userKeys, setUserKeys] = useState<KeyInfo[]>([]);
@@ -24,6 +52,10 @@ export default function NFTMintPage() {
 
   useEffect(() => {
     fetchMintStatus();
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((j) => setGenesisAddr(j.genesisKey || ""))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -37,9 +69,8 @@ export default function NFTMintPage() {
       const res = await fetch("/api/nft/status");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setMintOpen(data.mintOpen);
-      setTotalMinted(data.totalMinted);
-    } catch (err) {
+      setStatus({ ...DEFAULT_STATUS, ...data });
+    } catch {
       setError("Failed to load mint status");
     } finally {
       setLoading(false);
@@ -54,62 +85,46 @@ export default function NFTMintPage() {
         const data = await res.json();
         setUserKeys(data.keys || []);
       }
-    } catch (err) {
+    } catch {
       console.error("Failed to fetch user keys");
     }
   }
 
-  async function mintGenesis() {
+  // Mint REAL na chain (client-side via carteira) — sem tx mock
+  async function mintKey(kind: "GENESIS" | "BACKER") {
+    if (!signer || !genesisAddr) {
+      setError("Conecte a carteira Sepolia e configure GENESIS_KEY_ADDRESS");
+      return;
+    }
     setMinting(true);
     setError(null);
+    setTxHash(null);
     try {
-      const res = await fetch("/api/nft/mint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: "GENESIS", address }),
-      });
-      const data = await res.json();
-      if (data.txHash) {
-        setTxHash(data.txHash);
-        setTimeout(() => {
-          fetchMintStatus();
-          fetchUserKeys();
-        }, 5000);
-      } else {
-        setError(data.error || "Mint failed");
-      }
-    } catch (err: any) {
-      setError(err.message || "Mint failed");
+      const contract = new ethers.Contract(genesisAddr, GENESIS_ABI, signer);
+      const value = ethers.parseEther(
+        kind === "GENESIS" ? status.genesisPrice : status.backerPrice
+      );
+      const tx =
+        kind === "GENESIS"
+          ? await contract.mintGenesis({ value })
+          : await contract.mintBacker({ value });
+      setTxHash(tx.hash as string);
+      await tx.wait();
+      setTimeout(() => {
+        fetchMintStatus();
+        fetchUserKeys();
+      }, 2000);
+    } catch (err: unknown) {
+      const e = err as { shortMessage?: string; message?: string };
+      setError(e.shortMessage || e.message || "Mint failed");
     } finally {
       setMinting(false);
     }
   }
 
-  async function mintBacker() {
-    setMinting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/nft/mint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: "BACKER", address }),
-      });
-      const data = await res.json();
-      if (data.txHash) {
-        setTxHash(data.txHash);
-        setTimeout(() => {
-          fetchMintStatus();
-          fetchUserKeys();
-        }, 5000);
-      } else {
-        setError(data.error || "Mint failed");
-      }
-    } catch (err: any) {
-      setError(err.message || "Mint failed");
-    } finally {
-      setMinting(false);
-    }
-  }
+  const isSepolia = chainId === 11155111;
+  const canMint =
+    status.mintOpen && status.deployed && connected && isSepolia && !minting;
 
   if (loading) {
     return (
@@ -128,7 +143,9 @@ export default function NFTMintPage() {
           <h1 className="text-base md:text-lg glow-strong tracking-wider">
             ┌─ OPTIMIZER GENESIS KEY ──────────────────────────────────────────────┐
           </h1>
-          <div className="text-[10px] md:text-xs text-[#00ff4140]">ERC-721 — 200 Supply</div>
+          <div className="text-[10px] md:text-xs text-[#00ff4140]">
+            ERC-721 — 501 Supply · 0.05 ETH · Tier 1 (Alpha)
+          </div>
         </div>
       </div>
 
@@ -136,7 +153,25 @@ export default function NFTMintPage() {
       {!connected && (
         <div className="terminal-panel p-3 border border-[#ffb000]">
           <div className="text-xs text-[#ffb000] text-center">
-            ⚠️ Connect your wallet to mint a Genesis Key
+            ⚠️ Connect your wallet to mint a Buildercoin Key
+          </div>
+        </div>
+      )}
+
+      {/* Contracts warning */}
+      {connected && !status.deployed && (
+        <div className="terminal-panel p-3 border border-[#ffb000]">
+          <div className="text-xs text-[#ffb000] text-center">
+            ⚠ Contrato GenesisKey ainda não deployado — configure
+            GENESIS_KEY_ADDRESS no .env
+          </div>
+        </div>
+      )}
+
+      {connected && status.deployed && !isSepolia && (
+        <div className="terminal-panel p-3 border border-[#ffb000]">
+          <div className="text-xs text-[#ffb000] text-center">
+            ⚠ Mint disponível apenas na Sepolia Testnet
           </div>
         </div>
       )}
@@ -149,21 +184,21 @@ export default function NFTMintPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div>
             <div className="text-[#00ff4140]">STATUS</div>
-            <div className={mintOpen ? "text-[#00ff41] glow" : "text-[#ff0040]"}>
-              {mintOpen ? "● OPEN" : "● CLOSED"}
+            <div className={status.mintOpen ? "text-[#00ff41] glow" : "text-[#ff0040]"}>
+              {status.mintOpen ? "● OPEN" : "● CLOSED"}
             </div>
           </div>
           <div>
             <div className="text-[#00ff4140]">MINTED</div>
-            <div className="text-[#00ff41]">{totalMinted} / {MAX_SUPPLY}</div>
+            <div className="text-[#00ff41]">{status.totalMinted} / {status.maxSupply}</div>
           </div>
           <div>
             <div className="text-[#00ff4140]">REMAINING</div>
-            <div className="text-[#00ff41]">{MAX_SUPPLY - totalMinted}</div>
+            <div className="text-[#00ff41]">{Math.max(0, status.maxSupply - status.totalMinted)}</div>
           </div>
           <div>
             <div className="text-[#00ff4140]">TARGET</div>
-            <div className="text-[#00ff41]">50-100 ETH</div>
+            <div className="text-[#00ff41]">{status.targetRaise}</div>
           </div>
         </div>
         <div className="mt-3">
@@ -171,12 +206,37 @@ export default function NFTMintPage() {
           <div className="progress-bar">
             <div
               className="progress-bar-fill bg-[#00ff41]"
-              style={{ width: `${(totalMinted / MAX_SUPPLY) * 100}%` }}
+              style={{ width: `${(status.totalMinted / status.maxSupply) * 100}%` }}
             />
           </div>
           <div className="text-xs text-[#00ff4150] mt-1">
-            {((totalMinted / MAX_SUPPLY) * 100).toFixed(1)}% sold
+            {((status.totalMinted / status.maxSupply) * 100).toFixed(1)}% sold
           </div>
+        </div>
+      </div>
+
+      {/* Transparência 40/40/20 (front_final §2) */}
+      <div className="terminal-panel p-4 border border-[#00ff41]/40">
+        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+          ▸ USO DOS FUNDOS (TRANSPARÊNCIA)
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="p-2 bg-[#00ff4105] border border-[#00ff41]/20">
+            <div className="text-[#00ff41] font-bold">40% Core Team</div>
+            <div className="text-[#00ff4160]">Codeming — dev, auditoria e manutenção</div>
+          </div>
+          <div className="p-2 bg-[#00ff4105] border border-[#00ff41]/20">
+            <div className="text-[#00ff41] font-bold">40% Infra & Security</div>
+            <div className="text-[#00ff4160]">RPCs, monitoramento, bug bounty e testes</div>
+          </div>
+          <div className="p-2 bg-[#00ff4105] border border-[#00ff41]/20">
+            <div className="text-[#00ff41] font-bold">20% Growth & Bounties</div>
+            <div className="text-[#00ff4160]">Liquidez, parcerias e incentivos da comunidade</div>
+          </div>
+        </div>
+        <div className="text-xs text-[#00ff4150] mt-3">
+          Alvo máximo: {status.maxSupply} × {status.genesisPrice} ETH ={" "}
+          {status.targetRaise} (Genesis) · Backer 1 ETH cada · sem venda de token — só o NFT
         </div>
       </div>
 
@@ -185,26 +245,28 @@ export default function NFTMintPage() {
         {/* Genesis Key */}
         <div className="terminal-panel p-4 border-glow border-[#00ff41]">
           <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
-            ▸ GENESIS KEY
+            ▸ GENESIS KEY · TIER 1 (ALPHA)
           </div>
           <div className="space-y-3">
-            <div className="text-xs text-[#00ff4160]">Supply: 50 keys</div>
+            <div className="text-xs text-[#00ff4160]">
+              Supply: {status.maxSupply} keys · {status.genesisPrice} ETH
+            </div>
             <div className="space-y-2 text-xs">
-              <div className="text-[#00ff41]">✓ Taxa ZERO no Optimizer router</div>
-              <div className="text-[#00ff41]">✓ % do MEV capturado</div>
+              <div className="text-[#00ff41]">✓ 0.00% de taxa no swap (Tier Alpha)</div>
+              <div className="text-[#00ff41]">✓ Success Fee 5% — só sobre o lucro de arbitragem</div>
+              <div className="text-[#00ff41]">✓ 4x de yield no Builder Staking</div>
               <div className="text-[#00ff41]">✓ Acesso prioritário B2B</div>
-              <div className="text-[#00ff41]">✓ Direitos de governança</div>
             </div>
             <button
-              onClick={mintGenesis}
-              disabled={!mintOpen || minting || !connected}
+              onClick={() => mintKey("GENESIS")}
+              disabled={!canMint}
               className={`w-full py-2 text-xs tracking-wider font-bold ${
-                mintOpen && !minting && connected
+                canMint
                   ? "bg-[#00ff41] text-[#0a0a0a] hover:bg-[#00cc33]"
                   : "bg-[#00ff4120] text-[#00ff4140] cursor-not-allowed"
               }`}
             >
-              {minting ? "MINTING..." : "MINT GENESIS"}
+              {minting ? "MINTING..." : `MINT GENESIS · ${status.genesisPrice} ETH`}
             </button>
           </div>
         </div>
@@ -215,23 +277,25 @@ export default function NFTMintPage() {
             ▸ BACKER KEY (PRIORITY)
           </div>
           <div className="space-y-3">
-            <div className="text-xs text-[#00ff4160]">Supply: 50 keys</div>
+            <div className="text-xs text-[#00ff4160]">
+              Mesma pool de {status.maxSupply} · {status.backerPrice} ETH
+            </div>
             <div className="space-y-2 text-xs">
-              <div className="text-[#ffb000]">✓ Tudo do Genesis Key</div>
+              <div className="text-[#ffb000]">✓ Tudo do Genesis Key (Tier 1 Alpha)</div>
               <div className="text-[#ffb000]">✓ Acesso prioritário a novos pools</div>
               <div className="text-[#ffb000]">✓ Weight maior na governança</div>
-              <div className="text-[#ffb000]">✓ Badge "BACKER" no社区</div>
+              <div className="text-[#ffb000]">✓ Badge &quot;BACKER&quot; na comunidade</div>
             </div>
             <button
-              onClick={mintBacker}
-              disabled={!mintOpen || minting || !connected}
+              onClick={() => mintKey("BACKER")}
+              disabled={!canMint}
               className={`w-full py-2 text-xs tracking-wider font-bold ${
-                mintOpen && !minting && connected
+                canMint
                   ? "bg-[#ffb000] text-[#0a0a0a] hover:bg-[#cc8800]"
                   : "bg-[#ffb00020] text-[#ffb00040] cursor-not-allowed"
               }`}
             >
-              {minting ? "MINTING..." : "MINT BACKER"}
+              {minting ? "MINTING..." : `MINT BACKER · ${status.backerPrice} ETH`}
             </button>
           </div>
         </div>
@@ -244,12 +308,12 @@ export default function NFTMintPage() {
             ✅ Transaction submitted: {txHash.slice(0, 20)}...
           </div>
           <a
-            href={`https://etherscan.io/tx/${txHash}`}
+            href={`https://sepolia.etherscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-[#00ff4160] hover:text-[#00ff41]"
           >
-            View on Etherscan →
+            View on Sepolia Etherscan →
           </a>
         </div>
       )}
@@ -270,7 +334,7 @@ export default function NFTMintPage() {
           <div className="space-y-2">
             {userKeys.map((key, i) => (
               <div key={i} className="flex justify-between text-xs p-2 bg-[#00ff4105]">
-                <span className="text-[#00ff41]">Key #{i + 1}</span>
+                <span className="text-[#00ff41]">Key #{key.tokenId ?? i + 1}</span>
                 <span className="text-[#00ff4160]">Tier: {key.tier}</span>
                 <span className="text-[#00ff4160]">
                   MEV: {key.totalMEVReceived} ETH
@@ -292,12 +356,12 @@ export default function NFTMintPage() {
           ▸ HOW IT WORKS
         </div>
         <div className="space-y-2 text-xs text-[#00ff4160]">
-          <div>1. Connect wallet (Mainnet)</div>
-          <div>2. Choose Genesis or Backer tier</div>
-          <div>3. Sign transaction</div>
+          <div>1. Connect wallet (Sepolia Testnet)</div>
+          <div>2. Choose Genesis ({status.genesisPrice} ETH) or Backer ({status.backerPrice} ETH)</div>
+          <div>3. Sign transaction — mint real on-chain, sem intermediário</div>
           <div>4. Receive ERC-721 NFT in your wallet</div>
-          <div>5. Use NFT on Optimizer router for ZERO fees</div>
-          <div>6. Receive MEV revenue share automatically</div>
+          <div>5. Tier 1 Alpha no router: 0.00% swap · 5% success · 4x yield</div>
+          <div>6. Sua parte do MEV via claimMEV()</div>
         </div>
       </div>
     </div>

@@ -1,7 +1,60 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Navbar } from "./components/Navbar";
 import { WalletProvider } from "./components/WalletProvider";
+
+/**
+ * Live Metrics Bar (front_final Secção 1) — dados REAIS via /api/metrics.
+ * Sem contrato configurado exibe "—" em vez de número inventado.
+ * Status: "Sepolia Testnet" até o deploy mainnet (→ "Mainnet Beta").
+ */
+const DEPLOYMENT_STATUS = "Sepolia Testnet"; // → "Mainnet Beta" após deploy mainnet
+
+function LiveMetricsBar() {
+  const [mev, setMev] = useState<string | null>(null);
+  const [burned, setBurned] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/metrics")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        setMev(d.mevInterceptedEth ?? null);
+        setBurned(d.imdBurned ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const fmt = (v: string | null) =>
+    v === null ? "—" : `${Number(v).toFixed(2)}`;
+
+  return (
+    <div className="mt-10 rounded-2xl border border-white/[0.08] bg-[#0D121A]/80 backdrop-blur-xl px-5 py-4">
+      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-mono">
+        <span className="inline-flex items-center gap-2 text-[#00F58C]">
+          <span className="w-2 h-2 rounded-full bg-[#00F58C] animate-pulse" />
+          Status: {DEPLOYMENT_STATUS}
+        </span>
+        <span className="text-[#8899AA]">
+          Total MEV Intercepted:{" "}
+          <span className="text-white">{fmt(mev)} ETH</span>
+        </span>
+        <span className="text-[#8899AA]">
+          $IMD Auto-Burned:{" "}
+          <span className="text-white">{fmt(burned)} $IMD</span> 🔥
+        </span>
+        <span className="text-[#6B7A88]">
+          Network: Powered by Codeming | Validated by SUPEPE Swarm
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -28,7 +81,7 @@ export default function HomePage() {
                     IMD Optimizer
                   </h1>
                   <p className="text-lg md:text-xl text-[#6B7A88] mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                    The Agentic V4 Meta-Hook Protocol — Autonomous MEV Capture, Elastic Supply Contraction, and Retail-First Value Redistribution on Uniswap V4.
+                    The Agentic V4 Meta-Hook — We don&apos;t simulate protection. We execute it.
                   </p>
 
                   {/* Pill Tags */}
@@ -66,6 +119,9 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Live Metrics Bar — dados on-chain reais (front_final §1) */}
+              <LiveMetricsBar />
             </div>
 
             {/* Scroll indicator */}
@@ -144,10 +200,10 @@ export default function HomePage() {
                   </p>
                   
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <MetricHighlight value="12.47 ETH" label="MEV Captured This Epoch" accent="#00F58C" />
-                    <MetricHighlight value="308%" label="Hook Pool APY (30d)" accent="#00F5FF" />
-                    <MetricHighlight value="$1.2B" label="Total Value Locked" accent="#FFB000" />
-                    <MetricHighlight value="12.47%" label="Annual Burn Rate" accent="#FF4444" />
+                    <MetricHighlight value="0 – 0.5%" label="Swap Fee por Identity Tier" accent="#00F58C" />
+                    <MetricHighlight value="5 – 25%" label="Success Fee só sobre o lucro" accent="#00F5FF" />
+                    <MetricHighlight value="4x – 0x" label="Yield Multiplier por Tier" accent="#FFB000" />
+                    <MetricHighlight value="2 – 5%" label="Penalty de Unstake Instantâneo" accent="#FF4444" />
                   </div>
                 </div>
                 
@@ -177,18 +233,15 @@ export default function HomePage() {
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs">
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00F58C]/10 border border-[#00F58C]/20 text-[#00F58C] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                  Hook: 0x7a25...V4Singleton
-                  <button className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors" aria-label="Copy hook address" title="Copy hook address">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 012-2h10a2 2 0 012 2v1M8 5v12a2 2 0 002 2h10" /></svg>
-                  </button>
+                  Hook: OptimizerHookV2 · beforeSwap | afterSwap | sync
                 </span>
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[#8899AA] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
-                  Network: Sepolia Testnet | Gas Optimized: ~45k gwei
+                  Network: Sepolia Testnet — mainnet após aprovação
                 </span>
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00F5FF]/10 border border-[#00F5FF]/20 text-[#00F5FF] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                  Hook Actions: beforeSwap() | afterSwap() | sync()
+                  Dados: /api/burn-counter e /api/metrics (leitura direta da chain)
                 </span>
               </div>
 
@@ -211,28 +264,28 @@ export default function HomePage() {
               <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   { 
-                    tier: "1", name: "$BLD ALPHA", fee: "0% Fee", boost: "4x Yield Boost", 
+                    tier: "1", name: "ALPHA · Buildercoin NFT", fee: "0.00% Swap · 5% Success", boost: "4x Yield", 
                     color: "#FFD700", glow: "rgba(255,215,0,0.4)", 
                     bg: "from-[#FFD700]/15 to-[#FFD700]/5", border: "border-[#FFD700]/30",
-                    desc: "Protocol builders & node operators. Zero fees, maximum MEV revenue share. Requires $BLD staking + Genesis Key."
+                    desc: "Buildercoin NFT (501 supply, mint 0.05 ETH). Swap isento, Success Fee mínima sobre o lucro de arbitragem e multiplicador de yield máximo. Pele no jogo.",
                   },
                   { 
-                    tier: "2", name: "$IMD ALPHA", fee: "0.1% Fee", boost: "3x Yield Boost", 
+                    tier: "2", name: "PARTNER · Identity md NFT", fee: "0.10% Swap · 10% Success", boost: "3x Yield", 
                     color: "#00F5FF", glow: "rgba(0,245,255,0.4)", 
                     bg: "from-[#00F5FF]/15 to-[#00F5FF]/5", border: "border-[#00F5FF]/30",
-                    desc: "Early $IMD adopters & strategic partners. Near-zero fees, high MEV share. Genesis Key holders auto-qualify."
+                    desc: "Identity md NFT. Taxa de swap quase nula, Success Fee reduzida e 3x de yield ponderado no Builder Staking.",
                   },
                   { 
-                    tier: "3", name: "$IMD HOLDER", fee: "10% Fee", boost: "2x Yield Boost", 
+                    tier: "3", name: "HOLDER · $IMD / $BLD", fee: "0.30% Swap · 20% Success", boost: "1x Yield", 
                     color: "#BB86FC", glow: "rgba(187,134,252,0.4)", 
                     bg: "from-[#BB86FC]/15 to-[#BB86FC]/5", border: "border-[#BB86FC]/30",
-                    desc: "Any wallet holding $IMD tokens. Reduced fees, 2x MEV redistribution. Automatic qualification via balance check."
+                    desc: "Saldo > 0 de $IMD ou $BLD na carteira — qualificação automática por balanceOf, sem cadastro. Yield ponderado 1x.",
                   },
                   { 
-                    tier: "4", name: "RETAIL", fee: "20% Base Fee", boost: "1x Standard", 
+                    tier: "4", name: "RETAIL", fee: "0.50% Swap · 25% Success", boost: "0x Yield", 
                     color: "#FF4444", glow: "rgba(255,68,68,0.4)", 
                     bg: "from-[#FF4444]/15 to-[#FF4444]/5", border: "border-[#FF4444]/30",
-                    desc: "Default tier for all users. Standard fees, baseline MEV protection. No token requirements — open to everyone."
+                    desc: "Tier padrão para qualquer carteira: proteção V4 completa sem pré-requisitos. Sem multiplicador de yield — o NFT e o stake fazem a diferença.",
                   },
                 ].map((t, i) => (
                   <TierCard key={i} {...t} />
@@ -340,8 +393,8 @@ export default function HomePage() {
                         icon="🛡️"
                       />
                       <OracleFeature 
-                        title="37–68.5% APY for Stakers"
-                        description="$BLD stakers earn 60% of protocol fees from MEV capture operations"
+                        title="60% das Fees vão para Stakers"
+                        description="OptimizerVaultV2 split: 60% Stakers · 20% Treasury · 15% Devs · 5% Buy-and-Burn"
                         icon="💰"
                       />
                     </div>
@@ -360,9 +413,9 @@ export default function HomePage() {
                     </p>
                     
                     <div className="grid md:grid-cols-3 gap-4 mb-8">
-                      <BurnMetric value="12.47%" label="Annual Burn Rate" accent="#00F58C" />
-                      <BurnMetric value="2.3%" label="Per Epoch Burn" accent="#FFB000" />
-                      <BurnMetric value="∞" label="Hard Cap (Deflationary)" accent="#00F5FF" />
+                      <BurnMetric value="Live" label="Contador $IMD Auto-Burned (on-chain)" accent="#00F58C" />
+                      <BurnMetric value="50%" label="do Penalty → Buy-and-Burn" accent="#FFB000" />
+                      <BurnMetric value="100%" label="Burned → 0xdEaD (sem inflação)" accent="#00F5FF" />
                     </div>
                     
                     <div className="space-y-3 text-sm text-[#6B7A88]">
@@ -393,64 +446,61 @@ export default function HomePage() {
             <div className="max-w-6xl mx-auto w-full">
               <SectionHeader 
                 title="Protocol Metrics" 
-                subtitle="Uniswap V4 style pool analytics — transparent, verifiable, real-time"
+                subtitle="Parâmetros verificáveis dos contratos deployados — sem números de marketing"
               />
 
               {/* On-Chain Badges Row */}
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs">
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00F58C]/10 border border-[#00F58C]/20 text-[#00F58C] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                  Hook: 0x7a25...V4Singleton
-                  <button className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors" aria-label="Copy hook address" title="Copy hook address">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 012-2h10a2 2 0 012 2v1M8 5v12a2 2 0 002 2h10" /></svg>
-                  </button>
+                  Hook: OptimizerHookV2 · beforeSwap | afterSwap | sync
                 </span>
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[#8899AA] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
-                  Network: Sepolia Testnet | Gas Optimized: ~45k gwei
+                  Network: Sepolia Testnet — mainnet após aprovação
                 </span>
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00F5FF]/10 border border-[#00F5FF]/20 text-[#00F5FF] font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                  Hook Actions: beforeSwap() | afterSwap() | sync()
+                  Dados: /api/burn-counter e /api/metrics (leitura direta da chain)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
                 <StatCard
-                  title="Total Value Locked (TVL)"
-                  value="$1.2B"
-                  change="+12.4% 30d"
-                  icon="🔒"
-                  description="Across all V4 hook pools on Sepolia & Mainnet"
+                  title="Genesis Mint (Buildercoin NFT)"
+                  value="501"
+                  change="0.05 ETH / key"
+                  icon="🔑"
+                  description="40% Core Team · 40% Infra & Security · 20% Growth & Bounties"
                   accent="#00F58C"
-                  badge="Hook: 0x7a25...V4Singleton"
+                  badge="Tier 1 · Alpha"
                 />
                 <StatCard
-                  title="Hook Pool APY (30d)"
-                  value="308%"
-                  change="+45% vs baseline"
-                  icon="📈"
-                  description="MEV-augmented returns for liquidity providers"
+                  title="Swap Fee por Tier"
+                  value="0 – 0.5%"
+                  change="Tiers 1 → 4"
+                  icon="💠"
+                  description="0.00% / 0.10% / 0.30% / 0.50% conforme identityTier() da carteira"
                   accent="#00F5FF"
-                  badge="Gas: ~45k gwei"
+                  badge="identityTier() on-chain"
                 />
                 <StatCard
-                  title="MEV Captured"
-                  value="12.47 ETH"
-                  change="This epoch"
+                  title="Success Fee (arbitragem)"
+                  value="5 – 25%"
+                  change="só sobre o lucro"
                   icon="⚡"
-                  description="Extracted from toxic flow, redirected to users"
+                  description="Cobrada apenas sobre o lucro líquido de executeCustomArbitrage — distribuída por tier"
                   accent="#FFB000"
-                  badge="beforeSwap | afterSwap | sync"
+                  badge="receiveYield() only"
                 />
                 <StatCard
-                  title="Deflationary Burn Rate"
-                  value="12.47% / 2.3%"
-                  change="Annual / Per epoch"
+                  title="Penalty Split (Diamond Hand)"
+                  value="50/25/25"
+                  change="Burn/Treasury/Yield"
                   icon="🔥"
-                  description="Supply contraction via automatic buyback & burn"
+                  description="Unstake instantâneo (2–5%): 50% Buy-and-Burn, 25% Tesouro, 25% yield ponderado"
                   accent="#FF4444"
-                  badge="Epoch: 90 days | 6.4M blocks"
+                  badge="DEC-020 · BuilderStakingVault"
                 />
               </div>
             </div>
@@ -473,7 +523,7 @@ export default function HomePage() {
                 <ArchCard
                   title="Agentic Oracle Network"
                   description="Decentralized node network providing real-time MEV detection, TWAP price feeds, and toxicity scoring. $BLD stakers operate nodes and earn 60% of protocol fees."
-                  features={["100+ nodes target", "Sub-second latency", "Slashing for invalid data", "APY: 37–68.5%"]}
+                  features={["100+ nodes target", "Sub-second latency", "Slashing for invalid data", "Yield: 60% p/ stakers (Vault)"]}
                 />
                 <ArchCard
                   title="Elastic Tokenomics"

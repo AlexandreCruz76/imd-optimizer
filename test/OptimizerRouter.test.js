@@ -46,8 +46,18 @@ describe("OptimizerRouter — integração The Standard (DEC-017)", function () 
       expect(await router.owner()).to.equal(owner.address);
     });
 
-    it("Should default fee to 0,05% (DEC-017)", async function () {
-      expect(await router.feeBps()).to.equal(5);
+    it("Should default to Tier 4 sem NFTs/saldo — 0,50% swap, 25% success (DEC-020)", async function () {
+      // user2 não tem NFTs nem saldo de $IMD → Retail (tier index 3)
+      expect(await router.identityTier(user2.address)).to.equal(3);
+      expect(await router.swapFeeBps(user2.address)).to.equal(50);
+      expect(await router.successFeeBps(user2.address)).to.equal(2500);
+    });
+
+    it("Should classify holder de $IMD como Tier 3 — 0,30% swap, 20% success (DEC-020)", async function () {
+      // user1 tem saldo do standardToken ($IMD) → Holder (tier index 2)
+      expect(await router.identityTier(user1.address)).to.equal(2);
+      expect(await router.swapFeeBps(user1.address)).to.equal(30);
+      expect(await router.successFeeBps(user1.address)).to.equal(2000);
     });
   });
 
@@ -65,15 +75,21 @@ describe("OptimizerRouter — integração The Standard (DEC-017)", function () 
     });
   });
 
-  describe("Fee Management", function () {
-    it("Should update fee", async function () {
-      await router.setFee(100); // 1%
-      expect(await router.feeBps()).to.equal(100);
+  describe("Fee Management (DEC-020)", function () {
+    it("Should update swap fee for a tier", async function () {
+      await router.setSwapFeeTier(3, 100); // 1% para Retail
+      expect(await router.swapFeeBps(user2.address)).to.equal(100);
     });
 
-    it("Should reject fee > 5%", async function () {
-      await expect(router.setFee(600)).to.be.revertedWith(
+    it("Should reject swap fee > 5%", async function () {
+      await expect(router.setSwapFeeTier(3, 600)).to.be.revertedWith(
         "Fee too high (max 5%)"
+      );
+    });
+
+    it("Should reject invalid tier (> 3)", async function () {
+      await expect(router.setSwapFeeTier(4, 10)).to.be.revertedWith(
+        "Invalid tier"
       );
     });
 

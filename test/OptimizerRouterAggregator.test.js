@@ -4,7 +4,8 @@ const { ethers } = require("hardhat");
 /**
  * Suíte DEC-017 do OptimizerRouter:
  * - roteador puro (sem split no router, sem backrun/interceptação)
- * - taxa ÚNICA 0,05% (5 bps) sobre o volume final → cofre executa 60/20/15/5
+ * - taxa ÚNICA 0,30% (30 bps — Tier 3 Holder, DEC-020) sobre o volume final
+ *   → cofre executa 60/20/15/5
  * - rota multi-hop sem taxação em cascata
  * - cotação fixed-point igual à execução da venue
  * - pull dos $STANDARD via transferFrom (custódia atômica)
@@ -24,12 +25,13 @@ function quoteEth(amount, sqrt) {
   return (step * sqrt) / TWO96;
 }
 
-describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", function () {
+describe("OptimizerRouter — DEC-020 (rota, taxa única 0,30% Tier 3, cofre)", function () {
   let router, vault, token, mockWETH, pool;
   let owner, user1, feeCollector;
 
   const PRICE = 0.001; // 1 STANDARD = 0.001 ETH
-  const FEE_BPS = 5n; // 0,05% — DEC-017
+  // user1 mantém saldo de $IMD (standardToken) → Tier 3 Holder = 0,30% (DEC-020)
+  const FEE_BPS = 30n;
 
   // Split oficial do cofre (DEC-017)
   const STAKERS_BPS = 6000n;
@@ -110,7 +112,7 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
 
   // ==================== VENDA SIMPLES: TAXA ÚNICA → COFRE ====================
 
-  it("venda 100 STANDARD: líquido exato e taxa 0,05% integralmente ao cofre (split 60/20/15/5)", async function () {
+  it("venda 100 STANDARD: líquido exato e taxa 0,30% (Tier 3) integralmente ao cofre (split 60/20/15/5)", async function () {
     const amount = ethers.parseEther("100");
     const [sqrt] = await (await router.getPoolState()).slice(0, 1);
     const expectedGross = quoteEth(amount, sqrt);
@@ -130,7 +132,7 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
     const userAfter = await ethOf(user1.address);
     const userNet = userAfter - userEthBefore + rc.gasUsed * rc.gasPrice;
 
-    // Usuário recebe o líquido exato (1:1 com a cotação menos 0,05%)
+    // Usuário recebe o líquido exato (1:1 com a cotação menos 0,30% Tier 3)
     expect(userNet).to.equal(expectedNet);
 
     // Cofre recebe a taxa INTEGRAL (o cofre é quem divide)
@@ -434,7 +436,7 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
           [await pool.getAddress()],
           [await token.getAddress(), ethers.ZeroAddress],
           ethers.parseEther("1"),
-          ethers.parseEther("1") // 1:1 bruto; líquido = 1 - 0,05%
+          ethers.parseEther("1") // 1:1 bruto; líquido = 1 - 0,30% (Tier 3)
         )
     ).to.be.revertedWith("Slippage exceeded");
 
@@ -590,17 +592,34 @@ describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", functio
 
   // ==================== ADMIN ====================
 
-  it("admin: fee >5% e delay >100 revertem; fee até 5% é aceita", async function () {
-    await expect(router.setFee(501)).to.be.revertedWith(
+  it("admin: swap fee >5% e delay >100 revertem; até 5% é aceita (DEC-020)", async function () {
+    await expect(router.setSwapFeeTier(3, 501)).to.be.revertedWith(
       "Fee too high (max 5%)"
     );
     await expect(router.setMinBlockDelay(101)).to.be.revertedWith(
       "Delay too high"
     );
-    await expect(router.setFee(500)).to.emit(router, "FeeUpdated");
-    expect(await router.feeBps()).to.equal(500n);
-    await router.setFee(5);
-    expect(await router.feeBps()).to.equal(5n);
+    await expect(router.setSwapFeeTier(3, 500)).to.emit(
+      router,
+      "SwapFeeTierUpdated"
+    );
+    expect(await router.swapFeeBps(user1.address)).to.equal(30n); // user1 = Tier 3 (não afetado pelo tier 4)
+    await router.setSwapFeeTier(2, 500);
+    expect(await router.swapFeeBps(user1.address)).to.equal(500n);
+    await router.setSwapFeeTier(2, 30);
+    expect(await router.swapFeeBps(user1.address)).to.equal(30n);
+
+    // Success Fee por tier: teto 50% (5000 bps)
+    await expect(router.setSuccessFeeTier(2, 5001)).to.be.revertedWith(
+      "Fee too high (max 50%)"
+    );
+    await expect(router.setSuccessFeeTier(2, 4000)).to.emit(
+      router,
+      "SuccessFeeTierUpdated"
+    );
+    expect(await router.successFeeBps(user1.address)).to.equal(4000n);
+    await router.setSuccessFeeTier(2, 2000);
+    expect(await router.successFeeBps(user1.address)).to.equal(2000n);
   });
 
   it("withdrawFees: só residual de ETH, parcial, e revertes corretos", async function () {

@@ -30,22 +30,30 @@
 
 ## 💰 Business Model
 
-### Revenue Sources
+### Revenue Sources (DEC-020)
 
-1. **Swap Fees** (0.5% - 1%)
-   - Retail pays higher fees
-   - Genesis Key holders pay 0%
-   - Identity MD holders pay 0.1%
+1. **Swap Fees — Identity-Fi (0.00% – 0.50%)**
+   - Tier 1 · Alpha (Buildercoin NFT): 0.00%
+   - Tier 2 · Partner (Identity md NFT): 0.10%
+   - Tier 3 · Holder ($IMD/$BLD > 0): 0.30%
+   - Tier 4 · Retail (padrão): 0.50%
 
-2. **MEV Capture**
-   - Internal arbitrage via Hook
-   - 100% of profit returns to LPs
+2. **Success Fee — arbitragem atômica (5% – 25%)**
+   - Cobrada SOMENTE sobre o lucro (Delta Positivo)
+   - Por tier: 5% / 10% / 20% / 25%
+   - Se lucro ≤ 0, não há taxa (a tx reverte)
 
-3. **Performance Fee** (15% of yield)
-   - 60% → $BLD Stakers
+3. **MEV Capture**
+   - Interceptação via Hook — ETH → Cofre (estimado/escaneado em testnet)
+   - 100% da Success Fee → OptimizerVault.receiveYield()
+
+4. **Vault Split (hardcoded 60/20/15/5)**
+   - 60% → Stakers
    - 20% → Treasury
    - 15% → Developers
    - 5% → Buy-and-Burn (ETH → $IMD → BurnExecutor)
+
+> `claimYield()` cobra 0% — Diamond Hands recebem yield integral.
 
 ### Revenue Projections
 
@@ -103,7 +111,7 @@
 | Metric | Description | 6-Month Target |
 |--------|-------------|----------------|
 | **Users** | Unique wallets | 10,000+ |
-| **NFTs** | Genesis Keys minted | 100/100 |
+| **NFTs** | Genesis Keys minted | 501/501 |
 | **Stakers** | $BLD staked | 1M+ tokens |
 | **Pools** | Active pools | 5+ |
 
@@ -125,7 +133,7 @@
 - [ ] Mainnet Deploy
 - [ ] Formal audit (Trail of Bits / OpenZeppelin)
 - [ ] The Graph Integration
-- [ ] Genesis Key NFT Launch (opens with BETA on mainnet — price/date announced then)
+- [ ] Genesis Key NFT Launch (501 keys × 0.05 ETH — abre com o BETA mainnet)
 - [ ] Full codebase open-source (BETA milestone)
 - [ ] $BLD Staking Launch
 
@@ -150,17 +158,16 @@
 | **Investors** | 15% | 1 year (3 months cliff) |
 | **Liquidity** | 10% | Unlocked |
 
-### Genesis Key NFT — Tier Distribution Plan
+### Buildercoin Genesis Key NFT — Tier Distribution Plan
 
 | Tier | Allocation | Benefits |
 |------|-----------|----------|
-| **Genesis** | First-come, first-served | 0% fees + MEV share + governance |
-| **Backer** | First-come, first-served | Priority access + 2× governance |
-| **Total supply** | **100** (`MAX_SUPPLY`, test-verified) | — |
+| **Genesis** | First-come, first-served até 501 | 0.00% swap · 5% success fee · 4x yield |
+| **Backer** | Mesma pool — 1 ETH por key | Prioridade + peso 2x na governança |
+| **Total supply** | **501** (`MAX_SUPPLY`, test-verified) · 0.05 ETH | Alvo máx. 25.05 ETH |
 
-> Price and mint date are intentionally not published — announced together with
-> the BETA mainnet release, when the full codebase opens
-> (see [README — Open Source at BETA](README.md#-open-source-at-beta-mainnet)).
+**Uso dos fundos (40/40/20):** 40% Core Team (Codeming) · 40% Infra &
+Security · 20% Growth & Bounties.
 
 ---
 

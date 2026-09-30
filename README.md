@@ -65,10 +65,10 @@
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| `OptimizerVaultV2` | `0xBc6Dc23FFbCDFe1fCa602361eb566a299a5036e1` | ERC-4626 vault (tier fees, 101 tests) |
+| `OptimizerVaultV2` | `0xBc6Dc23FFbCDFe1fCa602361eb566a299a5036e1` | Vault (split 60/20/15/5, claimYield 0%) |
 | `OptimizerRouter` | `0x4b614E3eb18551ef0f1e65891fb9dABD4a397926` | Router with MEV protection |
 | `IMEVOracle` | `0x70a49c8dC0EEb818E3673D2c3FB4ac2bB213180d` | Bot registry (ECDSA-attested) |
-| `OptimizerGenesisKey` | deploy via `scripts/` | ERC-721 — `MAX_SUPPLY = 100` |
+| `OptimizerGenesisKey` | deploy via `scripts/` | ERC-721 — `MAX_SUPPLY = 501` (0.05 ETH) |
 
 > **Note:** This repository contains **interfaces** (`contracts/public/`) + tests + frontend.
 > Full implementations open together with the BETA mainnet release — see
@@ -143,57 +143,69 @@ npm run dev
 
 | Route | Description | Status |
 |-------|-------------|--------|
-| `/` | Dashboard — pools overview | ✅ |
-| `/swap` | Protected Swap — swap with MEV protection | ✅ |
-| `/burns` | Burn Mechanics — on-chain burn events | ✅ |
-| `/arbitrage` | Yield Arbitrage — Hook vs Native comparison | ✅ |
-| `/nft-mint` | Genesis Key — ERC-721 NFT mint | ✅ |
-| `/staking` | $BLD Staking — stake to earn fees | ✅ |
+| `/` | Landing — Live Metrics + Tier Mountain (DEC-020) | ✅ |
+| `/swap` | Protected Swap — taxa por Identity Tier + proteção V4 | ✅ |
+| `/arbitrage` | Atomic Arbitrage — Pool A vs Pool B (Regra 2) | ✅ |
+| `/vault` | Vault — Diamond Hand rules + posição | ✅ |
+| `/nft-mint` | Buildercoin Genesis Key — mint real on-chain (501 / 0.05 ETH) | ✅ |
+| `/staking` | Builder Staking — regras DEC-020 (demo sem assinatura) | ✅ |
 | `/docs` | Full documentation | ✅ |
 
 ---
 
-## 💰 Fee Distribution
+## 💰 Fee Distribution (DEC-020)
 
 ```
-PERFORMANCE FEE (15% of yield):
-├── 60% → $BLD Stakers
-├── 20% → Treasury (operations + audits)
-├── 15% → Developers (maintenance)
-└──  5% → Buy-and-Burn (ETH → $IMD → BurnExecutor)
+SWAP FEE — Identity-Fi (OptimizerRouter.identityTier):
+├── Tier 1 — Alpha (Buildercoin NFT):   0.00%
+├── Tier 2 — Partner (Identity md NFT): 0.10%
+├── Tier 3 — Holder ($IMD/$BLD > 0):    0.30%
+└── Tier 4 — Retail (padrão):           0.50%
 
-FEE TIERS:
-├── Genesis Key holders: 0%
-├── Identity MD holders: 0.1%
-├── Tier BASIC: 15%
-├── Tier PRO: 10%
-├── Tier WHALE: 5%
-└── Default: 20%
+SUCCESS FEE — só sobre o lucro de arbitragem (executeCustomArbitrage):
+├── Tier 1 — Alpha:   5%
+├── Tier 2 — Partner: 10%
+├── Tier 3 — Holder:  20%
+└── Tier 4 — Retail:  25%
+
+VAULT SPLIT — OptimizerVaultV2.receiveYield (hardcoded 60/20/15/5):
+├── 60% → Stakers
+├── 20% → Treasury
+├── 15% → Devs
+└──  5% → Buy-and-Burn
+
+STAKING — BuilderStakingVault (Diamond Hand):
+├── claimYield(): 0%
+├── Unstake com carência (beginUnbond → 7 dias): 0%
+└── Unstake instantâneo (emergencyInstantWithdraw): 2–5%
+    ├── 50% → Buy-and-Burn (receiveBurnPenalty)
+    ├── 25% → Treasury
+    └── 25% → yield ponderado dos Diamond Hands
 ```
 
 ---
 
 ## 🗂️ Tier Distribution Plan
 
-### Genesis Key (ERC-721 — `MAX_SUPPLY = 100`)
+### Buildercoin Genesis Key (ERC-721 — `MAX_SUPPLY = 501`)
 
 | Tier | Allocation | Benefits |
 |------|-----------|----------|
-| **Genesis** | First-come, first-served until cap | 0% swap fees + MEV share + governance |
-| **Backer** | First-come, first-served until cap | Priority access + 2× governance weight |
-| **Total** | **100 keys** (verified by test suite) | — |
+| **Genesis** | First-come, first-served até 501 | 0.00% swap · 5% success fee · 4x yield |
+| **Backer** | Mesma pool, 1 ETH por key | Prioridade + peso 2x na governança |
+| **Total** | **501 keys** · 0.05 ETH (máx. 25.05 ETH) | — |
 
-> Price and mint date are intentionally **not published** — they are announced
-> together with the BETA mainnet release (see below).
+**Uso dos fundos (40/40/20):** 40% Core Team (Codeming) · 40% Infra &
+Security · 20% Growth & Bounties.
 
-### Vault Subscription Tiers (fees on yield)
+### Identity-Fi Swap Tiers (taxa por carteira — sem assinatura)
 
-| Tier | Fee | Deposit Range |
-|------|-----|---------------|
-| FREE | 20% | no minimum |
-| BASIC | 15% | ≥ 0.1 ETH |
-| PRO | 10% | ≥ 1 ETH |
-| WHALE | 5% | ≥ 10 ETH |
+| Tier | Qualificação | Swap Fee | Success Fee | Yield |
+|------|-------------|----------|-------------|-------|
+| 1 · Alpha | Buildercoin NFT | 0.00% | 5% | 4x |
+| 2 · Partner | Identity md NFT | 0.10% | 10% | 3x |
+| 3 · Holder | $IMD ou $BLD > 0 | 0.30% | 20% | 1x |
+| 4 · Retail | padrão | 0.50% | 25% | 0x |
 
 ### Adoption Support Tiers (community-funded mainnet deployment)
 
@@ -264,18 +276,20 @@ Until then: interfaces, tests and frontend are public; contracts stay on Sepolia
 ## ✅ Test Results
 
 ```
-✅ 101/101 Tests Passing
+✅ 139/139 Tests Passing (DEC-020)
 ✅ 0 Critical Issues
-✅ Gas Optimized (92% savings on oracle queries)
-✅ Security Audited
+✅ Tier fees testadas (0/10/30/50 bps · 500/1000/2000/2500 bps)
+✅ Security: ReentrancyGuard + block delay + snapshot de tier
 ```
 
-| Suite | Tests | Status |
-|-------|-------|--------|
-| OptimizerRouter | 45 | ✅ |
-| OptimizerVault | 33 | ✅ |
-| OptimizerGenesisKey | 23 | ✅ |
-| **TOTAL** | **101** | **✅** |
+| Suite | File | Tests | Status |
+|-------|------|-------|--------|
+| OptimizerVault + BuilderStaking | `test/OptimizerVaultTest.test.js` | 55 | ✅ |
+| OptimizerRouter | `test/OptimizerRouter.test.js` | 29 | ✅ |
+| OptimizerGenesisKey | `test/OptimizerGenesisKey.test.js` | 25 | ✅ |
+| OptimizerRouterAggregator | `test/OptimizerRouterAggregator.test.js` | 19 | ✅ |
+| OptimizerHookV2 | `test/OptimizerHookV2.test.js` | 11 | ✅ |
+| **TOTAL** | — | **139** | **✅** |
 
 ---
 
@@ -287,7 +301,7 @@ Until then: interfaces, tests and frontend are public; contracts stay on Sepolia
 | [PITCH_INVESTIDOR.md](PITCH_INVESTIDOR.md) | Pitch — exec summary |
 | [README-HOOKS.md](README-HOOKS.md) | Hooks overview |
 | [contracts/public/](contracts/public/) | Public interfaces (I*.sol) |
-| [test/](test/) | Full test suite (101 tests) |
+| [test/](test/) | Full test suite (139 tests) |
 | [frontend/README.md](frontend/README.md) | Frontend setup |
 
 > Full architecture & strategy documentation ships with the open-source BETA
