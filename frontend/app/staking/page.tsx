@@ -104,7 +104,7 @@ export default function StakingPage() {
       <div className="p-6 md:p-8">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tick">Staking $BUILDER & $IMD</h1>
+            <h1 className="text-2xl font-bold tracking-tick">Staking $BLD & $IMD</h1>
             <p className="text-[var(--color-muted)] mt-1">Lock tokens and earn protocol fees with multi</p>
           </div>
         </div>
@@ -137,8 +137,8 @@ export default function StakingPage() {
         {/* Current Staking Positions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-wider">$BUILDER Staked</div>
-            <div className="text-2xl font-semibold text-[var(--color-accent-emerald)]">{stakedBuilder} $BUILDER</div>
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-wider">$BLD Staked</div>
+            <div className="text-2xl font-semibold text-[var(--color-accent-emerald)]">{stakedBuilder} $BLD</div>
             <div className="text-xs text-[var(--color-muted)] mb-2">APY: {aprBuilder}</div>
             <div className="text-xs text-[var(--color-muted)]">Unlocks: {unlockDate}</div>
             <button
@@ -146,7 +146,7 @@ export default function StakingPage() {
               disabled={parseFloat(stakedBuilder) <= 0 || loading}
               className="w-full py-2 text-xs font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]"
             >
-              {parseFloat(stakedBuilder) <= 0 ? "Stake $BUILDER" : "Unstake $BUILDER"}
+              {parseFloat(stakedBuilder) <= 0 ? "Stake $BLD" : "Unstake $BLD"}
             </button>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
@@ -184,7 +184,7 @@ export default function StakingPage() {
           <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Staking Benefits</h2>
           <div className="space-y-3 text-sm text-[#00ff4160]">
             <div>• Earn 37-68.5% APR depending on lock duration</div>
-            <div>• $BUILDER stakers: 60% of protocol fees</div>
+            <div>• $BLD stakers: 60% of protocol fees</div>
             <div>• $IMD stakers: 37% of protocol fees + bonus rewards</div>
             <div>• Longer lock = higher APR and voting weight</div>
             <div>• Early unstake penalty: 10% fee</div>

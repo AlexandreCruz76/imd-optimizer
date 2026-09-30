@@ -58,17 +58,17 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Right: Network Badge + $BUILDER Brand + Connect Wallet */}
+          {/* Right: Network Badge + $BLD Brand + Connect Wallet */}
           <div className="flex items-center gap-3">
             <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-[#6B7A88] px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00F58C] animate-pulse"></span>
               Sepolia
             </span>
 
-            {/* $BUILDER Ecosystem Badge */}
+            {/* $BLD Ecosystem Badge */}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
               <span className="w-2 h-2 rounded-full bg-[#00F58C] animate-pulse"></span>
-              <span className="font-mono text-xs font-semibold text-white tracking-wider">$BUILDER</span>
+              <span className="font-mono text-xs font-semibold text-white tracking-wider">$BLD</span>
               <span className="text-[10px] text-slate-400 font-mono">ECOSYSTEM</span>
             </div>
             

@@ -13,7 +13,7 @@
 
 - **Protect** retail investors against bot arbitrage
 - **Optimize** yield through automatic MEV capture
-- **Distribute** fees fairly to $BUILDER holders
+- **Distribute** fees fairly to $BLD holders
 
 ---
 
@@ -42,7 +42,7 @@
    - 100% of profit returns to LPs
 
 3. **Performance Fee** (15% of yield)
-   - 60% → $BUILDER Stakers
+   - 60% → $BLD Stakers
    - 20% → Treasury
    - 15% → Developers
    - 5% → Burn
@@ -104,7 +104,7 @@
 |--------|-------------|----------------|
 | **Users** | Unique wallets | 10,000+ |
 | **NFTs** | Genesis Keys minted | 100/100 |
-| **Stakers** | $BUILDER staked | 1M+ tokens |
+| **Stakers** | $BLD staked | 1M+ tokens |
 | **Pools** | Active pools | 5+ |
 
 ---
@@ -127,7 +127,7 @@
 - [ ] The Graph Integration
 - [ ] Genesis Key NFT Launch (opens with BETA on mainnet — price/date announced then)
 - [ ] Full codebase open-source (BETA milestone)
-- [ ] $BUILDER Staking Launch
+- [ ] $BLD Staking Launch
 
 ### Phase 3: Scale (Q1 2027)
 
@@ -140,7 +140,7 @@
 
 ## 💵 Tokenomics
 
-### $BUILDER Token
+### $BLD Token
 
 | Allocation | % | Vesting |
 |------------|---|---------|

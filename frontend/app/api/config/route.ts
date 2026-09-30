@@ -17,14 +17,17 @@ export async function GET() {
 
     // OptimizerRouter (Sepolia) — swap real
     optimizerRouter: process.env.OPTIMIZER_ROUTER_ADDRESS || "",
+
+    // OptimizerHookV2 (Sepolia) — contador de auto-burn DEC-017
+    optimizerHook: process.env.OPTIMIZER_HOOK_ADDRESS || "",
     
     // Network config
     chainId: 11155111,
     rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
     
     // Pool parameters
-    hookFeeTier: 10000,
-    nativeFeeTier: 10000,
+    hookFeeTier: 500,
+    nativeFeeTier: 500,
     pair: "ETH/IMD",
   });
 }

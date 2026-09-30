@@ -211,10 +211,10 @@ export default function HomePage() {
               <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   { 
-                    tier: "1", name: "$BUILDER ALPHA", fee: "0% Fee", boost: "4x Yield Boost", 
+                    tier: "1", name: "$BLD ALPHA", fee: "0% Fee", boost: "4x Yield Boost", 
                     color: "#FFD700", glow: "rgba(255,215,0,0.4)", 
                     bg: "from-[#FFD700]/15 to-[#FFD700]/5", border: "border-[#FFD700]/30",
-                    desc: "Protocol builders & node operators. Zero fees, maximum MEV revenue share. Requires $BUILDER staking + Genesis Key."
+                    desc: "Protocol builders & node operators. Zero fees, maximum MEV revenue share. Requires $BLD staking + Genesis Key."
                   },
                   { 
                     tier: "2", name: "$IMD ALPHA", fee: "0.1% Fee", boost: "3x Yield Boost", 
@@ -320,7 +320,7 @@ export default function HomePage() {
                     </h3>
                     <p className="text-lg text-[#6B7A88] leading-relaxed mb-6">
                       A decentralized node network providing real-time MEV detection, TWAP price feeds, and toxicity scoring. 
-                      $BUILDER stakers operate nodes and earn 60% of protocol fees.
+                      $BLD stakers operate nodes and earn 60% of protocol fees.
                     </p>
                     
                     <div className="space-y-4">
@@ -341,7 +341,7 @@ export default function HomePage() {
                       />
                       <OracleFeature 
                         title="37–68.5% APY for Stakers"
-                        description="$BUILDER stakers earn 60% of protocol fees from MEV capture operations"
+                        description="$BLD stakers earn 60% of protocol fees from MEV capture operations"
                         icon="💰"
                       />
                     </div>
@@ -472,7 +472,7 @@ export default function HomePage() {
                 />
                 <ArchCard
                   title="Agentic Oracle Network"
-                  description="Decentralized node network providing real-time MEV detection, TWAP price feeds, and toxicity scoring. $BUILDER stakers operate nodes and earn 60% of protocol fees."
+                  description="Decentralized node network providing real-time MEV detection, TWAP price feeds, and toxicity scoring. $BLD stakers operate nodes and earn 60% of protocol fees."
                   features={["100+ nodes target", "Sub-second latency", "Slashing for invalid data", "APY: 37–68.5%"]}
                 />
                 <ArchCard
@@ -501,7 +501,7 @@ export default function HomePage() {
                     Ready to Join the Sovereign Guardian?
                   </h2>
                   <p className="text-lg text-[#6B7A88] mb-10 max-w-2xl mx-auto leading-relaxed">
-                    Stake $BUILDER, mint a Genesis Key, or simply swap on an IMD-protected pool. 
+                    Stake $BLD, mint a Genesis Key, or simply swap on an IMD-protected pool. 
                     Every interaction strengthens the protocol that protects you.
                   </p>
                   
@@ -705,7 +705,7 @@ function ArchitectureFlow() {
     { label: "SWAP EXECUTION", desc: "Price Impact • Settlement" },
     { label: "afterSwap HOOK", desc: "LVR Measurement • Buyback Trigger • Tier Accrual" },
     { label: "AGENTIC EXECUTION LAYER", desc: "MEV Scanner • Oracle Nodes • Buyback & Burn Engine" },
-    { label: "TIER REDISTRIBUTION", desc: "$BUILDER Alpha → $IMD Alpha → $IMD Holder → Retail" },
+    { label: "TIER REDISTRIBUTION", desc: "$BLD Alpha → $IMD Alpha → $IMD Holder → Retail" },
   ];
 
   return (

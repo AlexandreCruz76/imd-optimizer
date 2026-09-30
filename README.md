@@ -15,7 +15,7 @@
 
 1. **Protect** retail capital against MEV bots
 2. **Optimize** yield through automatic arbitrage
-3. **Distribute** fees to $BUILDER holders
+3. **Distribute** fees to $BLD holders
 
 ---
 
@@ -39,15 +39,15 @@
 │  │                                                     │       │
 │  │  Layer 1: IDENTITY-FI (beforeSwap)                   │       │
 │  │  → Reads Identity MD NFT / Genesis Key               │       │
-│  │  → Dynamic fee: 0% / 0.1% / 0.5%                    │       │
+│  │  → Identity fees FROZEN na Alpha (DEC-017)           │       │
 │  │                                                     │       │
 │  │  Layer 2: ELASTICITY (afterSwap)                     │       │
-│  │  → Syncs $IMD Burns + Standard Reserve               │       │
+│  │  → Auto-burn de $IMD + contador on-chain             │       │
 │  │                                                     │       │
 │  │  Layer 3: MEV INTERNALIZATION                        │       │
-│  │  → Detects price delta                               │       │
-│  │  → Executes internal arbitrage                       │       │
-│  │  → Profit returns to LP pool                         │       │
+│  │  → Oracle + detecção estática de impacto             │       │
+│  │  → Intercepta: ETH → Cofre (split 60/20/15/5)        │       │
+│  │  → $IMD queimado (totalIMDBurnedByOptimizer)         │       │
 │  └─────────────────────────────────────────────────────┘       │
 │           │                                                     │
 │           ▼                                                     │
@@ -148,7 +148,7 @@ npm run dev
 | `/burns` | Burn Mechanics — on-chain burn events | ✅ |
 | `/arbitrage` | Yield Arbitrage — Hook vs Native comparison | ✅ |
 | `/nft-mint` | Genesis Key — ERC-721 NFT mint | ✅ |
-| `/staking` | $BUILDER Staking — stake to earn fees | ✅ |
+| `/staking` | $BLD Staking — stake to earn fees | ✅ |
 | `/docs` | Full documentation | ✅ |
 
 ---
@@ -157,7 +157,7 @@ npm run dev
 
 ```
 PERFORMANCE FEE (15% of yield):
-├── 60% → $BUILDER Stakers
+├── 60% → $BLD Stakers
 ├── 20% → Treasury (operations + audits)
 ├── 15% → Developers (maintenance)
 └──  5% → Burn (deflation)

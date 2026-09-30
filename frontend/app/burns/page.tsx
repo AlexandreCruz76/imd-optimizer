@@ -11,6 +11,40 @@ export default function BurnsPage() {
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // DEC-017: contador on-chain real (OptimizerHookV2.totalIMDBurnedByOptimizer)
+  const [onChainBurned, setOnChainBurned] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let poll: NodeJS.Timeout | undefined;
+
+    async function load() {
+      try {
+        const res = await fetch("/api/burn-counter");
+        const data = await res.json();
+        if (!cancelled) {
+          setOnChainBurned(
+            data.available && data.totalIMDBurnedByOptimizer != null
+              ? data.totalIMDBurnedByOptimizer
+              : null
+          );
+        }
+      } catch {
+        if (!cancelled) setOnChainBurned(null);
+      }
+    }
+
+    const kick = setTimeout(() => {
+      load();
+      poll = setInterval(load, 15000);
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(kick);
+      if (poll) clearInterval(poll);
+    };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -82,8 +116,17 @@ export default function BurnsPage() {
         {/* Burn Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Total Burned</div>
-            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">{burned} $IMD</div>
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">
+              Total Burned (on-chain)
+            </div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">
+              {onChainBurned !== null ? `${onChainBurned} $IMD` : "— $IMD"}
+            </div>
+            <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
+              {onChainBurned !== null
+                ? "OptimizerHookV2 · totalIMDBurnedByOptimizer"
+                : "hook não configurado (OPTIMIZER_HOOK_ADDRESS)"}
+            </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
             <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Volume Processed</div>
@@ -141,6 +184,10 @@ export default function BurnsPage() {
           <div className="space-y-3 text-sm text-[#00ff4160]">
             <div>• Burn tax: 0% Tier 1 / 0.1% Tier 2 / 10% Tier 3 / 20% Tier 4</div>
             <div>• Burn proceeds permanently removed from circulation</div>
+            <div>
+              • Auto-burn na interceptação (DEC-017): $IMD interceptado é
+              queimado e contabilizado em totalIMDBurnedByOptimizer
+            </div>
             <div>• Remaining supply: dynamically adjusted per tier</div>
             <div>• Minimum burn threshold: 0.01 $IMD</div>
           </div>

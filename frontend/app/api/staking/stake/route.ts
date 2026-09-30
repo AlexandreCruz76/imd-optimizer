@@ -26,6 +26,6 @@ export async function POST(req: NextRequest) {
     txHash: mockTxHash,
     amount,
     lockTier,
-    message: `Staking ${amount} $BUILD for ${lockTier} days`,
+    message: `Staking ${amount} $BLD for ${lockTier} days`,
   });
 }

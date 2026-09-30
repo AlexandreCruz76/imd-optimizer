@@ -23,8 +23,8 @@ const TOKENS: Token[] = [
     logo: "/images/imd.jpg",
   },
   {
-    symbol: "BUILDER",
-    name: "Buildercoin",
+    symbol: "BLD",
+    name: "BUILDER COIN",
     address: "0x22ec88b9ff78c6f2458ab1a7aa8bb99d84bd4b86",
     decimals: 18,
     color: "#FFB000",
@@ -50,7 +50,7 @@ const TOKENS: Token[] = [
 // quote path (OptimizerRouter.exactInputSingle) is wired in.
 const PRICES_USD: Record<string, number> = {
   IMD: 0.1,
-  BUILDER: 0.5,
+  BLD: 0.5,
   WETH: 2400,
   USDC: 1,
 };

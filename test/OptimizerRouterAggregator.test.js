@@ -2,12 +2,13 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /**
- * Suíte de consistência do OptimizerRouter como AGREGADOR:
- * - modelo de taxa sustentável (usuário paga feeBps; splits vault/collector/burn)
- * - cotação fixed-point igual à execução da venue (preços realistas)
+ * Suíte DEC-017 do OptimizerRouter:
+ * - roteador puro (sem split no router, sem backrun/interceptação)
+ * - taxa ÚNICA 0,05% (5 bps) sobre o volume final → cofre executa 60/20/15/5
+ * - rota multi-hop sem taxação em cascata
+ * - cotação fixed-point igual à execução da venue
  * - pull dos $STANDARD via transferFrom (custódia atômica)
  * - proteções: slippage pré/pós, cooldown, limites de preço
- * - backrun orçado pela taxa → burn (nunca drena o float)
  */
 
 const TWO96 = 2n ** 96n;
@@ -23,15 +24,18 @@ function quoteEth(amount, sqrt) {
   return (step * sqrt) / TWO96;
 }
 
-describe("OptimizerRouter — agregador (modelo de taxa, consistência)", function () {
-  let router, vault, mockCore, token, mockWETH, pool;
+describe("OptimizerRouter — DEC-017 (rota, taxa única 0,05%, cofre)", function () {
+  let router, vault, token, mockWETH, pool;
   let owner, user1, feeCollector;
 
-  const PRICE = 0.001; // 1 STANDARD = 0.001 ETH (preço realista)
-  const FEE_BPS = 50n; // 0.5%
-  const VAULT_SHARE = 5000n; // 50% da taxa
-  const BURN_BUDGET = 2000n; // 20% da taxa
-  // collector = 30%
+  const PRICE = 0.001; // 1 STANDARD = 0.001 ETH
+  const FEE_BPS = 5n; // 0,05% — DEC-017
+
+  // Split oficial do cofre (DEC-017)
+  const STAKERS_BPS = 6000n;
+  const TREASURY_BPS = 2000n;
+  const DEVS_BPS = 1500n;
+  // burn = remainder (5%)
 
   async function ethOf(addr) {
     return await ethers.provider.getBalance(addr);
@@ -46,12 +50,7 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     return { delta: after - before, gas, tx, rc };
   }
 
-  beforeEach(async function () {
-    [owner, user1, feeCollector] = await ethers.getSigners();
-
-    const MockCore = await ethers.getContractFactory("MockStandardCore");
-    mockCore = await MockCore.deploy();
-
+  async function deployStack() {
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     token = await MockERC20.deploy("Standard Token", "STANDARD");
     mockWETH = await MockERC20.deploy("Wrapped ETH", "WETH");
@@ -64,7 +63,6 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
 
     const Router = await ethers.getContractFactory("OptimizerRouter");
     router = await Router.deploy(
-      await mockCore.getAddress(),
       await pool.getAddress(),
       await token.getAddress(),
       await mockWETH.getAddress(),
@@ -72,7 +70,7 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     );
     await vault.setRouter(await router.getAddress());
 
-    // Venue liquidez: ETH para pagar vendas + $STANDARD para backrun
+    // Venue liquidez para pagar vendas
     await owner.sendTransaction({
       to: await pool.getAddress(),
       value: ethers.parseEther("100"),
@@ -83,24 +81,26 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     await token.mint(user1.address, ethers.parseEther("10000"));
     await token.connect(user1).approve(await router.getAddress(), ethers.MaxUint256);
 
-    // Preço realista
     await pool.setPrice(sqrtForPrice(PRICE));
+  }
+
+  beforeEach(async function () {
+    [owner, user1, feeCollector] = await ethers.getSigners();
+    await deployStack();
   });
 
-  it("venda 100 STANDARD a 0.001 ETH: splits da taxa exatos e float não drena", async function () {
+  // ==================== VENDA SIMPLES: TAXA ÚNICA → COFRE ====================
+
+  it("venda 100 STANDARD: líquido exato e taxa 0,05% integralmente ao cofre (split 60/20/15/5)", async function () {
     const amount = ethers.parseEther("100");
     const [sqrt] = await (await router.getPoolState()).slice(0, 1);
     const expectedGross = quoteEth(amount, sqrt);
     const feeTotal = (expectedGross * FEE_BPS) / BPS;
     const expectedNet = expectedGross - feeTotal;
-    const vaultShare = (feeTotal * VAULT_SHARE) / BPS;
-    const burnBudget = (feeTotal * BURN_BUDGET) / BPS;
-    const collectorShare = feeTotal - vaultShare - burnBudget;
     const minOut = (expectedNet * 95n) / 100n;
 
     const userEthBefore = await ethOf(user1.address);
-    const vaultBefore = await ethOf(vault.getAddress());
-    const ownerBefore = await ethOf(owner.address);
+    const vaultBefore = await ethOf(await vault.getAddress());
     const routerBefore = await ethOf(await router.getAddress());
     const poolBefore = await ethOf(await pool.getAddress());
 
@@ -111,20 +111,35 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     const userAfter = await ethOf(user1.address);
     const userNet = userAfter - userEthBefore + rc.gasUsed * rc.gasPrice;
 
-    // Usuário recebe o líquido exato (1:1 com a cotação menos 0.5%)
+    // Usuário recebe o líquido exato (1:1 com a cotação menos 0,05%)
     expect(userNet).to.equal(expectedNet);
 
-    // Splits
-    expect(await ethOf(vault.getAddress())).to.equal(vaultBefore + vaultShare);
-    expect(await ethOf(owner.address)).to.equal(ownerBefore + collectorShare);
-    // Router retém APENAS o orçamento de burn (reserva) — não há dreno
-    expect(await ethOf(await router.getAddress())).to.equal(
-      routerBefore + burnBudget
+    // Cofre recebe a taxa INTEGRAL (o cofre é quem divide)
+    expect(await ethOf(await vault.getAddress())).to.equal(
+      vaultBefore + feeTotal
     );
+    // Router não retém nada (roteador puro — DEC-017)
+    expect(await ethOf(await router.getAddress())).to.equal(routerBefore);
     // Venue pagou o gross integral
     expect(poolBefore - (await ethOf(await pool.getAddress()))).to.equal(
       expectedGross
     );
+
+    // Split exato nos balgos do cofre (60/20/15 + resto 5%)
+    expect(await vault.stakersAccrued()).to.equal(
+      (feeTotal * STAKERS_BPS) / BPS
+    );
+    expect(await vault.treasuryAccrued()).to.equal(
+      (feeTotal * TREASURY_BPS) / BPS
+    );
+    expect(await vault.devsAccrued()).to.equal((feeTotal * DEVS_BPS) / BPS);
+    expect(await vault.burnAccrued()).to.equal(
+      feeTotal -
+        (feeTotal * STAKERS_BPS) / BPS -
+        (feeTotal * TREASURY_BPS) / BPS -
+        (feeTotal * DEVS_BPS) / BPS
+    );
+    expect(await vault.totalProtocolFees()).to.equal(feeTotal);
 
     // Custódia: $STANDARD movidos usuário → venue
     expect(await token.balanceOf(user1.address)).to.equal(
@@ -134,12 +149,12 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
       ethers.parseEther("1000000") + amount
     );
 
-    // Stats
+    // Stats (ABI de 5 campos preservado)
     const stats = await router.getStats();
     expect(stats.sellVolume).to.equal(amount);
     expect(stats.feesCollected).to.equal(feeTotal);
-    expect(stats.yieldDistributed).to.equal(vaultShare);
-    expect(stats.burnsExecuted).to.equal(0); // impacto 0 ⇒ sem backrun
+    expect(stats.yieldDistributed).to.equal(feeTotal);
+    expect(stats.burnsExecuted).to.equal(0);
 
     // Evento de taxa
     const ev = (
@@ -147,60 +162,224 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     )[0];
     expect(ev.args.grossEth).to.equal(expectedGross);
     expect(ev.args.feeTotal).to.equal(feeTotal);
-    expect(ev.args.vaultShare).to.equal(vaultShare);
-    expect(ev.args.collectorShare).to.equal(collectorShare);
   });
 
-  it("execução pior que a cotação (60 bps) dispara backrun orçado e burn", async function () {
-    await pool.setExecSlippageBps(60);
+  it("distributeSplit: envia cada baldo ao destinatário correto (60/20/15/5)", async function () {
     const amount = ethers.parseEther("100");
     const [sqrt] = await (await router.getPoolState()).slice(0, 1);
-    const expectedGross = quoteEth(amount, sqrt);
-    const feeTotal = (expectedGross * FEE_BPS) / BPS;
-    const burnBudget = (feeTotal * BURN_BUDGET) / BPS;
-    const minOut = ((expectedGross - feeTotal) * 90n) / 100n;
-
-    const routerBefore = await ethOf(await router.getAddress());
-    const poolBefore = await ethOf(await pool.getAddress());
-
-    const tx = await router.connect(user1).executeProtectedSellAndBurn(amount, minOut);
-    const rc = await tx.wait();
-
-    // Burn executado (orçamento > 0 e impacto 60 > 50 bps)
-    expect(await mockCore.totalBurned()).to.be.gt(0);
-    const stats = await router.getStats();
-    expect(stats.burnsExecuted).to.equal(1);
-    expect(stats.mevCaptured).to.equal(await mockCore.totalBurned());
-
-    // Consistência de caixa: gross entra, líquido+vault+collector saem,
-    // orçamento é gasto na compra ⇒ delta do router = 0 (sem dreno de float)
-    expect(await ethOf(await router.getAddress())).to.equal(routerBefore);
-
-    // Venue: pagou o gross REAL (com 60 bps de desvio) e recebeu de volta
-    // exatamente o orçamento de backrun calculado sobre esse gross
-    const realGross = expectedGross - (expectedGross * 60n) / BPS;
-    const realFee = (realGross * FEE_BPS) / BPS;
-    const realBudget = (realFee * BURN_BUDGET) / BPS;
-    expect(
-      poolBefore - (await ethOf(await pool.getAddress()))
-    ).to.equal(realGross - realBudget);
-
-    // O router ficou com $STANDARD da compra (mock core só contabiliza)
-    expect(await token.balanceOf(await router.getAddress())).to.be.gt(0);
-    expect(rc.blockNumber).to.be.gt(0);
-  });
-
-  it("sem impacto (0 bps) não há backrun — orçamento fica reservado", async function () {
-    const amount = ethers.parseEther("10");
-    const [sqrt] = await (await router.getPoolState()).slice(0, 1);
     const gross = quoteEth(amount, sqrt);
-    const burnBudget = ((gross * FEE_BPS) / BPS) * BURN_BUDGET / BPS;
-    const minOut = ((gross - (gross * FEE_BPS) / BPS) * 90n) / 100n;
-
+    const feeTotal = (gross * FEE_BPS) / BPS;
+    const minOut = ((gross - feeTotal) * 90n) / 100n;
     await router.connect(user1).executeProtectedSellAndBurn(amount, minOut);
-    expect(await mockCore.totalBurned()).to.equal(0);
-    expect(await ethOf(await router.getAddress())).to.equal(burnBudget);
+
+    const [_, __, ___, stakers, treasury, devs, burn] =
+      await ethers.getSigners();
+    await vault.setSplitRecipients(
+      stakers.address,
+      treasury.address,
+      devs.address,
+      burn.address
+    );
+
+    const sExp = (feeTotal * STAKERS_BPS) / BPS;
+    const tExp = (feeTotal * TREASURY_BPS) / BPS;
+    const dExp = (feeTotal * DEVS_BPS) / BPS;
+    const bExp = feeTotal - sExp - tExp - dExp;
+
+    const before = await Promise.all(
+      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
+    );
+
+    await expect(vault.distributeSplit()).to.emit(vault, "SplitDistributed");
+
+    const after_ = await Promise.all(
+      [stakers, treasury, devs, burn].map((s) => ethOf(s.address))
+    );
+    expect(after_[0] - before[0]).to.equal(sExp);
+    expect(after_[1] - before[1]).to.equal(tExp);
+    expect(after_[2] - before[2]).to.equal(dExp);
+    expect(after_[3] - before[3]).to.equal(bExp);
+    expect(await ethOf(await vault.getAddress())).to.equal(0);
+    expect(await vault.stakersAccrued()).to.equal(0);
+
+    // Segunda chamada: nada acumulado → reverte
+    await expect(vault.distributeSplit()).to.be.revertedWith(
+      "Nothing accrued"
+    );
   });
+
+  // ==================== ROTA MULTI-HOP (DEC-017) ====================
+
+  it("multi-hop IMD→ETH→USDC: taxa ÚNICA sobre o volume final, sem cascata e sem tocar o cofre (ERC-20 final)", async function () {
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("USD Coin", "USDC");
+
+    const Pool = await ethers.getContractFactory("MockUniswapV4Pool");
+    const venue2 = await Pool.deploy(await usdc.getAddress());
+    await usdc.mint(await venue2.getAddress(), ethers.parseEther("1000"));
+
+    const amountIn = ethers.parseEther("1");
+    const venues = [await pool.getAddress(), await venue2.getAddress()];
+    const tokens = [await token.getAddress(), ethers.ZeroAddress, await usdc.getAddress()];
+
+    const userUsdcBefore = await usdc.balanceOf(user1.address);
+    const vaultBefore = await ethOf(await vault.getAddress());
+
+    const { rc } = await balanceChange(
+      router
+        .connect(user1)
+        .executeMultiHop(venues, tokens, amountIn, 1n),
+      user1.address
+    );
+    const userGas = rc.gasUsed * rc.gasPrice;
+
+    // Mock 1:1: volume final = amountIn; taxa = amountIn * 5/10000 (UMA vez)
+    const finalVol = amountIn;
+    const feeTotal = (finalVol * FEE_BPS) / BPS;
+    const userOut = finalVol - feeTotal;
+
+    // Usuário recebeu o líquido em USDC (sem ETH envolvido no payout)
+    expect(await usdc.balanceOf(user1.address)).to.equal(
+      userUsdcBefore + userOut
+    );
+    expect(userGas).to.be.gt(0n); // só gas de tx, sem ETH de payout
+
+    // Taxa creditada em USDC no router (cofre só aceita ETH)
+    expect(await router.erc20FeesAccrued(await usdc.getAddress())).to.equal(
+      feeTotal
+    );
+    // Cofre intocado: split só acontece quando o ativo final é ETH
+    expect(await ethOf(await vault.getAddress())).to.equal(vaultBefore);
+    expect(await vault.totalProtocolFees()).to.equal(0);
+
+    // Sem dupla taxação: 1:1 ⇒ se houvesse cascata seria > feeTotal
+    expect(feeTotal).to.equal((amountIn * FEE_BPS) / BPS);
+
+    const stats = await router.getStats();
+    expect(stats.feesCollected).to.equal(feeTotal);
+
+    const ev = (
+      await router.queryFilter(router.filters.MultiHopExecuted(), rc.blockNumber)
+    )[0];
+    expect(ev.args.amountIn).to.equal(amountIn);
+    expect(ev.args.finalOut).to.equal(finalVol);
+    expect(ev.args.feeTotal).to.equal(feeTotal);
+    expect(ev.args.userOut).to.equal(userOut);
+  });
+
+  it("multi-hop ETH final: taxa segue para o cofre (único destino de fee em ETH)", async function () {
+    const amountIn = ethers.parseEther("1");
+    const venues = [await pool.getAddress()];
+    const tokens = [await token.getAddress(), ethers.ZeroAddress];
+
+    const userEthBefore = await ethOf(user1.address);
+    const vaultBefore = await ethOf(await vault.getAddress());
+    const { rc } = await balanceChange(
+      router.connect(user1).executeMultiHop(venues, tokens, amountIn, 1n),
+      user1.address
+    );
+    const userNet = (await ethOf(user1.address)) - userEthBefore + rc.gasUsed * rc.gasPrice;
+
+    const feeTotal = (amountIn * FEE_BPS) / BPS;
+    // Usuário recebe ETH líquido (1:1 menos a taxa única)
+    expect(userNet).to.equal(amountIn - feeTotal);
+    // Cofre recebe a taxa
+    expect(await ethOf(await vault.getAddress())).to.equal(
+      vaultBefore + feeTotal
+    );
+    expect(await token.balanceOf(user1.address)).to.equal(
+      ethers.parseEther("10000") - amountIn
+    );
+    const ev = (
+      await router.queryFilter(router.filters.MultiHopExecuted(), rc.blockNumber)
+    )[0];
+    expect(ev.args.feeTotal).to.equal(feeTotal);
+  });
+
+  it("multi-hop: rota inválida (tamanhos, entrada ETH, vazio, zero out) reverte", async function () {
+    const usdc = await (
+      await ethers.getContractFactory("MockERC20")
+    ).deploy("USD Coin", "USDC");
+    const venues = [await pool.getAddress()];
+    const tokens = [await token.getAddress(), ethers.ZeroAddress];
+
+    await expect(
+      router
+        .connect(user1)
+        .executeMultiHop([], [await token.getAddress(), ethers.ZeroAddress], 1n, 1n)
+    ).to.be.revertedWith("Empty route");
+    await expect(
+      router
+        .connect(user1)
+        .executeMultiHop(
+          [await pool.getAddress(), await pool.getAddress()],
+          [await token.getAddress(), ethers.ZeroAddress],
+          1n,
+          1n
+        )
+    ).to.be.revertedWith("Route mismatch");
+    await expect(
+      router
+        .connect(user1)
+        .executeMultiHop(
+          venues,
+          [ethers.ZeroAddress, await usdc.getAddress()],
+          1n,
+          1n
+        )
+    ).to.be.revertedWith("Route must start with a token");
+    await expect(
+      router.connect(user1).executeMultiHop(venues, tokens, 0, 1n)
+    ).to.be.revertedWith("Invalid amount");
+    await expect(
+      router.connect(user1).executeMultiHop(venues, tokens, 1n, 0)
+    ).to.be.revertedWith("Min amount must be > 0");
+
+    // minOut acima do líquido (cascata/receita) → pós-checagem
+    await expect(
+      router
+        .connect(user1)
+        .executeMultiHop(
+          [await pool.getAddress()],
+          [await token.getAddress(), ethers.ZeroAddress],
+          ethers.parseEther("1"),
+          ethers.parseEther("1") // 1:1 bruto; líquido = 1 - 0,05%
+        )
+    ).to.be.revertedWith("Slippage exceeded");
+
+    // Sem allowance: transferFrom reverte
+    const other = (await ethers.getSigners())[3];
+    await token.mint(other.address, ethers.parseEther("10"));
+    await expect(
+      router
+        .connect(other)
+        .executeMultiHop(
+          [await pool.getAddress()],
+          [await token.getAddress(), ethers.ZeroAddress],
+          ethers.parseEther("1"),
+          1n
+        )
+    ).to.be.reverted;
+  });
+
+  it("multi-hop: cooldown por carteira também vale", async function () {
+    const venues = [await pool.getAddress()];
+    const tokens = [await token.getAddress(), ethers.ZeroAddress];
+
+    await router
+      .connect(user1)
+      .executeMultiHop(venues, tokens, ethers.parseEther("1"), 1n);
+    await expect(
+      router
+        .connect(user1)
+        .executeMultiHop(venues, tokens, ethers.parseEther("1"), 1n)
+    ).to.be.revertedWith("Block delay not met");
+    await router
+      .connect(user1)
+      .executeMultiHop(venues, tokens, ethers.parseEther("1"), 1n);
+  });
+
+  // ==================== PROTEÇÕES ====================
 
   it("pré-checagem: minAmountOut acima do líquido esperado reverte", async function () {
     const amount = ethers.parseEther("10");
@@ -301,54 +480,101 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     expect(stats.sellVolume).to.equal(amount);
   });
 
-  it("admin: divisões >100%, fee >5% e delay >100 revertem", async function () {
-    await expect(
-      router.setFeeShares(9000, 2000)
-    ).to.be.revertedWith("Shares exceed 100%");
+  it("execução pior (60 bps): sem backrun — apenas constata desvio (interceptação é do hook)", async function () {
+    await pool.setExecSlippageBps(60);
+    const amount = ethers.parseEther("100");
+    const [sqrt] = await (await router.getPoolState()).slice(0, 1);
+    const expectedGross = quoteEth(amount, sqrt);
+    const minOut = ((expectedGross - (expectedGross * FEE_BPS) / BPS) * 90n) / 100n;
+
+    const routerBefore = await ethOf(await router.getAddress());
+    const tx = await router.connect(user1).executeProtectedSellAndBurn(amount, minOut);
+    const rc = await tx.wait();
+
+    // Router continua puro (sem retenção de orçamento/burn)
+    expect(await ethOf(await router.getAddress())).to.equal(routerBefore);
+    expect(rc.blockNumber).to.be.gt(0);
+    expect(await router.totalMEVCaptured()).to.equal(0);
+  });
+
+  // ==================== ADMIN ====================
+
+  it("admin: fee >5% e delay >100 revertem; fee até 5% é aceita", async function () {
     await expect(router.setFee(501)).to.be.revertedWith(
       "Fee too high (max 5%)"
     );
     await expect(router.setMinBlockDelay(101)).to.be.revertedWith(
       "Delay too high"
     );
-    await expect(router.setFeeShares(5000, 2000)).to.emit(
-      router,
-      "FeeSharesUpdated"
-    );
+    await expect(router.setFee(500)).to.emit(router, "FeeUpdated");
+    expect(await router.feeBps()).to.equal(500n);
+    await router.setFee(5);
+    expect(await router.feeBps()).to.equal(5n);
   });
 
-  it("withdrawFees: parcial, só o disponível, e revertes corretos", async function () {
-    // Sem saldo: reverte
+  it("withdrawFees: só residual de ETH, parcial, e revertes corretos", async function () {
+    // Router normalmente fica sem saldo (taxa vai integral ao cofre)
     await expect(router.withdrawFees(1)).to.be.revertedWith(
-      "Insufficient balance"
-    );
-
-    // Gera receita residual (orçamento de burn sem backrun)
-    const amount = ethers.parseEther("10");
-    const [sqrt] = await (await router.getPoolState()).slice(0, 1);
-    const gross = quoteEth(amount, sqrt);
-    const burnBudget = ((gross * FEE_BPS) / BPS) * BURN_BUDGET / BPS;
-    const minOut = ((gross - (gross * FEE_BPS) / BPS) * 90n) / 100n;
-    await router.connect(user1).executeProtectedSellAndBurn(amount, minOut);
-
-    const routerBal = await ethOf(await router.getAddress());
-    expect(routerBal).to.equal(burnBudget);
-
-    await expect(router.withdrawFees(burnBudget + 1n)).to.be.revertedWith(
       "Insufficient balance"
     );
     await expect(router.withdrawFees(0)).to.be.revertedWith("No fees");
 
-    const collectorBefore = await ethOf(owner.address);
-    const { rc } = await balanceChange(
-      router.withdrawFees(burnBudget),
-      owner.address
-    );
-    const collectorAfter = await ethOf(owner.address);
-    expect(collectorAfter + rc.gasUsed * rc.gasPrice).to.equal(
-      collectorBefore + burnBudget
+    // Doação direta gera residual
+    await owner.sendTransaction({
+      to: await router.getAddress(),
+      value: ethers.parseEther("1"),
+    });
+    await expect(
+      router.withdrawFees(ethers.parseEther("1") + 1n)
+    ).to.be.revertedWith("Insufficient balance");
+
+    const collectorBefore = await ethOf(feeCollector.address);
+    await router.setFeeCollector(feeCollector.address);
+    await router.withdrawFees(ethers.parseEther("1"));
+    // feeCollector não pagou gas (owner enviou a tx) ⇒ delta exato
+    expect((await ethOf(feeCollector.address)) - collectorBefore).to.equal(
+      ethers.parseEther("1")
     );
     expect(await ethOf(await router.getAddress())).to.equal(0);
+  });
+
+  it("withdrawErc20Fees: só o dono retira fee ERC-20 e o saldo zera", async function () {
+    const usdc = await (
+      await ethers.getContractFactory("MockERC20")
+    ).deploy("USD Coin", "USDC");
+    await usdc.mint(await pool.getAddress(), ethers.parseEther("1000"));
+
+    const amountIn = ethers.parseEther("1");
+    await router
+      .connect(user1)
+      .executeMultiHop(
+        [await pool.getAddress()],
+        [await token.getAddress(), await usdc.getAddress()],
+        amountIn,
+        1n
+      );
+
+    const feeTotal = (amountIn * FEE_BPS) / BPS;
+    expect(await router.erc20FeesAccrued(await usdc.getAddress())).to.equal(
+      feeTotal
+    );
+
+    // Sem fee nenhuma: reverte
+    const wethAddr = await mockWETH.getAddress();
+    await expect(
+      router.withdrawErc20Fees(wethAddr, owner.address)
+    ).to.be.revertedWith("No fees");
+
+    await expect(router.withdrawErc20Fees(await usdc.getAddress(), ethers.ZeroAddress))
+      .to.be.revertedWith("Invalid address");
+
+    await router.withdrawErc20Fees(await usdc.getAddress(), feeCollector.address);
+    expect(await usdc.balanceOf(feeCollector.address)).to.equal(feeTotal);
+    expect(await router.erc20FeesAccrued(await usdc.getAddress())).to.equal(0);
+
+    await expect(
+      router.withdrawErc20Fees(await usdc.getAddress(), feeCollector.address)
+    ).to.be.revertedWith("No fees");
   });
 
   it("constructor: endereços zero revertem", async function () {
@@ -356,11 +582,26 @@ describe("OptimizerRouter — agregador (modelo de taxa, consistência)", functi
     await expect(
       Router.deploy(
         ethers.ZeroAddress,
-        await pool.getAddress(),
         await token.getAddress(),
         await mockWETH.getAddress(),
         await vault.getAddress()
       )
-    ).to.be.revertedWith("Invalid core");
+    ).to.be.revertedWith("Invalid pool");
+    await expect(
+      Router.deploy(
+        await pool.getAddress(),
+        ethers.ZeroAddress,
+        await mockWETH.getAddress(),
+        await vault.getAddress()
+      )
+    ).to.be.revertedWith("Invalid token");
+    await expect(
+      Router.deploy(
+        await pool.getAddress(),
+        await token.getAddress(),
+        await mockWETH.getAddress(),
+        ethers.ZeroAddress
+      )
+    ).to.be.revertedWith("Invalid vault");
   });
 });
