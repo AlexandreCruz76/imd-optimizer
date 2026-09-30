@@ -21,7 +21,7 @@ describe("OptimizerRouter — The Standard Integration", function () {
     await mockWETH.waitForDeployment();
 
     const MockPool = await ethers.getContractFactory("MockUniswapV4Pool");
-    mockPool = await MockPool.deploy();
+    mockPool = await MockPool.deploy(await mockStandardToken.getAddress());
     await mockPool.waitForDeployment();
 
     // Deploy Vault

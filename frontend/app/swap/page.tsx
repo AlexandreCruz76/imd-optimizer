@@ -62,7 +62,7 @@ const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
 
 const ROUTER_ABI = [
   "function getPoolState() view returns (uint160, int24, bool)",
-  "function getStats() view returns (uint256,uint256,uint256,uint256)",
+  "function getStats() view returns (uint256,uint256,uint256,uint256,uint256)",
   "function feeBps() view returns (uint256)",
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
@@ -72,7 +72,9 @@ const ROUTER_ABI = [
 const TOKEN_ABI = [
   "function symbol() view returns(string)",
   "function decimals() view returns(uint8)",
-  "function balanceOf(address) view returns(uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address,address) view returns (uint256)",
+  "function approve(address,uint256) returns (bool)",
   "function mint(address,uint256)",
 ];
 
@@ -82,7 +84,7 @@ interface SepoliaInfo {
   tokenBalance: string;
   hasMint: boolean;
     sqrtPriceX96: bigint;
-    routerEth: bigint;
+    venueEth: bigint;
     feeBps: number;
   minDelay: number;
   lastOpBlock: number;
@@ -374,7 +376,7 @@ export default function SwapPage() {
         hasMint = false;
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, provider);
-      const [state, stats, feeBps, minDelay, lastOp, bn, routerEth] =
+      const [state, stats, feeBps, minDelay, lastOp, bn, poolAddr] =
         await Promise.all([
           router.getPoolState(),
           router.getStats(),
@@ -382,8 +384,9 @@ export default function SwapPage() {
           router.minBlockDelay(),
           router.lastOperationBlock(address),
           provider.getBlockNumber(),
-          provider.getBalance(routerAddr),
+          router.standardPool(),
         ]);
+      const venueEth = await provider.getBalance(poolAddr);
       setSep({
         tokenSymbol: symbol as string,
         tokenDecimals: Number(decimals),
@@ -392,7 +395,7 @@ export default function SwapPage() {
         ).toFixed(4),
         hasMint,
         sqrtPriceX96: state[0] as bigint,
-        routerEth,
+        venueEth,
         feeBps: Number(feeBps),
         minDelay: Number(minDelay),
         lastOpBlock: Number(lastOp),
@@ -468,19 +471,22 @@ export default function SwapPage() {
   const usdValue = amountNum * (PRICES_USD[tokenIn.symbol] ?? 0);
   const priceImpact = Math.min((usdValue / LIQUIDITY_USD) * 100, 50);
 
-  // Cotação real na Sepolia — mesma fórmula do OptimizerRouter:
-  // price = sqrtPriceX96^2 / 2^192 ; ethOut = amount * price / 1e18
+  // Cotação real na Sepolia — mesma aritmética do OptimizerRouter (duas etapas):
+  // gross = ((amt * sqrt) / 2^96) * sqrt / 2^96 ; líquido = gross - taxa
   const realQuote = useMemo(() => {
     if (!realMode || !sep || !amount || amountNum <= 0) return null;
     try {
       const amt = ethers.parseUnits(amount, sep.tokenDecimals);
-      const price = (sep.sqrtPriceX96 * sep.sqrtPriceX96) / (2n ** 192n);
-      const out = (amt * price) / (10n ** 18n);
-      if (out === 0n) return null;
-      // contrato limita slippage a 10% (MAX_SLIPPAGE_BPS = 1000)
+      const two96 = 2n ** 96n;
+      const sqrt = sep.sqrtPriceX96;
+      if (sqrt === 0n) return null;
+      const gross = ((amt * sqrt) / two96) * sqrt / two96;
+      const fee = (gross * BigInt(sep.feeBps)) / 10000n;
+      const net = gross - fee;
+      if (net === 0n) return null;
       const slipBps = BigInt(Math.min(Math.round(slipNum * 100), 1000));
-      const minOut = (out * (10000n - slipBps)) / 10000n;
-      return { amt, out, minOut, price, slipBps };
+      const minOut = (net * (10000n - slipBps)) / 10000n;
+      return { amt, gross, net, fee, minOut, slipBps };
     } catch {
       return null;
     }
@@ -537,6 +543,20 @@ export default function SwapPage() {
       setTxHash(null);
       setRealStats(null);
       try {
+        // Router puxa os tokens via transferFrom — allowance antes do swap
+        const token = new ethers.Contract(
+          tokenIn.address,
+          TOKEN_ABI,
+          signer
+        );
+        const allowance: bigint = await token.allowance(
+          address,
+          routerAddr
+        );
+        if (allowance < realQuote.amt) {
+          const approveTx = await token.approve(routerAddr, realQuote.amt);
+          await approveTx.wait();
+        }
         const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
         const tx = await router.executeProtectedSellAndBurn(
           realQuote.amt,
@@ -670,10 +690,10 @@ export default function SwapPage() {
             {realMode &&
               sep &&
               realQuote &&
-              realQuote.out > sep.routerEth && (
+              realQuote.gross > sep.venueEth && (
                 <div className="rounded-xl border border-[#FF567E]/40 bg-[#FF567E]/10 px-3 py-2 text-xs text-[#FF567E]">
-                  Venda acima do fundo do router (mock 1:1): disponível{" "}
-                  {fmt(parseFloat(ethers.formatUnits(sep.routerEth, 18)), 4)}{" "}
+                  Venda acima do fundo da venue (pool): disponível{" "}
+                  {fmt(parseFloat(ethers.formatUnits(sep.venueEth, 18)), 4)}{" "}
                   ETH — reduza o valor
                 </div>
               )}
@@ -887,7 +907,7 @@ export default function SwapPage() {
               <div className="flex-1 min-w-0 text-2xl font-mono text-[#E8E8E8]">
                 {realMode && realQuote ? (
                   fmt(
-                    parseFloat(ethers.formatUnits(realQuote.out, 18)),
+                    parseFloat(ethers.formatUnits(realQuote.net, 18)),
                     6
                   )
                 ) : amountNum > 0 ? (
@@ -940,7 +960,7 @@ export default function SwapPage() {
                   value={
                     realQuote
                       ? `1 ${sep?.tokenSymbol ?? "STANDARD"} = ${fmt(
-                          Number(realQuote.price) / 1e18,
+                          Number(realQuote.gross) / Number(realQuote.amt),
                           6
                         )} ETH`
                       : "—"
@@ -973,7 +993,20 @@ export default function SwapPage() {
                 />
                 <InfoRow
                   label="Protocol fee"
-                  value={sep ? `${(sep.feeBps / 100).toFixed(2)}%` : "—"}
+                  value={
+                    sep
+                      ? `${(sep.feeBps / 100).toFixed(2)}%${
+                          realQuote
+                            ? ` (${fmt(
+                                parseFloat(
+                                  ethers.formatUnits(realQuote.fee, 18)
+                                ),
+                                6
+                              )} ETH)`
+                            : ""
+                        }`
+                      : "—"
+                  }
                 />
                 <InfoRow
                   label="Anti-sandwich cooldown"
@@ -1037,7 +1070,7 @@ export default function SwapPage() {
               (realMode &&
                 !!realQuote &&
                 !!sep &&
-                realQuote.out > sep.routerEth)
+                realQuote.gross > sep.venueEth)
             }
             className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono transition-all ${
               btnState === "swap"
