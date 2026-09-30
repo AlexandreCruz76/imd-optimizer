@@ -6,10 +6,10 @@ import { WalletProvider } from "./components/WalletProvider";
 export default function HomePage() {
   return (
     <WalletProvider>
-      <div className="min-h-screen bg-[#070A0E] text-white antialiased">
+      <div className="min-h-screen bg-[#070A0F] text-white antialiased bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] relative selection:bg-emerald-500/20">
         <Navbar />
         
-        <main className="min-h-screen bg-[#070A0E] text-white pt-28">
+        <main className="min-h-screen bg-transparent text-white pt-28">
           {/* ===== HERO SECTION ===== */}
           <section id="overview" className="relative overflow-hidden">
             {/* Background atmosphere - subtle center radial only */}
@@ -578,7 +578,7 @@ function TierCard({ tier, name, fee, boost, color, glow, bg, border, desc }: {
 }) {
   return (
     <div 
-      className={`relative rounded-2xl p-6 backdrop-blur-xl transition-all duration-300 ${bg} ${border} hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)]`}
+      className={`relative flex flex-col h-full bg-[#0F141C]/70 border border-white/[0.08] hover:border-emerald-500/30 rounded-2xl p-5 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 shadow-lg`}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLElement;
         el.style.boxShadow = `0 0 30px ${glow}, 0 20px 40px rgba(0,0,0,0.3)`;
@@ -594,14 +594,14 @@ function TierCard({ tier, name, fee, boost, color, glow, bg, border, desc }: {
         </div>
         <div>
           <div className="font-semibold text-white">{name}</div>
-          <div className="text-xs text-[#6B7A88]">Tier {tier}</div>
+          <div className="text-xs text-slate-400">Tier {tier}</div>
         </div>
       </div>
       <div className="space-y-2 mb-4">
         <div className="font-mono text-lg font-bold text-white">{fee}</div>
         <div className="text-sm font-medium" style={{color}}>{boost}</div>
       </div>
-      <p className="text-sm text-[#6B7A88] leading-relaxed">{desc}</p>
+      <p className="text-sm text-slate-300 leading-relaxed flex-1">{desc}</p>
     </div>
   );
 }
