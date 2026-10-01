@@ -6,11 +6,11 @@ import { useState, useEffect } from "react";
 
 const navLinks = [
   { href: "#overview", label: "Overview" },
-  { href: "#protocol-lore", label: "Protocol Lore" },
-  { href: "#value-funnel", label: "Value Funnel" },
-  { href: "#metrics-burns", label: "Metrics & Burns" },
-  { href: "#architecture", label: "Architecture" },
   { href: "/swap", label: "Swap" },
+  { href: "/arbitrage", label: "Arbitrage" },
+  { href: "/vault", label: "Vault" },
+  { href: "/nft-mint", label: "NFT" },
+  { href: "/staking", label: "Staking" },
   { href: "/pool", label: "Meta Hook Pool" },
 ];
 
