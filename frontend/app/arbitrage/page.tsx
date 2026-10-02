@@ -1,237 +1,225 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { Navbar } from "../components/Navbar";
 
+const SPREAD_PRESETS = [0.2, 0.5, 1.0];
+
+const MOCK_LOGS = [
+  { route: "ETH → IMD (Hook)", edge: 0.84, gas: 142000, status: "EXECUTED" },
+  { route: "IMD → ETH (Native)", edge: 0.52, gas: 158000, status: "EXECUTED" },
+  { route: "ETH → IMD (Hook)", edge: 0.31, gas: 165000, status: "SKIPPED" },
+  { route: "IMD → ETH (Native)", edge: 1.12, gas: 134000, status: "EXECUTED" },
+  { route: "ETH → IMD (Hook)", edge: 0.67, gas: 149000, status: "PENDING" },
+];
+
 export default function ArbitragePage() {
-  const [capital, setCapital] = useState("10");
-  const [capitalAsset, setCapitalAsset] = useState<"ETH" | "IMD">("ETH");
-  const [targetSpread, setTargetSpread] = useState("0.5");
-  const [maxGas, setMaxGas] = useState("0.005");
+  const [capitalAmount, setCapitalAmount] = useState("");
+  const [capitalToken, setCapitalToken] = useState<"ETH" | "IMD">("ETH");
+  const [targetSpread, setTargetSpread] = useState(0.5);
+  const [maxGasCeiling, setMaxGasCeiling] = useState(50);
   const [armed, setArmed] = useState(false);
-  const [logs, setLogs] = useState<Array<{
-    route: string;
-    edge: string;
-    gas: string;
-    status: "PENDING" | "EXECUTING" | "CONFIRMED" | "FAILED";
-  }>>([]);
 
-  const spreadOptions = ["0.2", "0.5", "1.0"];
-
-  useEffect(() => {
-    if (!armed) return;
-    const interval = setInterval(() => {
-      const routes = ["UNI-V2 → SUSHI", "CURVE → UNI-V3", "BALANCER → CURVE", "UNI-V3 → SUSHI"];
-      const route = routes[Math.floor(Math.random() * routes.length)];
-      const edge = (Math.random() * 2 + 0.1).toFixed(2);
-      const gas = (Math.random() * 0.003 + 0.001).toFixed(4);
-      const statuses: Array<"PENDING" | "EXECUTING" | "CONFIRMED" | "FAILED"> = ["PENDING", "EXECUTING", "CONFIRMED", "FAILED"];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      setLogs((prev) => [{ route, edge: `${edge}%`, gas: `${gas} ETH`, status }, ...prev].slice(0, 8));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [armed]);
-
-  const grossSpread = (parseFloat(capital) * parseFloat(targetSpread) / 100).toFixed(4);
-  const gasFriction = (parseFloat(maxGas) * 1.2).toFixed(4);
-  const netEdge = (parseFloat(grossSpread) - parseFloat(gasFriction)).toFixed(4);
+  const grossSpread = 1.24;
+  const gasFriction = 0.38;
+  const netCapturedEdge = grossSpread - gasFriction - targetSpread;
 
   return (
-    <div className="min-h-screen bg-[#04070C] text-emerald-400 font-mono">
+    <div className="min-h-screen bg-[#070A0F] font-mono">
       <Navbar />
-      <main className="pt-20 max-w-7xl mx-auto p-4 md:p-8">
-        <div className="bg-[#070A0F]/90 border border-emerald-500/30 rounded-3xl p-6 md:p-8">
-          <div className="flex items-center justify-between mb-8 border-b border-emerald-500/20 pb-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-wider text-emerald-400">ARBITRAGE TERMINAL</h1>
-              <p className="text-emerald-500/60 text-sm mt-1 tracking-widest">MEV EXECUTION ENGINE v3.7.1</p>
-            </div>
-            <div className="flex items-center gap-3 text-right">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span className="text-xs text-emerald-500/70">ORACLE SYNC: OPTIMAL</span>
+
+      <main className="pt-20 pb-8 px-4 md:px-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
+        {/* Ambient scanlines */}
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_3px] opacity-20" />
+        {/* Corner brackets */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-emerald-500/30" />
+          <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-emerald-500/30" />
+          <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-emerald-500/30" />
+          <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-emerald-500/30" />
+        </div>
+
+        <div className="relative z-10 w-full max-w-5xl">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-sm md:text-base font-mono text-white tracking-widest uppercase">
+              ARBITRAGE TERMINAL
+            </h1>
+            <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ORACLE SYNC: OPTIMAL
+              </span>
+              <span className="text-emerald-400">LATENCY: ~120ms</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Card: Execution Controls */}
-            <div className="bg-[#090D14]/80 border border-emerald-500/20 rounded-2xl p-6">
-              <h2 className="text-xs font-bold tracking-widest text-emerald-500/70 mb-6 uppercase">EXECUTION CONTROLS</h2>
+          {/* Outer bezel container */}
+          <div className="bg-[#070A0F]/90 border border-emerald-500/30 rounded-3xl p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* LEFT CARD: Execution Controls */}
+              <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 font-mono tracking-widest uppercase">EXECUTION CONTROLS</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
 
-              <div className="space-y-6">
                 {/* Capital Input */}
-                <div>
-                  <label className="block text-xs text-emerald-500/60 mb-2 tracking-wider">CAPITAL ALLOCATION</label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 relative">
-                      <input
-                        type="number"
-                        value={capital}
-                        onChange={(e) => setCapital(e.target.value)}
-                        className="w-full bg-[#04070C] border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-300 placeholder-emerald-500/30 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
-                        placeholder="10"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setCapitalAsset("ETH")}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold tracking-wider border ${
-                          capitalAsset === "ETH"
-                            ? "bg-emerald-500 text-black border-emerald-500"
-                            : "bg-transparent text-emerald-500/70 border-emerald-500/30 hover:border-emerald-500/50"
-                        }`}
-                      >
-                        ETH
-                      </button>
-                      <button
-                        onClick={() => setCapitalAsset("IMD")}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold tracking-wider border ${
-                          capitalAsset === "IMD"
-                            ? "bg-emerald-500 text-black border-emerald-500"
-                            : "bg-transparent text-emerald-500/70 border-emerald-500/30 hover:border-emerald-500/50"
-                        }`}
-                      >
-                        IMD
-                      </button>
-                    </div>
-                    <button className="px-3 py-2 rounded-lg text-xs font-bold tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20">MAX</button>
+                <div className="space-y-3">
+                  <label className="text-xs text-slate-400 font-mono tracking-widest uppercase block">CAPITAL ALLOCATION</label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={capitalToken}
+                      onChange={(e) => setCapitalToken(e.target.value as "ETH" | "IMD")}
+                      className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white font-mono text-lg focus:border-emerald-500/50 focus:outline-none appearance-none"
+                    >
+                      <option value="ETH">Ξ ETH</option>
+                      <option value="IMD">⚡ IMD</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={capitalAmount}
+                      onChange={(e) => setCapitalAmount(e.target.value)}
+                      placeholder="0.0000"
+                      className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-2xl font-mono text-white placeholder-slate-600 focus:border-emerald-500/50 focus:outline-none"
+                      min="0"
+                      step={capitalToken === "ETH" ? "0.0001" : "0.01"}
+                    />
+                    <button
+                      className="px-4 py-3 text-sm font-bold bg-slate-800/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                      MAX
+                    </button>
                   </div>
                 </div>
 
                 {/* Target Spread */}
-                <div>
-                  <label className="block text-xs text-emerald-500/60 mb-2 tracking-wider">TARGET SPREAD THRESHOLD</label>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {spreadOptions.map((spread) => (
+                <div className="space-y-3">
+                  <label className="text-xs text-slate-400 font-mono tracking-widest uppercase block">TARGET SPREAD</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SPREAD_PRESETS.map((preset) => (
                       <button
-                        key={spread}
-                        onClick={() => setTargetSpread(spread)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider border ${
-                          targetSpread === spread
-                            ? "bg-emerald-500 text-black border-emerald-500"
-                            : "bg-transparent text-emerald-500/70 border-emerald-500/30 hover:border-emerald-500/50"
+                        key={preset}
+                        onClick={() => setTargetSpread(preset)}
+                        className={`px-4 py-2 text-sm font-mono rounded-xl border transition-all ${
+                          targetSpread === preset
+                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
+                            : "bg-slate-900/50 border-slate-700/50 text-slate-300 hover:border-emerald-500/30"
                         }`}
                       >
-                        {spread}%
+                        {preset}%
                       </button>
                     ))}
                   </div>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="2.0"
-                    step="0.1"
-                    value={targetSpread}
-                    onChange={(e) => setTargetSpread(e.target.value)}
-                    className="w-full h-2 bg-[#04070C] rounded-lg appearance-none accent-emerald-500"
-                  />
-                  <p className="text-xs text-emerald-500/40 mt-1 text-right">CURRENT: {targetSpread}%</p>
+                  <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500/50 transition-all duration-300"
+                      style={{ width: `${(targetSpread / 1.0) * 100}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Max Gas Ceiling */}
-                <div>
-                  <label className="block text-xs text-emerald-500/60 mb-2 tracking-wider">MAX GAS CEILING (ETH)</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={maxGas}
-                    onChange={(e) => setMaxGas(e.target.value)}
-                    className="w-full bg-[#04070C] border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-300 placeholder-emerald-500/30 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
-                    placeholder="0.005"
-                  />
+                <div className="space-y-3">
+                  <label className="text-xs text-slate-400 font-mono tracking-widest uppercase block">MAX GAS CEILING (GWEI)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={maxGasCeiling}
+                      onChange={(e) => setMaxGasCeiling(Math.min(Math.max(parseInt(e.target.value) || 0, 1), 500))}
+                      className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-2xl font-mono text-white focus:border-emerald-500/50 focus:outline-none"
+                      min="1"
+                      max="500"
+                    />
+                    <span className="text-slate-400 font-mono text-lg">GWEI</span>
+                  </div>
                 </div>
 
                 {/* Arm Button */}
                 <button
                   onClick={() => setArmed(!armed)}
-                  className={`w-full py-3 rounded-xl font-bold text-lg tracking-widest transition-all ${
-                    armed
-                      ? "bg-red-500 text-black hover:bg-red-400"
-                      : "bg-emerald-500 text-black hover:bg-emerald-400"
-                  }`}
+                  className="w-full bg-emerald-500 text-black font-bold py-3 rounded-xl hover:bg-emerald-400 active:scale-[0.98] transition-all"
                 >
-                  {armed ? "DISARM ENGINE" : "ARM ARBITRAGE ENGINE"}
+                  {armed ? "ARBITRAGE ENGINE ARMED" : "ARM ARBITRAGE ENGINE"}
                 </button>
               </div>
-            </div>
 
-            {/* Right Card: Telemetry & Metrics */}
-            <div className="bg-[#090D14]/80 border border-emerald-500/20 rounded-2xl p-6">
-              <h2 className="text-xs font-bold tracking-widest text-emerald-500/70 mb-6 uppercase">TELEMETRY & METRICS</h2>
+              {/* RIGHT CARD: Telemetry & Metrics */}
+              <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-6 space-y-6 flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 font-mono tracking-widest uppercase">TELEMETRY & METRICS</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
 
-              <div className="space-y-6">
-                {/* Status */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#04070C] border border-emerald-500/20 rounded-xl p-4">
-                    <div className="text-xs text-emerald-500/50 tracking-wider mb-1">ORACLE SYNC</div>
-                    <div className="text-lg font-bold text-emerald-400 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      OPTIMAL
-                    </div>
+                {/* Status Strip */}
+                <div className="grid grid-cols-2 gap-3 p-4 bg-slate-900/40 border border-slate-700/50 rounded-xl">
+                  <div className="text-center">
+                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">ORACLE SYNC</div>
+                    <div className="text-sm font-mono text-emerald-400 font-bold">OPTIMAL</div>
                   </div>
-                  <div className="bg-[#04070C] border border-emerald-500/20 rounded-xl p-4">
-                    <div className="text-xs text-emerald-500/50 tracking-wider mb-1">LATENCY</div>
-                    <div className="text-lg font-bold text-emerald-400">~120ms</div>
+                  <div className="text-center">
+                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">LATENCY</div>
+                    <div className="text-sm font-mono text-emerald-400">~120ms</div>
                   </div>
                 </div>
 
                 {/* Math Breakdown */}
-                <div className="border-t border-emerald-500/20 pt-6">
-                  <h3 className="text-xs font-bold tracking-widest text-emerald-500/70 mb-4 uppercase">EDGE CALCULATION</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-emerald-500/60">GROSS SPREAD</span>
-                      <span className="text-emerald-300 font-mono">{grossSpread} {capitalAsset}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-emerald-500/60">GAS FRICTION (est.)</span>
-                      <span className="text-red-400/80 font-mono">-{gasFriction} ETH</span>
-                    </div>
-                    <div className="flex justify-between text-sm border-t border-emerald-500/20 pt-3">
-                      <span className="text-emerald-400 font-bold">NET CAPTURED EDGE</span>
-                      <span className={`font-mono font-bold ${parseFloat(netEdge) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {parseFloat(netEdge) >= 0 ? "+" : ""}{netEdge} {capitalAsset}
-                      </span>
-                    </div>
+                <div className="space-y-2 border-t border-b border-slate-800/50 py-4">
+                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">MATHEMATICAL BASE BREAKDOWN</div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-xs text-slate-400 font-mono uppercase">GROSS SPREAD</span>
+                    <span className="font-mono text-emerald-400 text-lg">{grossSpread.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-xs text-slate-400 font-mono uppercase">GAS FRICTION</span>
+                    <span className="font-mono text-rose-500 text-lg">-{gasFriction.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-xs text-slate-400 font-mono uppercase">TARGET THRESHOLD</span>
+                    <span className="font-mono text-slate-300 text-lg">{targetSpread.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-t border-slate-700/50">
+                    <span className="text-xs text-slate-400 font-mono uppercase">NET CAPTURED EDGE</span>
+                    <span className="font-mono font-bold text-lg" style={{ color: netCapturedEdge > 0 ? "#00F58C" : "#FF567E" }}>
+                      {netCapturedEdge > 0 ? "+" : ""}{netCapturedEdge.toFixed(2)}%
+                    </span>
                   </div>
                 </div>
 
-                {/* Execution Log */}
-                <div className="border-t border-emerald-500/20 pt-6">
-                  <h3 className="text-xs font-bold tracking-widest text-emerald-500/70 mb-4 uppercase">EXECUTION LOG</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
+                {/* Execution Log Table */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">EXECUTION LOG</div>
+                  <div className="bg-slate-900/30 border border-slate-700/50 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs font-mono">
                       <thead>
-                        <tr className="text-emerald-500/50 border-b border-emerald-500/20">
-                          <th className="text-left py-2 px-3 tracking-wider">ROUTE</th>
-                          <th className="text-right py-2 px-3 tracking-wider">EDGE %</th>
-                          <th className="text-right py-2 px-3 tracking-wider">GAS</th>
-                          <th className="text-right py-2 px-3 tracking-wider">STATUS</th>
+                        <tr className="text-slate-400 border-b border-slate-700/50">
+                          <th className="text-left py-2 px-3">ROUTE</th>
+                          <th className="py-2 px-3">EDGE %</th>
+                          <th className="py-2 px-3">GAS</th>
+                          <th className="py-2 px-3">STATUS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {logs.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="text-center py-8 text-emerald-500/30">AWAITING ENGINE ARM...</td>
+                        {MOCK_LOGS.map((log, i) => (
+                          <tr key={i} className="border-t border-slate-800/50 hover:bg-emerald-500/5">
+                            <td className="py-2 px-3 text-slate-300">{log.route}</td>
+                            <td className="py-2 px-3 text-emerald-400">{log.edge >= 0 ? "+" : ""}{log.edge.toFixed(2)}%</td>
+                            <td className="py-2 px-3 text-slate-400">{log.gas.toLocaleString()}</td>
+                            <td className="py-2 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                log.status === "EXECUTED" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                                log.status === "SKIPPED" ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" :
+                                "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              }`}>
+                                {log.status}
+                              </span>
+                            </td>
                           </tr>
-                        ) : (
-                          logs.map((log, i) => (
-                            <tr key={i} className="border-b border-emerald-500/10 hover:bg-emerald-500/5">
-                              <td className="py-2 px-3 text-emerald-300 font-mono">{log.route}</td>
-                              <td className="py-2 px-3 text-right text-emerald-400 font-mono">{log.edge}</td>
-                              <td className="py-2 px-3 text-right text-emerald-500/60 font-mono">{log.gas}</td>
-                              <td className="py-2 px-3 text-right">
-                                <span className={`px-2 py-0.5 rounded text-xs font-bold tracking-wider ${
-                                  log.status === "CONFIRMED" ? "bg-emerald-500/20 text-emerald-400" :
-                                  log.status === "EXECUTING" ? "bg-amber-500/20 text-amber-400" :
-                                  log.status === "FAILED" ? "bg-red-500/20 text-red-400" :
-                                  "bg-emerald-500/10 text-emerald-500/60"
-                                }`}>
-                                  {log.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                        ))}
                       </tbody>
                     </table>
                   </div>

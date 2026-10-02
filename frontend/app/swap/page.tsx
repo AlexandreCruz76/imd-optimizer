@@ -47,8 +47,6 @@ const TOKENS: Token[] = [
   },
 ];
 
-// Demo UI rates (USD) used for the quote estimate until the on-chain
-// quote path (OptimizerRouter.exactInputSingle) is wired in.
 const PRICES_USD: Record<string, number> = {
   IMD: 0.1,
   BUILDER: 0.5,
@@ -56,7 +54,6 @@ const PRICES_USD: Record<string, number> = {
   USDC: 1,
 };
 
-// Assumed pool depth for the demo price-impact model.
 const LIQUIDITY_USD = 5_000_000;
 
 const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
@@ -82,9 +79,9 @@ interface SepoliaInfo {
   tokenDecimals: number;
   tokenBalance: string;
   hasMint: boolean;
-    sqrtPriceX96: bigint;
-    routerEth: bigint;
-    feeBps: number;
+  sqrtPriceX96: bigint;
+  routerEth: bigint;
+  feeBps: number;
   minDelay: number;
   lastOpBlock: number;
   blockNumber: number;
@@ -167,13 +164,13 @@ function TokenSelector({
           setQuery("");
           setOpen(true);
         }}
-        className="flex items-center gap-2 rounded-2xl bg-[#0B0E14]/80 border border-white/[0.10] hover:border-[#00F58C]/40 pl-2 pr-3 py-2 transition-colors"
+        className="flex items-center gap-2 rounded-2xl bg-[#0B111A]/80 border border-slate-700/50 hover:border-emerald-500/40 pl-2 pr-3 py-2 transition-colors"
       >
         <TokenLogo token={token} size={26} />
-        <span className="text-sm font-semibold text-[#E8E8E8] font-mono">
+        <span className="text-sm font-semibold text-white font-mono">
           {token.symbol}
         </span>
-        <span className="text-[10px] text-[#6B7A88]">▾</span>
+        <span className="text-[10px] text-slate-400">▾</span>
       </button>
 
       {open && (
@@ -182,16 +179,16 @@ function TokenSelector({
           onClick={() => setOpen(false)}
         >
           <div
-            className="glass-card rounded-3xl w-full max-w-sm p-4 border border-white/[0.10]"
+            className="bg-[#0B111A]/90 border border-emerald-500/25 rounded-3xl w-full max-w-sm p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-[#E8E8E8] tracking-wider">
+              <span className="text-sm font-semibold text-white tracking-wider font-mono uppercase">
                 SELECT TOKEN
               </span>
               <button
                 onClick={() => setOpen(false)}
-                className="text-[#6B7A88] hover:text-[#E8E8E8] text-sm"
+                className="text-slate-400 hover:text-white text-sm"
               >
                 ✕
               </button>
@@ -201,7 +198,7 @@ function TokenSelector({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name or paste address"
-              className="w-full bg-[#0B0E14] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-[#E8E8E8] placeholder-[#6B7A88] outline-none focus:border-[#00F58C]/50 mb-3 font-mono"
+              className="w-full bg-[#070A0F]/80 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500/50 mb-3 font-mono"
             />
 
             <div className="space-y-1 max-h-72 overflow-y-auto">
@@ -218,28 +215,26 @@ function TokenSelector({
                     className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
                       disabled
                         ? "opacity-30 cursor-not-allowed"
-                        : "hover:bg-white/[0.05]"
+                        : "hover:bg-emerald-500/5"
                     }`}
                   >
                     <TokenLogo token={t} size={32} />
                     <span className="text-left">
-                      <span className="block text-sm font-semibold text-[#E8E8E8] font-mono">
+                      <span className="block text-sm font-semibold text-white font-mono">
                         {t.symbol}
                       </span>
-                      <span className="block text-[10px] text-[#6B7A88]">
+                      <span className="block text-[10px] text-slate-400">
                         {t.name}
                       </span>
                     </span>
-                    <span className="ml-auto text-[10px] text-[#6B7A88] font-mono">
+                    <span className="ml-auto text-[10px] text-slate-400 font-mono">
                       {shortAddr(t.address)}
                     </span>
                   </button>
                 );
               })}
               {filtered.length === 0 && (
-                <div className="text-xs text-[#6B7A88] text-center py-4">
-                  No tokens found
-                </div>
+                <div className="text-xs text-slate-500 text-center py-4">No tokens found</div>
               )}
             </div>
           </div>
@@ -262,10 +257,10 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center justify-between text-xs">
-      <span className="text-[#6B7A88]">{label}</span>
+      <span className="text-slate-400 font-mono uppercase tracking-wider">{label}</span>
       <span
         className={`${mono ? "font-mono" : ""}`}
-        style={{ color: color || "#E8E8E8" }}
+        style={{ color: color || "white" }}
       >
         {value}
       </span>
@@ -297,7 +292,6 @@ export default function SwapPage() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
 
-  // ===== SEPOLIA REAL MODE =====
   const [cfg, setCfg] = useState<{
     optimizerRouter?: string;
     standardToken?: string;
@@ -469,8 +463,6 @@ export default function SwapPage() {
   const usdValue = amountNum * (PRICES_USD[tokenIn.symbol] ?? 0);
   const priceImpact = Math.min((usdValue / LIQUIDITY_USD) * 100, 50);
 
-  // Cotação real na Sepolia — mesma fórmula do OptimizerRouter:
-  // price = sqrtPriceX96^2 / 2^192 ; ethOut = amount * price / 1e18
   const realQuote = useMemo(() => {
     if (!realMode || !sep || !amount || amountNum <= 0) return null;
     try {
@@ -478,7 +470,6 @@ export default function SwapPage() {
       const price = (sep.sqrtPriceX96 * sep.sqrtPriceX96) / (2n ** 192n);
       const out = (amt * price) / (10n ** 18n);
       if (out === 0n) return null;
-      // contrato limita slippage a 10% (MAX_SLIPPAGE_BPS = 1000)
       const slipBps = BigInt(Math.min(Math.round(slipNum * 100), 1000));
       const minOut = (out * (10000n - slipBps)) / 10000n;
       return { amt, out, minOut, price, slipBps };
@@ -530,7 +521,6 @@ export default function SwapPage() {
   async function handleSwap() {
     if (!amountNum || !connected) return;
 
-    // ===== EXECUÇÃO REAL (Sepolia) =====
     if (realMode) {
       if (!signer || !realQuote || cooldownBlocks > 0) return;
       setLoading(true);
@@ -568,7 +558,6 @@ export default function SwapPage() {
       return;
     }
 
-    // ===== DEMO (agregador simulado — não executa on-chain) =====
     setLoading(true);
     setError(null);
     setTxHash(null);
@@ -620,77 +609,64 @@ export default function SwapPage() {
     : "swap";
 
   return (
-    <div className="space-y-4 fade-in">
-      {/* Navigation Bar */}
+    <div className="min-h-screen bg-[#070A0F] font-mono">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-[#00F58C]/50 shadow-[0_0_12px_rgba(0,245,140,0.3)] bg-[#0D121A] flex-shrink-0">
-                <img src="/images/avatar.jpg" alt="IMD Optimizer" className="w-full h-full object-cover" />
-              </div>
-              <span className="hidden sm:block text-xl font-bold text-white tracking-tight">IMD Optimizer</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-sm font-medium text-[#6B7A88] hover:text-[#00F58C] transition-colors flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                <span className="hidden sm:inline">Home</span>
-              </Link>
-              <Link href="/pool" className="text-sm font-medium text-[#6B7A88] hover:text-[#00F58C] transition-colors hidden sm:inline">
-                Meta Hook Pool
-              </Link>
-              
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-emerald-500/50 shadow-[0_0_12px_rgba(0,245,140,0.3)] bg-[#0D121A] flex-shrink-0">
+              <img src="/images/avatar.jpg" alt="IMD Optimizer" className="w-full h-full object-cover" />
             </div>
+            <span className="hidden sm:block text-xl font-bold text-white tracking-tight">IMD Optimizer</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+              <span className="hidden sm:inline">Home</span>
+            </Link>
+            <Link href="/swap" className="text-sm font-medium text-emerald-400 font-bold hidden sm:inline">Swap</Link>
+            <Link href="/pool" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Meta Hook Pool</Link>
+            <Link href="/arbitrage" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Arbitrage</Link>
+            <Link href="/staking" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Staking</Link>
           </div>
         </div>
       </nav>
 
-      <main className="pt-28">
+      <main className="pt-20 pb-8 px-4 md:px-8">
         {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img
-            src="/pepe/profile.jpeg"
-            alt="Swap"
-            className="w-8 h-8 rounded-full border border-[#00F58C]"
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (!target.dataset.triedAvatar) {
-                target.dataset.triedAvatar = "true";
-                target.src = "/images/avatar.jpg";
-              } else if (!target.dataset.triedAgente) {
-                target.dataset.triedAgente = "true";
-                target.src = "/images/agente.png";
-              }
-            }}
-          />
-          <h1 className="text-base md:text-lg font-medium text-[#E8E8E8] tracking-wider">
-            ┌─ PROTECTED SWAP ────────────────────────────────────────────────────┐
-          </h1>
+        <div className="flex items-center justify-between mb-6 max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/agente.png"
+              alt="Agent"
+              className="w-8 h-8 rounded-full border border-emerald-500 object-cover"
+            />
+            <h1 className="text-base md:text-lg font-medium text-white tracking-widest font-mono uppercase">
+              ┌─ PROTECTED SWAP ── EXECUTION ROUTE ────────────────────────┐
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {realMode ? (
+              <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400">
+                SEPOLIA · LIVE EXECUTION
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400">
+                DEMO · SIMULATION ONLY
+              </span>
+            )}
+            {connected && !isSepolia && chainId !== null && (
+              <button
+                onClick={() => switchChain(11155111)}
+                className="text-[10px] font-mono px-2 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20"
+              >
+                ▸ SWITCH TO SEPOLIA
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {realMode ? (
-            <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#00F58C]/10 border border-[#00F58C]/40 text-[#00F58C]">
-              SEPOLIA · EXECUÇÃO REAL
-            </span>
-          ) : (
-            <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#FFB000]/10 border border-[#FFB000]/40 text-[#FFB000]">
-              DEMO · NÃO EXECUTA ON-CHAIN
-            </span>
-          )}
-          {connected && !isSepolia && chainId !== null && (
-            <button
-              onClick={() => switchChain(11155111)}
-              className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#00F5FF]/10 border border-[#00F5FF]/40 text-[#00F5FF] hover:bg-[#00F5FF]/20"
-            >
-              ▸ SWITCH TO SEPOLIA
-            </button>
-          )}
-        </div>
-      </div>
 
-        {/* Background Artwork - Cyberpunk Frog analyzing swap data */}
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden -mt-28">
+        {/* Ambient Background */}
+        <div className="fixed inset-0 pointer-events-none z-0 -mt-20">
           <img
             src="/images/Cyberpunk_frog_examining_hologra._20260926020301.jpg"
             alt="Agentic Frog analyzing swap data"
@@ -706,544 +682,488 @@ export default function SwapPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,#070A0F/40_70%,#070A0F/90_100%)]" />
         </div>
 
-      {/* Banners de estado */}
-      {isSepolia && !routerAddr && (
-        <div className="glass-card rounded-2xl p-3 border border-[#FFB000]/30 text-xs text-[#FFB000] font-mono">
-          ⚠ Contratos ainda não deployados na Sepolia — rode{" "}
-          <span className="text-[#E8E8E8]">npm run deploy:sepolia</span> e
-          configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS no .env
-        </div>
-      )}
-            {realMode && connected && cooldownBlocks > 0 && (
-              <div className="rounded-xl border border-[#FFB000]/40 bg-[#FFB000]/10 px-3 py-2 text-xs text-[#FFB000]">
-                Anti-sandwich: aguarde {cooldownBlocks} bloco(s) após a última
-                operação da sua carteira
-              </div>
-            )}
-            {realMode &&
-              sep &&
-              realQuote &&
-              realQuote.out > sep.routerEth && (
-                <div className="rounded-xl border border-[#FF567E]/40 bg-[#FF567E]/10 px-3 py-2 text-xs text-[#FF567E]">
-                  Venda acima do fundo do router (mock 1:1): disponível{" "}
-                  {fmt(parseFloat(ethers.formatUnits(sep.routerEth, 18)), 4)}{" "}
-                  ETH — reduza o valor
-                </div>
-              )}
+        {/* Tactical Scanlines */}
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_3px] opacity-20" />
 
-      {/* Swap Card with Artwork Panel */}
-      <div className="max-w-5xl mx-auto w-full">
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          {/* Left: Action Artwork Panel */}
-          <div className="hidden lg:block">
-            <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-emerald-500/25 bg-[#0B111A]/90 shadow-[0_0_30px_rgba(0,245,140,0.1)] flex items-center justify-center">
-              <img
-                src="/images/acao2.jpg"
-                alt="Anti-MEV Combat Execution"
-                className="w-full h-full object-cover object-center"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  if (!target.dataset.triedPng) {
-                    target.dataset.triedPng = "true";
-                    target.src = "/images/acao 2.png";
-                  } else if (!target.dataset.triedJpeg) {
-                    target.dataset.triedJpeg = "true";
-                    target.src = "/images/acao.jpeg";
-                  }
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070A0F]/80 via-transparent to-transparent pointer-events-none" />
+        {/* State Banners */}
+        {isSepolia && !routerAddr && (
+          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
+            ⚠ Contracts not deployed on Sepolia — run <span className="text-white">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
+          </div>
+        )}
+        {realMode && connected && cooldownBlocks > 0 && (
+          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 font-mono">
+            Anti-sandwich: wait {cooldownBlocks} block(s) after last wallet operation
+          </div>
+        )}
+        {realMode && sep && realQuote && realQuote.out > sep.routerEth && (
+          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-400 font-mono">
+            Sell exceeds router fund (mock 1:1): available {fmt(parseFloat(ethers.formatUnits(sep.routerEth, 18)), 4)} ETH — reduce amount
+          </div>
+        )}
+
+        {/* Swap Card */}
+        <div className="relative z-10 max-w-5xl mx-auto">
+          <div className="glass-card rounded-3xl p-5 border border-emerald-500/25 shadow-2xl bg-[#0B111A]/90">
+            {/* Card header: title + settings */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs tracking-[0.25em] text-slate-400 font-mono uppercase">SWAP EXECUTION</span>
+              <button
+                onClick={() => setShowSettings((v) => !v)}
+                title="Transaction settings"
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all ${
+                  showSettings
+                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
+                    : "border-slate-700/50 text-slate-400 hover:text-white hover:border-emerald-500/30"
+                }`}
+              >
+                ⚙
+              </button>
             </div>
-          </div>
 
-          {/* Right: Swap Form */}
-          <div className="lg:col-span-1">
-            <div className="glass-card rounded-3xl p-5 border border-white/[0.08] shadow-2xl h-full">
-          {/* Card header: title + settings */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs tracking-[0.25em] text-[#6B7A88] font-mono">
-              SWAP
-            </span>
-            <button
-              onClick={() => setShowSettings((v) => !v)}
-              title="Transaction settings"
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all ${
-                showSettings
-                  ? "border-[#00F58C]/60 bg-[#00F58C]/10 text-[#00F58C]"
-                  : "border-white/[0.08] text-[#6B7A88] hover:text-[#E8E8E8] hover:border-white/[0.20]"
-              }`}
-            >
-              ⚙
-            </button>
-          </div>
-
-          {/* Settings panel */}
-          {showSettings && (
-            <div className="rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-3 mb-4 space-y-3 fade-in">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#6B7A88]">
-                  Slippage tolerance
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {SLIPPAGE_PRESETS.map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setSlippagePreset(v)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
-                        !isCustom && slippage === v
-                          ? "border-[#00F58C]/60 bg-[#00F58C]/10 text-[#00F58C]"
-                          : "border-white/[0.08] text-[#6B7A88] hover:border-white/[0.20]"
+            {/* Settings panel */}
+            {showSettings && (
+              <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-3 mb-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 font-mono uppercase">Slippage Tolerance</span>
+                  <div className="flex items-center gap-1.5">
+                    {SLIPPAGE_PRESETS.map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setSlippagePreset(v)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                          !isCustom && slippage === v
+                            ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
+                            : "border-slate-700/50 text-slate-400 hover:border-emerald-500/30"
+                        }`}
+                      >
+                        {v}%
+                      </button>
+                    ))}
+                    <div
+                      className={`flex items-center rounded-lg border px-2 py-1 ${
+                        isCustom
+                          ? "border-emerald-500/60 bg-emerald-500/10"
+                          : "border-slate-700/50"
                       }`}
                     >
-                      {v}%
-                    </button>
-                  ))}
-                  <div
-                    className={`flex items-center rounded-lg border px-2 py-1 ${
-                      isCustom
-                        ? "border-[#00F58C]/60 bg-[#00F58C]/10"
-                        : "border-white/[0.08]"
-                    }`}
-                  >
+                      <input
+                        type="number"
+                        min="0.01"
+                        max="50"
+                        step="0.01"
+                        value={customSlippage}
+                        onChange={(e) => setCustomSlippage(e.target.value)}
+                        placeholder=">"
+                        className="w-12 bg-transparent text-xs font-mono text-white placeholder-slate-500 outline-none text-right"
+                      />
+                      <span className="text-xs text-slate-400 ml-0.5">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {highSlip && (
+                  <div className="text-[10px] text-amber-400 font-mono">High slippage — you may receive significantly less than expected.</div>
+                )}
+                {lowSlip && (
+                  <div className="text-[10px] text-rose-400 font-mono">Very low slippage — your transaction is likely to fail.</div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 font-mono uppercase">Transaction Deadline</span>
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
-                      min="0.01"
-                      max="50"
-                      step="0.01"
-                      value={customSlippage}
-                      onChange={(e) => setCustomSlippage(e.target.value)}
-                      placeholder=">"
-                      className="w-12 bg-transparent text-xs font-mono text-[#E8E8E8] placeholder-[#6B7A88] outline-none text-right"
+                      min="1"
+                      max="4320"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className="w-16 bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-2 py-1 text-xs font-mono text-white outline-none focus:border-emerald-500/50 text-right"
                     />
-                    <span className="text-xs text-[#6B7A88] ml-0.5">%</span>
+                    <span className="text-xs text-slate-400">min</span>
                   </div>
                 </div>
               </div>
+            )}
 
-              {highSlip && (
-                <div className="text-[10px] text-[#FFB000]">
-                  High slippage — you may receive significantly less than
-                  expected.
-                </div>
-              )}
-              {lowSlip && (
-                <div className="text-[10px] text-[#FF567E]">
-                  Very low slippage — your transaction is likely to fail.
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#6B7A88]">
-                  Transaction deadline
+            {/* You Pay */}
+            <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-mono uppercase">YOU PAY</span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {realMode
+                    ? `Balance: ${sep?.tokenBalance ?? "—"} ${sep?.tokenSymbol ?? "STANDARD"}`
+                    : `Balance: ${balances[tokenIn.address.toLowerCase()] ?? "—"}`}
+                  {realMode ? (
+                    sep && parseFloat(sep.tokenBalance) > 0 ? (
+                      <button
+                        onClick={() => setAmount(sep.tokenBalance)}
+                        className="ml-1.5 text-emerald-400 hover:underline"
+                      >
+                        MAX
+                      </button>
+                    ) : sep?.hasMint ? (
+                      <button
+                        onClick={handleFaucet}
+                        disabled={faucetBusy}
+                        className="ml-1.5 text-cyan-400 hover:underline disabled:opacity-50"
+                      >
+                        {faucetBusy ? "MINTING…" : "MINT 1.000 (FAUCET)"}
+                      </button>
+                    ) : null
+                  ) : (
+                    connected &&
+                    balances[tokenIn.address.toLowerCase()] &&
+                    balances[tokenIn.address.toLowerCase()] !== "—" && (
+                      <button
+                        onClick={() =>
+                          setAmount(balances[tokenIn.address.toLowerCase()] || "")
+                        }
+                        className="ml-1.5 text-emerald-400 hover:underline"
+                      >
+                        MAX
+                      </button>
+                    )
+                  )}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min="1"
-                    max="4320"
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-16 bg-[#0B0E14] border border-white/[0.08] rounded-lg px-2 py-1 text-xs font-mono text-[#E8E8E8] outline-none focus:border-[#00F58C]/50 text-right"
-                  />
-                  <span className="text-xs text-[#6B7A88]">min</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-white placeholder-slate-500/50 outline-none"
+                />
+                <div className="flex items-center gap-2">
+                  {!realMode && (
+                    <span className="text-xs font-mono text-slate-400">
+                      {usdValue > 0 ? `≈ $${fmt(usdValue, 2)}` : ""}
+                    </span>
+                  )}
+                  {realMode ? (
+                    <span className="flex items-center gap-2 rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 pl-2 pr-3 py-2">
+                      <span
+                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
+                        style={{
+                          background: "#FFB00022",
+                          border: "1px solid #FFB00055",
+                          color: "#FFB000",
+                        }}
+                      >
+                        S
+                      </span>
+                      <span className="text-sm font-semibold text-white font-mono">
+                        {sep?.tokenSymbol ?? "STANDARD"}
+                      </span>
+                    </span>
+                  ) : (
+                    <TokenSelector
+                      token={tokenIn}
+                      other={tokenOut}
+                      onSelect={handleSelectIn}
+                    />
+                  )}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* You Pay */}
-          <div className="rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#6B7A88]">You pay</span>
-              <span className="text-[10px] font-mono text-[#6B7A88]">
-                {realMode
-                  ? `Balance: ${sep?.tokenBalance ?? "—"} ${sep?.tokenSymbol ?? "STANDARD"}`
-                  : `Balance: ${balances[tokenIn.address.toLowerCase()] ?? "—"}`}
-                {realMode ? (
-                  sep && parseFloat(sep.tokenBalance) > 0 ? (
-                    <button
-                      onClick={() => setAmount(sep.tokenBalance)}
-                      className="ml-1.5 text-[#00F58C] hover:underline"
-                    >
-                      MAX
-                    </button>
-                  ) : sep?.hasMint ? (
-                    <button
-                      onClick={handleFaucet}
-                      disabled={faucetBusy}
-                      className="ml-1.5 text-[#00F5FF] hover:underline disabled:opacity-50"
-                    >
-                      {faucetBusy ? "MINTING…" : "MINT 1.000 (FAUCET)"}
-                    </button>
-                  ) : null
-                ) : (
-                  connected &&
-                  balances[tokenIn.address.toLowerCase()] &&
-                  balances[tokenIn.address.toLowerCase()] !== "—" && (
-                    <button
-                      onClick={() =>
-                        setAmount(balances[tokenIn.address.toLowerCase()] || "")
-                      }
-                      className="ml-1.5 text-[#00F58C] hover:underline"
-                    >
-                      MAX
-                    </button>
-                  )
-                )}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-[#E8E8E8] placeholder-[#6B7A88]/50 outline-none"
-              />
-              <div className="flex items-center gap-2">
-                {!realMode && (
-                  <span className="text-xs font-mono text-[#6B7A88]">
-                    {usdValue > 0 ? `≈ $${fmt(usdValue, 2)}` : ""}
-                  </span>
-                )}
-                {realMode ? (
-                  <span className="flex items-center gap-2 rounded-2xl bg-[#0B0E14]/80 border border-white/[0.10] pl-2 pr-3 py-2">
-                    <span
-                      className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
-                      style={{
-                        background: "#FFB00022",
-                        border: "1px solid #FFB00055",
-                        color: "#FFB000",
-                      }}
-                    >
-                      S
-                    </span>
-                    <span className="text-sm font-semibold text-[#E8E8E8] font-mono">
-                      {sep?.tokenSymbol ?? "STANDARD"}
-                    </span>
-                  </span>
-                ) : (
-                  <TokenSelector
-                    token={tokenIn}
-                    other={tokenOut}
-                    onSelect={handleSelectIn}
-                  />
-                )}
+            {/* Reverse button */}
+            {!realMode && (
+              <div className="flex justify-center -my-2.5 relative z-10">
+                <button
+                  onClick={handleReverse}
+                  title="Switch tokens"
+                  className="w-10 h-10 rounded-xl bg-[#0B111A]/80 border border-slate-700/50 flex items-center justify-center text-emerald-400 text-lg hover:border-emerald-500/60 hover:rotate-180 transition-all duration-300"
+                >
+                  ⇅
+                </button>
               </div>
-            </div>
-          </div>
-
-          {/* Reverse button */}
-          {!realMode && (
-            <div className="flex justify-center -my-2.5 relative z-10">
-              <button
-                onClick={handleReverse}
-                title="Switch tokens"
-                className="w-10 h-10 rounded-xl glass-card border border-white/[0.12] flex items-center justify-center text-[#00F58C] text-lg hover:border-[#00F58C]/60 hover:rotate-180 transition-all duration-300"
-              >
-                ⇅
-              </button>
-            </div>
-          )}
-
-          {/* You Receive */}
-          <div
-            className={`rounded-2xl bg-[#0B0E14]/70 border border-white/[0.06] p-4 ${
-              realMode ? "mt-2" : ""
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#6B7A88]">You receive</span>
-              <span className="text-[10px] font-mono text-[#6B7A88]">
-                {realMode
-                  ? "ETH (gas token)"
-                  : `Balance: ${balances[tokenOut.address.toLowerCase()] ?? "—"}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0 text-2xl font-mono text-[#E8E8E8]">
-                {realMode && realQuote ? (
-                  fmt(
-                    parseFloat(ethers.formatUnits(realQuote.out, 18)),
-                    6
-                  )
-                ) : amountNum > 0 ? (
-                  fmt(outAmount)
-                ) : (
-                  <span className="text-[#6B7A88]/50">0.00</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {!realMode && (
-                  <span className="text-xs font-mono text-[#6B7A88]">
-                    {outAmount > 0
-                      ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
-                      : ""}
-                  </span>
-                )}
-                {realMode ? (
-                  <span className="flex items-center gap-2 rounded-2xl bg-[#0B0E14]/80 border border-white/[0.10] pl-2 pr-3 py-2">
-                    <span
-                      className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
-                      style={{
-                        background: "#8C9EFF22",
-                        border: "1px solid #8C9EFF55",
-                        color: "#8C9EFF",
-                      }}
-                    >
-                      Ξ
-                    </span>
-                    <span className="text-sm font-semibold text-[#E8E8E8] font-mono">
-                      ETH
-                    </span>
-                  </span>
-                ) : (
-                  <TokenSelector
-                    token={tokenOut}
-                    other={tokenIn}
-                    onSelect={handleSelectOut}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="mt-3 rounded-2xl bg-[#0B0E14]/40 border border-white/[0.04] px-4 py-3 space-y-1.5">
-            {realMode ? (
-              <>
-                <InfoRow
-                  label="Rate (on-chain)"
-                  value={
-                    realQuote
-                      ? `1 ${sep?.tokenSymbol ?? "STANDARD"} = ${fmt(
-                          Number(realQuote.price) / 1e18,
-                          6
-                        )} ETH`
-                      : "—"
-                  }
-                />
-                <InfoRow
-                  label="Minimum received"
-                  value={
-                    realQuote
-                      ? `${fmt(
-                          parseFloat(
-                            ethers.formatUnits(realQuote.minOut, 18)
-                          ),
-                          6
-                        )} ETH`
-                      : "—"
-                  }
-                  color="#00F58C"
-                />
-                <InfoRow
-                  label="Slippage tolerance"
-                  value={
-                    realMode && realQuote
-                      ? `${Number(realQuote.slipBps) / 100}%${
-                          slipNum > 10 ? " · máx. contrato 10%" : ""
-                        }`
-                      : `${effectiveSlippage}%`
-                  }
-                  color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
-                />
-                <InfoRow
-                  label="Protocol fee"
-                  value={sep ? `${(sep.feeBps / 100).toFixed(2)}%` : "—"}
-                />
-                <InfoRow
-                  label="Anti-sandwich cooldown"
-                  value={
-                    sep
-                      ? `${cooldownBlocks} bloco(s) · min ${sep.minDelay}`
-                      : "—"
-                  }
-                  color={cooldownBlocks > 0 ? "#FFB000" : undefined}
-                />
-                <InfoRow
-                  label="Route"
-                  value={`${sep?.tokenSymbol ?? "STANDARD"} → ETH · OptimizerRouter`}
-                />
-              </>
-            ) : (
-              <>
-                <InfoRow
-                  label="Rate"
-                  value={`1 ${tokenIn.symbol} = ${fmt(rate, 6)} ${tokenOut.symbol}`}
-                />
-                <InfoRow
-                  label="Price impact"
-                  value={amountNum > 0 ? `${priceImpact.toFixed(2)}%` : "—"}
-                  color={amountNum > 0 ? impactColor : undefined}
-                />
-                <InfoRow
-                  label="Minimum received"
-                  value={
-                    amountNum > 0
-                      ? `${fmt(minReceived, 6)} ${tokenOut.symbol}`
-                      : "—"
-                  }
-                  color="#00F58C"
-                />
-                <InfoRow
-                  label="Slippage tolerance"
-                  value={`${effectiveSlippage}%`}
-                  color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
-                />
-                <InfoRow
-                  label="Pool fee"
-                  value={`${FEE_TIER.pct} (${FEE_TIER.label})`}
-                />
-                <InfoRow
-                  label="Route"
-                  value={`${tokenIn.symbol} → ${tokenOut.symbol} (cotação simulada)`}
-                />
-                <InfoRow label="Deadline" value={`${deadline} min`} />
-              </>
             )}
-          </div>
 
-          {/* CTA */}
-          <button
-            onClick={btnState === "connect" ? connect : handleSwap}
-            disabled={
-              btnState === "enter" ||
-              btnState === "loading" ||
-              (realMode && cooldownBlocks > 0) ||
-              (realMode &&
-                !!realQuote &&
-                !!sep &&
-                realQuote.out > sep.routerEth)
-            }
-            className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono transition-all ${
-              btnState === "swap"
-                ? "bg-[#00F58C] text-[#0B0E14] hover:bg-[#00FF9E] shadow-[0_0_30px_rgba(0,245,140,0.25)]"
-                : btnState === "connect"
-                ? "bg-[#00F58C]/90 text-[#0B0E14] hover:bg-[#00F58C]"
-                : btnState === "loading"
-                ? "bg-[#00F58C]/20 text-[#00F58C] cursor-wait"
-                : "bg-white/[0.06] text-[#6B7A88] cursor-not-allowed"
-            }`}
-          >
-            {btnState === "connect"
-              ? connecting
-                ? "CONNECTING..."
-                : "CONNECT WALLET"
-              : btnState === "enter"
-              ? "ENTER AN AMOUNT"
-              : btnState === "loading"
-              ? realMode
-                ? "SENDING TX..."
-                : "SWAPPING..."
-              : realMode
-              ? cooldownBlocks > 0
-                ? `COOLDOWN · ${cooldownBlocks} BLOCO(S)`
-                : "EXECUTE PROTECTED SELL"
-              : "SWAP (DEMO)"}
-          </button>
-
-          {!connected && (
-            <div className="mt-3 text-[10px] text-[#6B7A88] text-center">
-              Connect your wallet to swap
-            </div>
-          )}
-        </div>
-
-        {/* Transaction result */}
-        {txHash && realMode && (
-          <div className="glass-card rounded-2xl p-4 mt-4 border border-[#00F58C]/30 fade-in">
-            <div className="text-xs text-[#00F58C] mb-1 font-mono">
-              ✓ TX CONFIRMADA NA SEPOLIA
-            </div>
-            <a
-              href={`https://sepolia.etherscan.io/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-[#00F58C]/80 hover:text-[#00F58C] break-all font-mono"
+            {/* You Receive */}
+            <div
+              className={`rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4 ${
+                realMode ? "mt-2" : ""
+              }`}
             >
-              {txHash}
-            </a>
-            {realStats && (
-              <div className="mt-2 space-y-1 text-xs">
-                <InfoRow
-                  label="Router · Sell volume"
-                  value={`${fmt(parseFloat(realStats.sellVolume), 4)} ETH`}
-                  color="#00F58C"
-                />
-                <InfoRow
-                  label="Router · MEV captured"
-                  value={`${fmt(parseFloat(realStats.mevCaptured), 4)} ETH`}
-                  color="#00F58C"
-                />
-                <InfoRow
-                  label="Router · Burns"
-                  value={realStats.burnsExecuted}
-                  color="#FF567E"
-                />
-                <InfoRow
-                  label="Router · Yield distributed"
-                  value={`${fmt(parseFloat(realStats.yieldDistributed), 4)} ETH`}
-                  color="#00F58C"
-                />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-mono uppercase">YOU RECEIVE</span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {realMode
+                    ? "ETH (gas token)"
+                    : `Balance: ${balances[tokenOut.address.toLowerCase()] ?? "—"}`}
+                </span>
               </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0 text-2xl font-mono text-white">
+                  {realMode && realQuote ? (
+                    fmt(
+                      parseFloat(ethers.formatUnits(realQuote.out, 18)),
+                      6
+                    )
+                  ) : amountNum > 0 ? (
+                    fmt(outAmount)
+                  ) : (
+                    <span className="text-slate-500/50">0.00</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!realMode && (
+                    <span className="text-xs font-mono text-slate-400">
+                      {outAmount > 0
+                        ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
+                        : ""}
+                    </span>
+                  )}
+                  {realMode ? (
+                    <span className="flex items-center gap-2 rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 pl-2 pr-3 py-2">
+                      <span
+                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
+                        style={{
+                          background: "#8C9EFF22",
+                          border: "1px solid #8C9EFF55",
+                          color: "#8C9EFF",
+                        }}
+                      >
+                        Ξ
+                      </span>
+                      <span className="text-sm font-semibold text-white font-mono">
+                        ETH
+                      </span>
+                    </span>
+                  ) : (
+                    <TokenSelector
+                      token={tokenOut}
+                      other={tokenIn}
+                      onSelect={handleSelectOut}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="mt-3 rounded-2xl bg-[#070A0F]/40 border border-slate-800/50 px-4 py-3 space-y-1.5">
+              {realMode ? (
+                <>
+                  <InfoRow
+                    label="Rate (on-chain)"
+                    value={
+                      realQuote
+                        ? `1 ${sep?.tokenSymbol ?? "STANDARD"} = ${fmt(
+                            Number(realQuote.price) / 1e18,
+                            6
+                          )} ETH`
+                        : "—"
+                    }
+                  />
+                  <InfoRow
+                    label="Minimum Received"
+                    value={
+                      realQuote
+                        ? `${fmt(
+                            parseFloat(
+                              ethers.formatUnits(realQuote.minOut, 18)
+                            ),
+                            6
+                          )} ETH`
+                        : "—"
+                    }
+                    color="#00F58C"
+                  />
+                  <InfoRow
+                    label="Slippage Tolerance"
+                    value={
+                      realMode && realQuote
+                        ? `${Number(realQuote.slipBps) / 100}%${
+                            slipNum > 10 ? " · max contract 10%" : ""
+                          }`
+                        : `${effectiveSlippage}%`
+                    }
+                    color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
+                  />
+                  <InfoRow
+                    label="Protocol Fee"
+                    value={sep ? `${(sep.feeBps / 100).toFixed(2)}%` : "—"}
+                  />
+                  <InfoRow
+                    label="Anti-Sandwich Cooldown"
+                    value={
+                      sep
+                        ? `${cooldownBlocks} block(s) · min ${sep.minDelay}`
+                        : "—"
+                    }
+                    color={cooldownBlocks > 0 ? "#FFB000" : undefined}
+                  />
+                  <InfoRow
+                    label="Route"
+                    value={`${sep?.tokenSymbol ?? "STANDARD"} → ETH · OptimizerRouter`}
+                  />
+                </>
+              ) : (
+                <>
+                  <InfoRow
+                    label="Rate"
+                    value={`1 ${tokenIn.symbol} = ${fmt(rate, 6)} ${tokenOut.symbol}`}
+                  />
+                  <InfoRow
+                    label="Price Impact"
+                    value={amountNum > 0 ? `${priceImpact.toFixed(2)}%` : "—"}
+                    color={amountNum > 0 ? impactColor : undefined}
+                  />
+                  <InfoRow
+                    label="Minimum Received"
+                    value={
+                      amountNum > 0
+                        ? `${fmt(minReceived, 6)} ${tokenOut.symbol}`
+                        : "—"
+                    }
+                    color="#00F58C"
+                  />
+                  <InfoRow
+                    label="Slippage Tolerance"
+                    value={`${effectiveSlippage}%`}
+                    color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
+                  />
+                  <InfoRow
+                    label="Pool Fee"
+                    value={`${FEE_TIER.pct} (${FEE_TIER.label})`}
+                  />
+                  <InfoRow
+                    label="Route"
+                    value={`${tokenIn.symbol} → ${tokenOut.symbol} (simulated quote)`}
+                  />
+                  <InfoRow label="Deadline" value={`${deadline} min`} />
+                </>
+              )}
+            </div>
+
+            {/* CTA */}
+            <button
+              onClick={btnState === "connect" ? connect : handleSwap}
+              disabled={
+                btnState === "enter" ||
+                btnState === "loading" ||
+                (realMode && cooldownBlocks > 0) ||
+                (realMode &&
+                  !!realQuote &&
+                  !!sep &&
+                  realQuote.out > sep.routerEth)
+              }
+              className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono uppercase transition-all ${
+                btnState === "swap"
+                  ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_30px_rgba(0,245,140,0.25)]"
+                  : btnState === "connect"
+                  ? "bg-emerald-500/90 text-black hover:bg-emerald-500"
+                  : btnState === "loading"
+                  ? "bg-emerald-500/20 text-emerald-400 cursor-wait"
+                  : "bg-slate-800/50 text-slate-500 cursor-not-allowed"
+              }`}
+            >
+              {btnState === "connect"
+                ? connecting
+                  ? "CONNECTING..."
+                  : "CONNECT WALLET"
+                : btnState === "enter"
+                ? "ENTER AN AMOUNT"
+                : btnState === "loading"
+                ? realMode
+                  ? "SENDING TX..."
+                  : "SWAPPING..."
+                : realMode
+                ? cooldownBlocks > 0
+                  ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
+                  : "EXECUTE PROTECTED SELL"
+                : "EXECUTE SWAP (DEMO)"}
+            </button>
+
+            {!connected && (
+              <div className="mt-3 text-[10px] text-slate-500 text-center font-mono">Connect your wallet to swap</div>
             )}
           </div>
-        )}
 
-        {/* Demo result */}
-        {txHash && !realMode && (
-          <div className="glass-card rounded-2xl p-4 mt-4 border border-[#FFB000]/30 fade-in">
-            <div className="text-xs text-[#FFB000] mb-1 font-mono">
-              DEMO — tx SIMULADA, não existe na blockchain
+          {/* Transaction result */}
+          {txHash && realMode && (
+            <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-emerald-500/30 p-4">
+              <div className="text-xs text-emerald-400 mb-1 font-mono uppercase">✓ TX CONFIRMED ON SEPOLIA</div>
+              <a
+                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-emerald-400/80 hover:text-emerald-400 break-all font-mono"
+              >
+                {txHash}
+              </a>
+              {realStats && (
+                <div className="mt-2 space-y-1 text-xs">
+                  <InfoRow
+                    label="Router · Sell Volume"
+                    value={`${fmt(parseFloat(realStats.sellVolume), 4)} ETH`}
+                    color="#00F58C"
+                  />
+                  <InfoRow
+                    label="Router · MEV Captured"
+                    value={`${fmt(parseFloat(realStats.mevCaptured), 4)} ETH`}
+                    color="#00F58C"
+                  />
+                  <InfoRow
+                    label="Router · Burns"
+                    value={realStats.burnsExecuted}
+                    color="#FF567E"
+                  />
+                  <InfoRow
+                    label="Router · Yield Distributed"
+                    value={`${fmt(parseFloat(realStats.yieldDistributed), 4)} ETH`}
+                    color="#00F58C"
+                  />
+                </div>
+              )}
             </div>
-            <div className="text-xs text-[#6B7A88] break-all font-mono">
-              {txHash}
-            </div>
-            {result && (
-              <div className="mt-2 space-y-1 text-xs">
-                <InfoRow
-                  label="Received (simulado)"
-                  value={`${String(result.ethReceived ?? "—")} ${tokenOut.symbol}`}
-                  color="#00F58C"
-                />
-                <InfoRow
-                  label="MEV Captured (simulado)"
-                  value={`${String(result.mevCaptured ?? "—")} ${tokenIn.symbol}`}
-                  color="#00F58C"
-                />
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Error */}
-        {error && (
-          <div className="glass-card rounded-2xl p-4 mt-4 border border-[#FF567E]/30 fade-in">
-            <div className="text-xs text-[#FF567E] font-mono">
-              ERROR: {error}
+          {txHash && !realMode && (
+            <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-amber-500/30 p-4">
+              <div className="text-xs text-amber-400 mb-1 font-mono uppercase">DEMO — SIMULATED TX, NOT ON CHAIN</div>
+              <div className="text-xs text-slate-400 break-all font-mono">{txHash}</div>
+              {result && (
+                <div className="mt-2 space-y-1 text-xs">
+                  <InfoRow
+                    label="Received (simulated)"
+                    value={`${String(result.ethReceived ?? "—")} ${tokenOut.symbol}`}
+                    color="#00F58C"
+                  />
+                  <InfoRow
+                    label="MEV Captured (simulated)"
+                    value={`${String(result.mevCaptured ?? "—")} ${tokenIn.symbol}`}
+                    color="#00F58C"
+                  />
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* How it works */}
-        <div className="glass-card rounded-2xl p-4 mt-4 border border-white/[0.06]">
-          <div className="text-xs text-[#6B7A88] mb-3 tracking-widest font-mono">
-            ▸ HOW IT WORKS
-          </div>
-          <div className="space-y-2 text-xs text-[#6B7A88]">
-            <div>1. You sell {tokenIn.symbol} for {tokenOut.symbol}</div>
-            <div>2. Router captures price distortion (MEV)</div>
-            <div>3. Back-swap buys {tokenIn.symbol} on the dip</div>
-            <div>4. Tokens burned via CappedBurnHook</div>
-            <div>5. Profit goes to LP vault as yield</div>
+          {/* Error */}
+          {error && (
+            <div className="mt-4 rounded-2xl bg-slate-900/80 border border-rose-500/30 p-4">
+              <div className="text-xs text-rose-400 font-mono uppercase">ERROR: {error}</div>
+            </div>
+          )}
+
+          {/* How it works */}
+          <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-slate-700/50 p-4">
+            <div className="text-xs text-slate-400 mb-3 tracking-widest font-mono uppercase">▸ HOW IT WORKS</div>
+            <div className="space-y-2 text-xs text-slate-400">
+              <div>1. You sell {tokenIn.symbol} for {tokenOut.symbol}</div>
+              <div>2. Router captures price distortion (MEV)</div>
+              <div>3. Back-swap buys {tokenIn.symbol} on the dip</div>
+              <div>4. Tokens burned via CappedBurnHook</div>
+              <div>5. Profit goes to LP vault as yield</div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-    </div>
-    </main>
+      </main>
     </div>
   );
 }

@@ -117,20 +117,16 @@ export default function StakingPage() {
       </nav>
 
       <main className="pt-20 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full p-1 bg-gradient-to-br from-emerald-500/30 to-transparent border border-emerald-500/40 shadow-[0_0_25px_rgba(0,245,140,0.25)] flex items-center justify-center overflow-hidden">
-<img
-               src="/images/buildercoin.png"
-               alt="$Buildercoin Staking Vault"
-               className="w-full h-full object-contain rounded-full"
-               onError={(e) => {
-                 const target = e.currentTarget;
-                 if (!target.dataset.fallbackTried) {
-                   target.dataset.fallbackTried = "true";
-                   target.src = "/images/buildercoin.jpg";
-                 }
-               }}
-             />
+<div className="flex items-center gap-4 mb-6">
+          <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full border border-emerald-500/40 bg-[#0B111A] flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(0,245,140,0.25)]">
+            <img
+              src="/images/buildercoin.jpeg"
+              alt="Buildercoin"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/images/builder.jpg";
+              }}
+            />
           </div>
           <div>
             <div className="font-mono text-sm tracking-[0.25em] text-white font-bold uppercase">
