@@ -24,7 +24,7 @@ export const CONFIG = {
   pool: {
     openBlock: 25887180,
     blocksPerHour: 300, // 12s blocks
-    lpFeeBps: 100, // 1% LP fee
+    lpFeeBps: 5, // 0,05% LP fee (DEC-017)
     rewardShareBps: 1500, // 15% of trims to rewards
   },
 

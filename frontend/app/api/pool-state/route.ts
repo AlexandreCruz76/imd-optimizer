@@ -65,7 +65,7 @@ export async function GET() {
             txs24h: hookMetrics.txs24h,
             apy: hookMetrics.apy,
             pair: "ETH/IMD",
-            feeTier: 10000,
+            feeTier: 500,
           };
         }
 
@@ -77,7 +77,7 @@ export async function GET() {
             txs24h: nativeMetrics.txs24h,
             apy: nativeMetrics.apy,
             pair: "ETH/IMD",
-            feeTier: 10000,
+            feeTier: 500,
           };
         }
       } catch (e) {
@@ -101,7 +101,7 @@ export async function GET() {
             txs24h: 0,
             apy: 0,
             pair: "ETH/IMD",
-            feeTier: 10000,
+            feeTier: 500,
           };
         }
         if (pools.native) {
@@ -112,7 +112,7 @@ export async function GET() {
             txs24h: 0,
             apy: 0,
             pair: "ETH/IMD",
-            feeTier: 10000,
+            feeTier: 500,
           };
         }
       } catch (e) {
@@ -148,7 +148,7 @@ export async function GET() {
       hookTxs24h: hook.txs24h || 0,
       hookAPY: (hook.apy || 0).toFixed(1),
       hookPair: hook.pair || "ETH/IMD",
-      hookFeeTier: hook.feeTier || 10000,
+      hookFeeTier: hook.feeTier || 500,
 
       // Native pool
       nativeTVL: (native.tvlUSD || 0).toFixed(0),
@@ -157,7 +157,7 @@ export async function GET() {
       nativeTxs24h: native.txs24h || 0,
       nativeAPY: (native.apy || 0).toFixed(1),
       nativePair: native.pair || "ETH/IMD",
-      nativeFeeTier: native.feeTier || 10000,
+      nativeFeeTier: native.feeTier || 500,
 
       // Comparison
       spreadAPY: ((hook.apy || 0) - (native.apy || 0)).toFixed(1),

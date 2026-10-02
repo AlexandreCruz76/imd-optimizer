@@ -18,8 +18,8 @@ describe("OptimizerGenesisKey", function () {
       expect(await genesisKey.symbol()).to.equal("OGKEY");
     });
 
-    it("Should have max supply of 100", async function () {
-      expect(await genesisKey.MAX_SUPPLY()).to.equal(100);
+    it("Should have max supply of 501 (DEC-020 — Tier 1 Buildercoin)", async function () {
+      expect(await genesisKey.MAX_SUPPLY()).to.equal(501);
     });
 
     it("Should start with mint closed", async function () {
@@ -32,8 +32,8 @@ describe("OptimizerGenesisKey", function () {
       await genesisKey.setMintOpen(true);
     });
 
-    it("Should mint Genesis key with correct price", async function () {
-      const price = ethers.parseEther("0.5");
+    it("Should mint Genesis key with correct price (0,05 ETH — DEC-020)", async function () {
+      const price = ethers.parseEther("0.05");
       await genesisKey.connect(addr1).mintGenesis({ value: price });
       expect(await genesisKey.totalMinted()).to.equal(1);
       expect(await genesisKey.ownerOf(1)).to.equal(addr1.address);
@@ -49,28 +49,30 @@ describe("OptimizerGenesisKey", function () {
     it("Should reject mint when closed", async function () {
       await genesisKey.setMintOpen(false);
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") })
+        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") })
       ).to.be.revertedWithCustomError(genesisKey, "MintNotOpen");
     });
 
     it("Should reject insufficient payment", async function () {
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.1") })
+        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.01") })
       ).to.be.revertedWithCustomError(genesisKey, "InsufficientPayment");
     });
 
-    it("Should reject mint after max supply", async function () {
-      for (let i = 0; i < 100; i++) {
-        await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") });
+    it("Should reject mint after max supply (501)", async function () {
+      // preço zerado para o loop não depender de saldo de ETH
+      await genesisKey.setPrice(0);
+      for (let i = 0; i < 501; i++) {
+        await genesisKey.connect(addr1).mintGenesis({ value: 0 });
       }
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") })
+        genesisKey.connect(addr1).mintGenesis({ value: 0 })
       ).to.be.revertedWithCustomError(genesisKey, "MaxSupplyReached");
     });
 
     it("Should track owner keys correctly", async function () {
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") });
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") });
+      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
+      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
       const keys = await genesisKey.getOwnerKeys(addr1.address);
       expect(keys.length).to.equal(2);
     });
@@ -89,8 +91,8 @@ describe("OptimizerGenesisKey", function () {
   describe("MEV Distribution", function () {
     beforeEach(async function () {
       await genesisKey.setMintOpen(true);
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.5") });
-      await genesisKey.connect(addr2).mintGenesis({ value: ethers.parseEther("0.5") });
+      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
+      await genesisKey.connect(addr2).mintGenesis({ value: ethers.parseEther("0.05") });
     });
 
     it("Should deposit MEV correctly", async function () {
@@ -115,10 +117,10 @@ describe("OptimizerGenesisKey", function () {
 describe("BuilderStakingVault", function () {
   let stakingVault;
   let mockToken;
-  let owner, addr1;
+  let owner, addr1, addr2;
 
   beforeEach(async function () {
-    [owner, addr1] = await ethers.getSigners();
+    [owner, addr1, addr2] = await ethers.getSigners();
 
     // Deploy mock ERC20 token
     const MockToken = await ethers.getContractFactory("MockERC20");
@@ -196,8 +198,8 @@ describe("BuilderStakingVault", function () {
     });
   });
 
-  describe("Withdrawal", function () {
-    it("Should withdraw after lock expires", async function () {
+  describe("Withdrawal (DEC-020 — Diamond Hands)", function () {
+    it("Should withdraw after lock expires (0% fee)", async function () {
       const amount = ethers.parseEther("100");
       await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
       await stakingVault.connect(addr1).stake(amount, 30);
@@ -205,20 +207,153 @@ describe("BuilderStakingVault", function () {
       await ethers.provider.send("evm_increaseTime", [31 * 24 * 60 * 60]);
       await ethers.provider.send("evm_mine");
 
-      await stakingVault.connect(addr1).withdraw(0);
-      expect(await stakingVault.totalStaked(addr1.address)).to.equal(0);
-    });
-
-    it("Should apply 2% penalty for early withdrawal", async function () {
-      const amount = ethers.parseEther("100");
-      await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
-      await stakingVault.connect(addr1).stake(amount, 30);
-
       const balanceBefore = await mockToken.balanceOf(addr1.address);
       await stakingVault.connect(addr1).withdraw(0);
       const balanceAfter = await mockToken.balanceOf(addr1.address);
 
-      expect(balanceAfter - balanceBefore).to.equal(ethers.parseEther("98"));
+      expect(balanceAfter - balanceBefore).to.equal(amount); // 0% de taxa
+      expect(await stakingVault.totalStaked(addr1.address)).to.equal(0);
+    });
+
+    it("Should reject early withdraw while locked (exige unbond ou emergência)", async function () {
+      const amount = ethers.parseEther("100");
+      await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
+      await stakingVault.connect(addr1).stake(amount, 30);
+
+      await expect(
+        stakingVault.connect(addr1).withdraw(0)
+      ).to.be.revertedWith(
+        "Lock active: beginUnbond or emergencyInstantWithdraw"
+      );
+    });
+
+    it("beginUnbond → completeUnbond após 7 dias: 0% de taxa", async function () {
+      const amount = ethers.parseEther("100");
+      await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
+      await stakingVault.connect(addr1).stake(amount, 30);
+
+      await expect(stakingVault.connect(addr1).beginUnbond(0)).to.emit(
+        stakingVault,
+        "UnbondInitiated"
+      );
+
+      // concluir antes dos 7 dias → revert
+      await expect(
+        stakingVault.connect(addr1).completeUnbond(0)
+      ).to.be.revertedWith("Unbonding period not met");
+
+      await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60 + 1]);
+      await ethers.provider.send("evm_mine");
+
+      const balanceBefore = await mockToken.balanceOf(addr1.address);
+      await stakingVault.connect(addr1).completeUnbond(0);
+      const balanceAfter = await mockToken.balanceOf(addr1.address);
+
+      expect(balanceAfter - balanceBefore).to.equal(amount); // 0% de taxa
+      expect(await stakingVault.totalStaked(addr1.address)).to.equal(0);
+    });
+
+    it("emergencyInstantWithdraw: 2% → 50% Buy-and-Burn / 25% Treasury / 25% yield", async function () {
+      // Venue $BLD→ETH (mock 1:1, com ETH semeado)
+      const Pool = await ethers.getContractFactory("MockUniswapV4Pool");
+      const venue = await Pool.deploy(await mockToken.getAddress());
+      await owner.sendTransaction({
+        to: await venue.getAddress(),
+        value: ethers.parseEther("10"),
+      });
+
+      // Cofre real: 50% da penalidade → burnAccrued (fatia Buy-and-Burn)
+      const Vault = await ethers.getContractFactory("OptimizerVaultV2");
+      const vault = await Vault.deploy(owner.address);
+      await vault.setSplitRecipients(
+        await stakingVault.getAddress(),
+        addr2.address, // treasury
+        owner.address,
+        owner.address
+      );
+
+      await stakingVault.setPenaltyConfig(
+        await vault.getAddress(),
+        addr2.address,
+        await venue.getAddress(),
+        200 // 2%
+      );
+
+      const amount = ethers.parseEther("100");
+      await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
+      await stakingVault.connect(addr1).stake(amount, 30);
+
+      const treasuryBefore = await ethers.provider.getBalance(addr2.address);
+
+      await expect(
+        stakingVault.connect(addr1).emergencyInstantWithdraw(0)
+      ).to.emit(stakingVault, "EmergencyWithdrawn");
+
+      // Penalidade: 2% de 100 = 2 $BLD → venue converte 1:1 → 2 ETH
+      // Staker recebeu 98 $BLD de volta (líquido do saque imediato)
+      expect(await mockToken.balanceOf(addr1.address)).to.equal(
+        ethers.parseEther("9998")
+      );
+      expect(await stakingVault.totalStaked(addr1.address)).to.equal(0);
+
+      // 50% (1 ETH) → Cofre (fatia Buy-and-Burn)
+      expect(await vault.burnAccrued()).to.equal(ethers.parseEther("1"));
+
+      // 25% (0,5 ETH) → Treasury
+      expect(
+        (await ethers.provider.getBalance(addr2.address)) - treasuryBefore
+      ).to.equal(ethers.parseEther("0.5"));
+
+      // 25% (0,5 ETH) → yield ponderado do staker — claim com 0% de taxa
+      await expect(stakingVault.connect(addr1).claimYield()).to.changeEtherBalance(
+        addr1,
+        ethers.parseEther("0.5")
+      );
+    });
+
+    it("yield ponderado: NFT Tier 1 rende 4x — stake 0 ⇒ peso 0 (DEC-020)", async function () {
+      // Buildercoin NFT = OptimizerGenesisKey (Tier 1, 4x)
+      const Genesis = await ethers.getContractFactory("OptimizerGenesisKey");
+      const genesis = await Genesis.deploy();
+      await genesis.setMintOpen(true);
+      await stakingVault.setIdentityConfig(
+        await genesis.getAddress(),
+        ethers.ZeroAddress,
+        ethers.ZeroAddress
+      );
+
+      const amount = ethers.parseEther("100");
+      await mockToken.mint(addr2.address, ethers.parseEther("10000"));
+      await mockToken.connect(addr1).approve(await stakingVault.getAddress(), amount);
+      await mockToken.connect(addr2).approve(await stakingVault.getAddress(), amount);
+      await stakingVault.connect(addr1).stake(amount, 30);
+      await stakingVault.connect(addr2).stake(amount, 30);
+
+      // NFT mintado depois do stake → checkpoint atualiza o peso gravado
+      await genesis.connect(addr2).mintGenesis({ value: ethers.parseEther("0.05") });
+      await stakingVault.checkpoint(addr2.address);
+
+      // Peso vivo: addr1 = 100 × 1x; addr2 = 100 × 4x
+      expect(await stakingVault.yieldWeightOf(addr1.address)).to.equal(amount);
+      expect(await stakingVault.yieldWeightOf(addr2.address)).to.equal(amount * 4n);
+
+      // Stake 0 ⇒ peso 0 mesmo com NFT Tier 1 (multiplicador não é combustível)
+      await genesis.connect(owner).mintGenesis({ value: ethers.parseEther("0.05") });
+      expect(await stakingVault._yieldMultiplierBps(owner.address)).to.equal(40000);
+      expect(await stakingVault.yieldWeightOf(owner.address)).to.equal(0);
+
+      // 5 ETH de yield → 80% para addr2 (4x), 20% para addr1 (1x)
+      await owner.sendTransaction({
+        to: await stakingVault.getAddress(),
+        value: ethers.parseEther("5"),
+      });
+
+      await expect(
+        stakingVault.connect(addr1).claimYield()
+      ).to.changeEtherBalance(addr1, ethers.parseEther("1"));
+      await expect(
+        stakingVault.connect(addr2).claimYield()
+      ).to.changeEtherBalance(addr2, ethers.parseEther("4"));
     });
   });
 });

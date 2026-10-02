@@ -99,8 +99,8 @@ export async function GET() {
       nativeTxs: d.nativeTxs,
       hookPair: "ETH/IMD",
       nativePair: "ETH/IMD",
-      hookFeeTier: 10000,
-      nativeFeeTier: 10000,
+      hookFeeTier: 500,
+      nativeFeeTier: 500,
     };
 
     history.push(snapshot);

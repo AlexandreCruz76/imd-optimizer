@@ -299,6 +299,32 @@ export default function Vault() {
         </div>
       </div>
 
+      {/* ── Diamond Hand Rules (DEC-020 / front_final §3 VAULT) ── */}
+      <div className="terminal-panel p-4 border border-[#00ff41]/40">
+        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+          ▸ DIAMOND HAND RULES (DEC-020)
+        </div>
+        <div className="space-y-1.5 text-xs">
+          <div className="text-[#00ff41]">
+            ✓ claimYield() sem taxa — <span className="text-[#00ff4160]">taxa de claim: 0%</span>
+          </div>
+          <div className="text-[#00ff41]">
+            ✓ Saque normal do principal sem taxa
+          </div>
+          <div className="text-[#00ff41]">
+            ✓ Unstake com carência (beginUnbond → 7 dias) sem taxa —{" "}
+            <span className="text-[#00ff4160]">Diamond Hands não pagam nada</span>
+          </div>
+          <div className="text-[#ffb000]">
+            ⚠ Unstake instantâneo (emergencyInstantWithdraw): penalty 2–5% →
+            <span className="text-[#ff0040]"> 50% Buy-and-Burn</span> ·
+            <span className="text-[#00ff41]"> 25% Treasury</span> ·
+            <span className="text-[#00ff41]"> 25% yield ponderado</span> dos
+            Diamond Hands ainda stakados
+          </div>
+        </div>
+      </div>
+
       {/* ── Tab Navigation ── */}
       <div className="terminal-panel border-glow">
         <div className="flex border-b border-[#00ff4120]">

@@ -448,7 +448,7 @@ export class HookPoolAnalyzer {
 
     // Estimate volume from Trimmed events:
     // Each trim captures ETH retained as fees. Total volume ≈ ethRetained / lpFee
-    const lpFee = 0.01; // 1%
+    const lpFee = 0.0005; // 0,05% (DEC-017)
     const hookVolume = ethRetained > 0 ? ethRetained / lpFee : 0;
 
     // Swaps: count of Trimmed events is NOT the same as swap count
@@ -524,7 +524,7 @@ export class HookPoolAnalyzer {
       hookTrimVolume += eth(word(l.data, 0));
     }
 
-    const lpFee = 0.01;
+    const lpFee = 0.0005;
     // hookTrimVolume is the raw ETH that flowed through trimmed swaps
     // ethRetained is the fee portion
     // Total estimated volume = ethRetained / lpFee

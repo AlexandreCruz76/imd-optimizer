@@ -1,64 +1,43 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("OptimizerRouter — The Standard Integration", function () {
-  let router, vault, mockStandardCore, mockStandardToken, mockWETH, mockPool;
+describe("OptimizerRouter — integração The Standard (DEC-017)", function () {
+  let router, vault, mockStandardToken, mockWETH, mockPool;
   let owner, user1, user2, feeCollector;
 
   beforeEach(async function () {
     [owner, user1, user2, feeCollector] = await ethers.getSigners();
 
-    // Deploy mock contracts
-    const MockStandardCore = await ethers.getContractFactory("MockStandardCore");
-    mockStandardCore = await MockStandardCore.deploy();
-    await mockStandardCore.waitForDeployment();
-
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     mockStandardToken = await MockERC20.deploy("Standard Token", "STANDARD");
-    await mockStandardToken.waitForDeployment();
-
     mockWETH = await MockERC20.deploy("Wrapped ETH", "WETH");
-    await mockWETH.waitForDeployment();
 
     const MockPool = await ethers.getContractFactory("MockUniswapV4Pool");
-    mockPool = await MockPool.deploy();
-    await mockPool.waitForDeployment();
+    mockPool = await MockPool.deploy(await mockStandardToken.getAddress());
 
-    // Deploy Vault
     const Vault = await ethers.getContractFactory("OptimizerVaultV2");
     vault = await Vault.deploy(owner.address); // router placeholder
-    await vault.waitForDeployment();
 
-    // Deploy Router
     const Router = await ethers.getContractFactory("OptimizerRouter");
     router = await Router.deploy(
-      await mockStandardCore.getAddress(),
       await mockPool.getAddress(),
       await mockStandardToken.getAddress(),
       await mockWETH.getAddress(),
       await vault.getAddress()
     );
-    await router.waitForDeployment();
 
-    // Set router in vault
     await vault.setRouter(await router.getAddress());
 
-    // Fund router with ETH for swaps
-    await owner.sendTransaction({
-      to: await router.getAddress(),
-      value: ethers.parseEther("100"),
-    });
-
-    // Setup: mint tokens to user1
     await mockStandardToken.mint(user1.address, ethers.parseEther("10000"));
     await mockWETH.mint(user1.address, ethers.parseEther("100"));
   });
 
   describe("Deployment", function () {
     it("Should set correct addresses", async function () {
-      expect(await router.standardCore()).to.equal(await mockStandardCore.getAddress());
       expect(await router.standardPool()).to.equal(await mockPool.getAddress());
-      expect(await router.standardToken()).to.equal(await mockStandardToken.getAddress());
+      expect(await router.standardToken()).to.equal(
+        await mockStandardToken.getAddress()
+      );
       expect(await router.weth()).to.equal(await mockWETH.getAddress());
       expect(await router.vault()).to.equal(await vault.getAddress());
     });
@@ -67,8 +46,18 @@ describe("OptimizerRouter — The Standard Integration", function () {
       expect(await router.owner()).to.equal(owner.address);
     });
 
-    it("Should set default fee to 0.5%", async function () {
-      expect(await router.feeBps()).to.equal(50);
+    it("Should default to Tier 4 sem NFTs/saldo — 0,50% swap, 25% success (DEC-020)", async function () {
+      // user2 não tem NFTs nem saldo de $IMD → Retail (tier index 3)
+      expect(await router.identityTier(user2.address)).to.equal(3);
+      expect(await router.swapFeeBps(user2.address)).to.equal(50);
+      expect(await router.successFeeBps(user2.address)).to.equal(2500);
+    });
+
+    it("Should classify holder de $IMD como Tier 3 — 0,30% swap, 20% success (DEC-020)", async function () {
+      // user1 tem saldo do standardToken ($IMD) → Holder (tier index 2)
+      expect(await router.identityTier(user1.address)).to.equal(2);
+      expect(await router.swapFeeBps(user1.address)).to.equal(30);
+      expect(await router.successFeeBps(user1.address)).to.equal(2000);
     });
   });
 
@@ -86,14 +75,22 @@ describe("OptimizerRouter — The Standard Integration", function () {
     });
   });
 
-  describe("Fee Management", function () {
-    it("Should update fee", async function () {
-      await router.setFee(100); // 1%
-      expect(await router.feeBps()).to.equal(100);
+  describe("Fee Management (DEC-020)", function () {
+    it("Should update swap fee for a tier", async function () {
+      await router.setSwapFeeTier(3, 100); // 1% para Retail
+      expect(await router.swapFeeBps(user2.address)).to.equal(100);
     });
 
-    it("Should reject fee > 5%", async function () {
-      await expect(router.setFee(600)).to.be.revertedWith("Fee too high (max 5%)");
+    it("Should reject swap fee > 5%", async function () {
+      await expect(router.setSwapFeeTier(3, 600)).to.be.revertedWith(
+        "Fee too high (max 5%)"
+      );
+    });
+
+    it("Should reject invalid tier (> 3)", async function () {
+      await expect(router.setSwapFeeTier(4, 10)).to.be.revertedWith(
+        "Invalid tier"
+      );
     });
 
     it("Should update fee collector", async function () {
@@ -114,21 +111,51 @@ describe("OptimizerRouter — The Standard Integration", function () {
       expect(stats.mevCaptured).to.equal(0);
       expect(stats.burnsExecuted).to.equal(0);
       expect(stats.yieldDistributed).to.equal(0);
+      expect(stats.feesCollected).to.equal(0);
     });
   });
 });
 
-describe("OptimizerVaultV2 — Yield Distribution", function () {
+describe("OptimizerVaultV2 — split oficial DEC-017 (60/20/15/5)", function () {
   let vault;
-  let owner, user1, user2;
+  let owner, user1, user2, stranger;
+
+  const ONE = ethers.parseEther("1");
 
   beforeEach(async function () {
-    [owner, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2, stranger] = await ethers.getSigners();
 
     const Vault = await ethers.getContractFactory("OptimizerVaultV2");
-    vault = await Vault.deploy(owner.address);
+    vault = await Vault.deploy(owner.address); // owner = router placeholder
     await vault.waitForDeployment();
   });
+
+  // Stack do Buy-and-Burn: venue mock (ETH → $IMD), $IMD de mercado e
+  // hook (contador público totalIMDBurnedByOptimizer)
+  async function deployBuyAndBurnStack() {
+    const [, , , , burnExec] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const imd = await MockERC20.deploy("Standard IMD", "IMD");
+    const Pool = await ethers.getContractFactory("MockUniswapV4Pool");
+    const venue = await Pool.deploy(await imd.getAddress());
+    await imd.mint(await venue.getAddress(), ethers.parseEther("10"));
+
+    const Hook = await ethers.getContractFactory("OptimizerHookV2");
+    const hook = await Hook.deploy(
+      await vault.getAddress(),
+      owner.address,
+      owner.address,
+      owner.address,
+      owner.address
+    );
+    await vault.setHook(await hook.getAddress());
+    await vault.setBuyAndBurn(
+      await imd.getAddress(),
+      await venue.getAddress()
+    );
+    return { imd, venue, hook, burnExec };
+  }
 
   describe("Deployment", function () {
     it("Should set router correctly", async function () {
@@ -139,21 +166,28 @@ describe("OptimizerVaultV2 — Yield Distribution", function () {
       expect(await vault.tierFeeBps(0)).to.equal(2000); // FREE = 20%
       expect(await vault.tierFeeBps(1)).to.equal(1500); // BASIC = 15%
       expect(await vault.tierFeeBps(2)).to.equal(1000); // PRO = 10%
-      expect(await vault.tierFeeBps(3)).to.equal(500);  // WHALE = 5%
+      expect(await vault.tierFeeBps(3)).to.equal(500); // WHALE = 5%
+    });
+
+    it("Should hardcode official split constants", async function () {
+      expect(await vault.STAKERS_BPS()).to.equal(6000);
+      expect(await vault.TREASURY_BPS()).to.equal(2000);
+      expect(await vault.DEVS_BPS()).to.equal(1500);
+      expect(await vault.BURN_BPS()).to.equal(500);
     });
   });
 
   describe("Deposits", function () {
     it("Should deposit ETH", async function () {
-      await vault.connect(user1).deposit({ value: ethers.parseEther("1") });
+      await vault.connect(user1).deposit({ value: ONE });
       const pos = await vault.positions(user1.address);
-      expect(pos.ethDeposited).to.equal(ethers.parseEther("1"));
+      expect(pos.ethDeposited).to.equal(ONE);
     });
 
     it("Should issue shares correctly", async function () {
-      await vault.connect(user1).deposit({ value: ethers.parseEther("1") });
+      await vault.connect(user1).deposit({ value: ONE });
       const pos = await vault.positions(user1.address);
-      expect(pos.shares).to.equal(ethers.parseEther("1"));
+      expect(pos.shares).to.equal(ONE);
     });
 
     it("Should reject zero deposit", async function () {
@@ -163,9 +197,10 @@ describe("OptimizerVaultV2 — Yield Distribution", function () {
     });
 
     it("Should handle multiple deposits", async function () {
-      await vault.connect(user1).deposit({ value: ethers.parseEther("1") });
-      await vault.connect(user1).deposit({ value: ethers.parseEther("2") });
-
+      await vault.connect(user1).deposit({ value: ONE });
+      await vault.connect(user1).deposit({
+        value: ethers.parseEther("2"),
+      });
       const pos = await vault.positions(user1.address);
       expect(pos.ethDeposited).to.equal(ethers.parseEther("3"));
     });
@@ -173,7 +208,9 @@ describe("OptimizerVaultV2 — Yield Distribution", function () {
 
   describe("Withdrawals", function () {
     beforeEach(async function () {
-      await vault.connect(user1).deposit({ value: ethers.parseEther("10") });
+      await vault.connect(user1).deposit({
+        value: ethers.parseEther("10"),
+      });
     });
 
     it("Should withdraw full amount", async function () {
@@ -189,43 +226,167 @@ describe("OptimizerVaultV2 — Yield Distribution", function () {
     });
   });
 
-  describe("Yield Distribution", function () {
-    beforeEach(async function () {
-      await vault.connect(user1).deposit({ value: ethers.parseEther("10") });
-      await vault.connect(user2).deposit({ value: ethers.parseEther("10") });
+  describe("Split de receitas (router/hook → cofre)", function () {
+    it("receiveYield: router (owner placeholder) creditou o split exato", async function () {
+      await expect(vault.connect(owner).receiveYield({ value: ONE })).to.emit(
+        vault,
+        "ProtocolFeesReceived"
+      );
+
+      expect(await vault.stakersAccrued()).to.equal(
+        (ONE * 6000n) / 10000n
+      );
+      expect(await vault.treasuryAccrued()).to.equal(
+        (ONE * 2000n) / 10000n
+      );
+      expect(await vault.devsAccrued()).to.equal((ONE * 1500n) / 10000n);
+      expect(await vault.burnAccrued()).to.equal(
+        ONE -
+          (ONE * 6000n) / 10000n -
+          (ONE * 2000n) / 10000n -
+          (ONE * 1500n) / 10000n
+      );
+      expect(await vault.totalProtocolFees()).to.equal(ONE);
+      expect(await ethers.provider.getBalance(await vault.getAddress())).to.equal(
+        ONE
+      );
     });
 
-    it("Should receive yield via receiveYield()", async function () {
-      // Call receiveYield (simulating router calling it)
-      await vault.connect(owner).receiveYield({ value: ethers.parseEther("1") });
+    it("receiveYield: estranho reverte; hook autorizado após setHook", async function () {
+      await expect(
+        vault.connect(stranger).receiveYield({ value: ONE })
+      ).to.be.revertedWith("Not authorized");
+      await expect(
+        vault.connect(owner).receiveYield({ value: 0 })
+      ).to.be.revertedWith("No yield");
 
-      const stats = await vault.getVaultStats();
-      expect(stats.totalYield_).to.equal(ethers.parseEther("1"));
+      await vault.setHook(stranger.address);
+      await vault.connect(stranger).receiveYield({ value: ONE });
+      expect(await vault.totalProtocolFees()).to.equal(ONE);
     });
 
-    it("Should calculate yield per share", async function () {
-      await vault.connect(owner).receiveYield({ value: ethers.parseEther("1") });
-
-      const stats = await vault.getVaultStats();
-      expect(stats.yieldPerShare_).to.be.gt(0);
+    it("receive() direto também passa pelo split (doação não escapa)", async function () {
+      await owner.sendTransaction({
+        to: await vault.getAddress(),
+        value: ONE,
+      });
+      expect(await vault.totalProtocolFees()).to.equal(ONE);
+      expect(await vault.stakersAccrued()).to.equal(
+        (ONE * 6000n) / 10000n
+      );
     });
 
-    it("Should calculate pending yield for users", async function () {
-      await vault.connect(owner).receiveYield({ value: ethers.parseEther("2") });
+    it("distributeSplit: só owner; 5% via Buy-and-Burn ($IMD ao executor, nunca ETH)", async function () {
+      await vault.connect(owner).receiveYield({ value: ONE });
 
-      const pending1 = await vault.getPendingYield(user1.address);
-      const pending2 = await vault.getPendingYield(user2.address);
+      await expect(
+        vault.connect(stranger).distributeSplit()
+      ).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+      await expect(vault.distributeSplit()).to.be.revertedWith(
+        "stakingVault not set"
+      );
 
-      // Each user should have ~1 ETH pending (50/50 split)
-      expect(pending1).to.be.gt(0);
-      expect(pending2).to.be.gt(0);
+      const { imd, hook, burnExec } = await deployBuyAndBurnStack();
+
+      await vault.setSplitRecipients(
+        user1.address,
+        user2.address,
+        stranger.address,
+        burnExec.address
+      );
+
+      const b1 = await ethers.provider.getBalance(user1.address);
+      const b2 = await ethers.provider.getBalance(user2.address);
+      const bBurn = await ethers.provider.getBalance(burnExec.address);
+
+      await expect(vault.distributeSplit()).to.emit(vault, "SplitDistributed");
+
+      expect(
+        (await ethers.provider.getBalance(user1.address)) - b1
+      ).to.equal((ONE * 6000n) / 10000n);
+      expect(
+        (await ethers.provider.getBalance(user2.address)) - b2
+      ).to.equal((ONE * 2000n) / 10000n);
+
+      const bExp =
+        ONE -
+        (ONE * 6000n) / 10000n -
+        (ONE * 2000n) / 10000n -
+        (ONE * 1500n) / 10000n;
+
+      // Fatia de 5%: NUNCA ETH nativo ao BurnExecutor (ajuste)
+      expect(
+        (await ethers.provider.getBalance(burnExec.address)) - bBurn
+      ).to.equal(0);
+      // $IMD exato comprado a mercado (mock 1:1) → executor
+      expect(await imd.balanceOf(burnExec.address)).to.equal(bExp);
+      // Contador público soma o valor exato
+      expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+      // Cofre esvaziado (95% em ETH + 5% gasto na venue)
+      expect(
+        await ethers.provider.getBalance(await vault.getAddress())
+      ).to.equal(0);
+      expect(await vault.burnAccrued()).to.equal(0);
+    });
+
+    it("buyAndBurn: guarda de config, permissão livre e contador (sem distributeSplit)", async function () {
+      await vault.connect(owner).receiveYield({ value: ONE });
+
+      const [, , , , burnExec] = await ethers.getSigners();
+      await vault.setSplitRecipients(
+        user1.address,
+        user2.address,
+        stranger.address,
+        burnExec.address
+      );
+
+      // Sem venue/token/hook: toda queima precisa somar ao contador público
+      await expect(vault.connect(stranger).buyAndBurn()).to.be.revertedWith(
+        "Buy-and-burn not configured"
+      );
+      await expect(vault.setBuyBurnSlippageBps(2001)).to.be.revertedWith(
+        "Slippage too high"
+      );
+
+      const { imd, venue, hook } = await deployBuyAndBurnStack();
+      await expect(
+        vault.setBuyAndBurn(ethers.ZeroAddress, await venue.getAddress())
+      ).to.be.revertedWith("Invalid config");
+
+      // Permissível a qualquer conta (destinatário fixo em config)
+      await expect(vault.connect(stranger).buyAndBurn()).to.emit(
+        vault,
+        "BuyAndBurn"
+      );
+
+      const bExp =
+        ONE -
+        (ONE * 6000n) / 10000n -
+        (ONE * 2000n) / 10000n -
+        (ONE * 1500n) / 10000n;
+
+      // Só a fatia de 5% foi mexida — os outros balgos ficam intactos
+      expect(await vault.burnAccrued()).to.equal(0);
+      expect(await vault.stakersAccrued()).to.equal((ONE * 6000n) / 10000n);
+      expect(await vault.treasuryAccrued()).to.equal((ONE * 2000n) / 10000n);
+      expect(await vault.devsAccrued()).to.equal((ONE * 1500n) / 10000n);
+      expect(await imd.balanceOf(burnExec.address)).to.equal(bExp);
+      expect(await hook.totalIMDBurnedByOptimizer()).to.equal(bExp);
+      // Cofre reteve os 95% restantes
+      expect(
+        await ethers.provider.getBalance(await vault.getAddress())
+      ).to.equal(ONE - bExp);
+      // Nada acumulado → no-op (não reverte)
+      await expect(vault.buyAndBurn()).to.not.be.reverted;
     });
   });
 
   describe("Admin Functions", function () {
-    it("Should update router", async function () {
+    it("Should update router and hook", async function () {
       await vault.setRouter(user1.address);
       expect(await vault.router()).to.equal(user1.address);
+      await vault.setHook(user2.address);
+      expect(await vault.hook()).to.equal(user2.address);
     });
 
     it("Should update tier fees", async function () {

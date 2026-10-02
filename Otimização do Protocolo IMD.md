@@ -136,7 +136,7 @@ OPTIMIZER_MASTER (Orquestrador)
 ### 1. PERFIL OFICIAL @OptimizerProtocol — Configuração Cirúrgica
 
 ```yaml
-Bio: "⚡ Uniswap V4 Hook-Native MEV Protection | Real Yield for LPs | $IMD/$BUILDER | Mainnet Live"
+Bio: "⚡ Uniswap V4 Hook-Native MEV Protection | Real Yield for LPs | $IMD/$BLD | Mainnet Live"
 Location: "Ethereum Mainnet"
 Website: "optimizer.build"
 Pinned Tweet: Thread de arquitetura anti-MEV com prova Etherscan
@@ -188,7 +188,7 @@ Tweet 2: The Counter-MEV Architecture ⚙️
 Tweet 3: Where does captured MEV go? Pure Real Yield. 💰
 Instead of enriching block builders, intercepted value distributed:
 🛡️ Stolen funds returned to $IMD Pool
-⚡ Operational fees → $BUILDER stakers & Identity holders
+⚡ Operational fees → $BLD stakers & Identity holders
 
 Tweet 4: Exploring AI Swarms for decentralized TSS oracle consensus.
 Critical feedback welcome from MEV/V4 frontline:
@@ -242,7 +242,7 @@ Disponível para call técnico esta semana?"
 # 3. Launchpad (IMD Token)
 ⏳ Link seguro: launch.optimizer.build → redirect para launchpad
 ⏳ Genesis NFT whitelist (50 alpha users)
-⏳ $BUILDER staking tiers ativos
+⏳ $BLD staking tiers ativos
 
 # 4. Social (X.com)
 ⏳ @OptimizerProtocol bio cirúrgica
@@ -257,7 +257,7 @@ Disponível para call técnico esta semana?"
 | **TVL $IMD** | $100k | $1M |
 | **Unique LPs** | 50 | 500 |
 | **MEV Interceptado** | $1k | $10k |
-| **$BUILDER Stakers** | 100 | 1000 |
+| **$BLD Stakers** | 100 | 1000 |
 | **X.com Impressions** | 50k | 500k |
 | **Influencer Engagements** | 5 (tier 1) | 20 |
 

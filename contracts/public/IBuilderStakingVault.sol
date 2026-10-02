@@ -3,19 +3,19 @@ pragma solidity ^0.8.20;
 
 /**
  * @title IBuilderStakingVault
- * @notice Interface for BuilderStakingVault — Stake $BUILDER to earn fees
+ * @notice Interface for BuilderStakingVault — Stake $BLD to earn fees
  * @dev Full implementation is proprietary and kept off-chain
  */
 interface IBuilderStakingVault {
     /**
-     * @notice Stake $BUILDER tokens
+     * @notice Stake $BLD tokens
      * @param amount Amount to stake
      * @param lockTier Lock period: 30, 90, or 180 days
      */
     function stake(uint256 amount, uint256 lockTier) external;
 
     /**
-     * @notice Withdraw staked $BUILDER
+     * @notice Withdraw staked $BLD
      * @param positionIndex Position index to withdraw
      */
     function withdraw(uint256 positionIndex) external;
