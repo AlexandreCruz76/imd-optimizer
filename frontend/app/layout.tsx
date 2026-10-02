@@ -1,5 +1,12 @@
 import "./globals.css";
 import { WalletProvider } from "./components/WalletProvider";
+import { JetBrains_Mono } from "next/font/google";
+
+const monoFont = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-terminal-mono",
+  weight: ["400", "500", "600"],
+});
 
 export const metadata = {
   title: "IMD Optimizer — The Agentic V4 Meta-Hook Protocol",
@@ -10,12 +17,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-      </head>
-      <body className="min-h-screen flex flex-col bg-[#0B0E14] antialiased">
+      <body className={`${monoFont.variable} min-h-screen flex flex-col bg-[#0B0E14] antialiased`}>
         <WalletProvider>
           {children}
         </WalletProvider>

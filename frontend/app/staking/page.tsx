@@ -25,7 +25,6 @@ export default function StakingPage() {
         setStakedBuilder(currentBuilder.toFixed(2));
         setStakedImd(currentImd.toFixed(2));
 
-        // Calculate APY based on duration
         const dur = parseInt(duration, 10);
         const baseApr = dur === 30 ? "37%" : dur === 60 ? "52%" : "68.5%";
         setAprBuilder(baseApr);
@@ -93,111 +92,181 @@ export default function StakingPage() {
   }
 
   const unlockDate = unlockTime ? unlockTime.toLocaleDateString() : "N/A";
-  const stakeButtonClassName = !loading
-    ? parseFloat(stakedBuilder) <= 0 && parseFloat(stakedImd) <= 0
-      ? "bg-[#00F58C] text-[#0a0a0a] hover:bg-[#00CC33]"
-      : "bg-[#00F58C] text-[#0a0a0a] hover:bg-[#00CC33]"
-    : "bg-[#00FF5820] text-[#00F58C40] cursor-not-allowed";
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
-      <div className="p-6 md:p-8">
-        <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-[#070A0F] font-mono p-4 md:p-6">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-emerald-500/50 bg-[#0D121A]">
+              <img src="/images/avatar.jpg" alt="IMD" className="w-full h-full object-cover"/>
+            </div>
+            <span className="hidden sm:block text-xl font-bold text-white">IMD Optimizer</span>
+          </a>
+          <div className="flex items-center gap-4">
+            <a href="/" className="text-sm text-slate-400 hover:text-emerald-400 flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+              </svg>
+              <span className="hidden sm:inline">Home</span>
+            </a>
+            <a href="/swap" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Swap</a>
+            <a href="/arbitrage" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Arbitrage</a>
+          </div>
+        </div>
+      </nav>
+
+      <main className="pt-20 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full p-1 bg-gradient-to-br from-emerald-500/30 to-transparent border border-emerald-500/40 shadow-[0_0_25px_rgba(0,245,140,0.25)] flex items-center justify-center overflow-hidden">
+<img
+               src="/images/buildercoin.png"
+               alt="$Buildercoin Staking Vault"
+               className="w-full h-full object-contain rounded-full"
+               onError={(e) => {
+                 const target = e.currentTarget;
+                 if (!target.dataset.fallbackTried) {
+                   target.dataset.fallbackTried = "true";
+                   target.src = "/images/buildercoin.jpg";
+                 }
+               }}
+             />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tick">Staking $BUILDER & $IMD</h1>
-            <p className="text-[var(--color-muted)] mt-1">Lock tokens and earn protocol fees with multi</p>
+            <div className="font-mono text-sm tracking-[0.25em] text-white font-bold uppercase">
+              ┌─ BUILDER STAKING ── DIAMOND HANDS VAULT ────────────────────────┐
+            </div>
+            <p className="font-mono text-xs text-slate-400 tracking-widest uppercase mt-1">
+              Yield ponderado por Identity Tier (DEC-020) — yield = stake × multiplicador (4x / 3x / 1x / 0x)
+            </p>
           </div>
         </div>
 
-        {/* Staking Options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div>
-            <div className="glass-card p-4 rounded-2xl border border-[#00FF41]/30 border-opacity-50">
-              <div className="text-xs text-[#00FF4160] mb-1 tracking-wider">30 Days</div>
-              <div className="text-xl font-bold text-[#00FF41]">37% APR</div>
-              <div className="text-sm text-[#00FF4160] mt-1">Unlock: 30 days</div>
+        <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-4 mb-6">
+          <p className="font-mono text-xs text-slate-400">
+            Aviso: Saque antecipado antes do vencimento incorre penalidade conforme DEC-020. Consulte regras abaixo.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">30 DIAS</div>
+            <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">37% APR</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">7 DIAS · 0% TAX</div>
+            <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">UNLOCK: 30 DIAS</div>
+          </div>
+          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">60 DIAS</div>
+            <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">52% APR</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">14 DIAS · 0% TAX</div>
+            <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">UNLOCK: 60 DIAS</div>
+          </div>
+          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">90 DIAS</div>
+            <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">68.5% APR</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">21 DIAS · 0% TAX</div>
+            <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">UNLOCK: 90 DIAS</div>
+          </div>
+        </div>
+
+        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6">
+          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">POSIÇÕES ATUAIS</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
+              <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">$BUILDER STAKED</div>
+              <div className="font-mono font-bold tracking-tight text-white text-2xl">{stakedBuilder} $BUILDER</div>
+              <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">APY: <span className="text-emerald-400 font-bold">{aprBuilder}</span></div>
+              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">UNLOCK: {unlockDate}</div>
+              <button
+                onClick={handleUnstake}
+                disabled={parseFloat(stakedBuilder) <= 0 || loading}
+                className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {parseFloat(stakedBuilder) <= 0 ? "STAKE $BUILDER" : "UNSTAKE $BUILDER"}
+              </button>
+            </div>
+            <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
+              <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">$IMD STAKED</div>
+              <div className="font-mono font-bold tracking-tight text-white text-2xl">{stakedImd} $IMD</div>
+              <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">APY: <span className="text-emerald-400 font-bold">{aprImd}</span></div>
+              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">UNLOCK: {unlockDate}</div>
+              <button
+                onClick={handleUnstake}
+                disabled={parseFloat(stakedImd) <= 0 || loading}
+                className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {parseFloat(stakedImd) <= 0 ? "STAKE $IMD" : "UNSTAKE $IMD"}
+              </button>
             </div>
           </div>
-          <div>
-            <div className="glass-card p-4 rounded-2xl border border-[#00F58C]/30 border-opacity-50">
-              <div className="text-xs text-[#00F58C60] mb-1 tracking-wider">60 Days</div>
-              <div className="text-xl font-bold text-[#00F58C]">52% APR</div>
-              <div className="text-sm text-[#00F58C60] mt-1">Unlock: 60 days</div>
+        </div>
+
+        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6">
+          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">DURAÇÃO DO LOCK</div>
+          <div className="flex flex-wrap gap-3">
+            {["30", "60", "90"].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDuration(d)}
+                className={`px-6 py-3 font-mono font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95 ${
+                  duration === d
+                    ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                    : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
+                }`}
+              >
+                {d} DIAS
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 font-mono text-xs text-slate-400 tracking-widest">
+            SELECIONADO: <span className="text-emerald-400 font-bold">{duration} DIAS</span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleStake}
+          disabled={loading}
+          className="w-full py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+        >
+          {loading ? "STAKING..." : parseFloat(stakedBuilder) <= 0 && parseFloat(stakedImd) <= 0 ? "STAKE NOW" : "MANAGE POSITION"}
+        </button>
+
+        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">REGRAS (DEC-020)</div>
+          <div className="space-y-2 font-mono text-xs text-slate-400">
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">▸</span>
+              <span>Yield = Stake × Multiplicador por Tier (Diamond 4x / Gold 3x / Silver 1x / Bronze 0x)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">▸</span>
+              <span>$BUILDER stakers recebem 60% das taxas do protocolo</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">▸</span>
+              <span>$IMD stakers recebem 37% das taxas + bonus rewards</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">▸</span>
+              <span>Lock maior = APR maior + peso de governança aumentado</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-rose-500 font-bold shrink-0">▸</span>
+              <span className="text-rose-500">Saque antecipado: 2-5% PENALTY conforme tempo restante</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">▸</span>
+              <span>Sem taxas de entrada/saída no vencimento (0% TAX)</span>
             </div>
           </div>
-          <div>
-            <div className="glass-card p-4 rounded-2xl border border-[#FFB000]/30 border-opacity-50">
-              <div className="text-xs text-[#FFB00060] mb-1 tracking-wider">90 Days</div>
-              <div className="text-xl font-bold text-[#FFB000]">68.5% APR</div>
-              <div className="text-sm text-[#FFB00060] mt-1">Unlock: 90 days</div>
-            </div>
-          </div>
         </div>
 
-        {/* Current Staking Positions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-wider">$BUILDER Staked</div>
-            <div className="text-2xl font-semibold text-[var(--color-accent-emerald)]">{stakedBuilder} $BUILDER</div>
-            <div className="text-xs text-[var(--color-muted)] mb-2">APY: {aprBuilder}</div>
-            <div className="text-xs text-[var(--color-muted)]">Unlocks: {unlockDate}</div>
-            <button
-              onClick={handleUnstake}
-              disabled={parseFloat(stakedBuilder) <= 0 || loading}
-              className="w-full py-2 text-xs font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]"
-            >
-              {parseFloat(stakedBuilder) <= 0 ? "Stake $BUILDER" : "Unstake $BUILDER"}
-            </button>
-          </div>
-          <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-wider">$IMD Staked</div>
-            <div className="text-2xl font-semibold text-[var(--color-accent-cyan)]">{stakedImd} $IMD</div>
-            <div className="text-xs text-[var(--color-muted)] mb-2">APY: {aprImd}</div>
-            <div className="text-xs text-[var(--color-muted)]">Unlock: {unlockDate}</div>
-            <button
-              onClick={handleUnstake}
-              disabled={parseFloat(stakedImd) <= 0 || loading}
-              className="w-full py-2 text-xs font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]"
-            >
-              {parseFloat(stakedImd) <= 0 ? "Stake $IMD" : "Unstake $IMD"}
-            </button>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
-          <button
-            onClick={handleStake}
-            disabled={loading}
-            className="w-full py-3 text-xs tracking-wider font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]"
-          >
-            {loading ? "STAKING..." : (
-              parseFloat(stakedBuilder) <= 0 && parseFloat(stakedImd) <= 0
-                ? "Stake Now"
-                : "Manage Position"
-            )}
-          </button>
-        </div>
-
-        {/* Staking Benefits */}
-        <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
-          <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Staking Benefits</h2>
-          <div className="space-y-3 text-sm text-[#00ff4160]">
-            <div>• Earn 37-68.5% APR depending on lock duration</div>
-            <div>• $BUILDER stakers: 60% of protocol fees</div>
-            <div>• $IMD stakers: 37% of protocol fees + bonus rewards</div>
-            <div>• Longer lock = higher APR and voting weight</div>
-            <div>• Early unstake penalty: 10% fee</div>
-          </div>
-        </div>
-
-        {/* Error */}
         {error && (
-          <div className="terminal-panel p-3 border border-[#ff0040]">
-            <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
+          <div className="bg-slate-900/80 border border-rose-500/40 rounded-xl p-4">
+            <div className="font-mono text-xs text-rose-500">ERROR: {error}</div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

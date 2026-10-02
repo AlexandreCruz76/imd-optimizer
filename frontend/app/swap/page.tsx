@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
@@ -620,13 +621,48 @@ export default function SwapPage() {
 
   return (
     <div className="space-y-4 fade-in">
-      {/* Header */}
+      {/* Navigation Bar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-[#00F58C]/50 shadow-[0_0_12px_rgba(0,245,140,0.3)] bg-[#0D121A] flex-shrink-0">
+                <img src="/images/avatar.jpg" alt="IMD Optimizer" className="w-full h-full object-cover" />
+              </div>
+              <span className="hidden sm:block text-xl font-bold text-white tracking-tight">IMD Optimizer</span>
+            </Link>
+            <div className="flex items-center gap-4">
+              <Link href="/" className="text-sm font-medium text-[#6B7A88] hover:text-[#00F58C] transition-colors flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                <span className="hidden sm:inline">Home</span>
+              </Link>
+              <Link href="/pool" className="text-sm font-medium text-[#6B7A88] hover:text-[#00F58C] transition-colors hidden sm:inline">
+                Meta Hook Pool
+              </Link>
+              
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="pt-28">
+        {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/pepe/profile.jpeg"
             alt="Swap"
             className="w-8 h-8 rounded-full border border-[#00F58C]"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedAvatar) {
+                target.dataset.triedAvatar = "true";
+                target.src = "/images/avatar.jpg";
+              } else if (!target.dataset.triedAgente) {
+                target.dataset.triedAgente = "true";
+                target.src = "/images/agente.png";
+              }
+            }}
           />
           <h1 className="text-base md:text-lg font-medium text-[#E8E8E8] tracking-wider">
             ┌─ PROTECTED SWAP ────────────────────────────────────────────────────┐
@@ -653,6 +689,23 @@ export default function SwapPage() {
         </div>
       </div>
 
+        {/* Background Artwork - Cyberpunk Frog analyzing swap data */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden -mt-28">
+          <img
+            src="/images/Cyberpunk_frog_examining_hologra._20260926020301.jpg"
+            alt="Agentic Frog analyzing swap data"
+            className="w-full h-full object-cover object-center opacity-35 transition-opacity duration-500"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedPng) {
+                target.dataset.triedPng = "true";
+                target.src = "/images/Cyberpunk_character_monitoring_t._20260926015147.jpg";
+              }
+            }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,#070A0F/40_70%,#070A0F/90_100%)]" />
+        </div>
+
       {/* Banners de estado */}
       {isSepolia && !routerAddr && (
         <div className="glass-card rounded-2xl p-3 border border-[#FFB000]/30 text-xs text-[#FFB000] font-mono">
@@ -678,9 +731,34 @@ export default function SwapPage() {
                 </div>
               )}
 
-      {/* Swap Card */}
-      <div className="max-w-md mx-auto w-full">
-        <div className="glass-card rounded-3xl p-5 border border-white/[0.08] shadow-2xl">
+      {/* Swap Card with Artwork Panel */}
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
+          {/* Left: Action Artwork Panel */}
+          <div className="hidden lg:block">
+            <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-emerald-500/25 bg-[#0B111A]/90 shadow-[0_0_30px_rgba(0,245,140,0.1)] flex items-center justify-center">
+              <img
+                src="/images/acao2.jpg"
+                alt="Anti-MEV Combat Execution"
+                className="w-full h-full object-cover object-center"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.triedPng) {
+                    target.dataset.triedPng = "true";
+                    target.src = "/images/acao 2.png";
+                  } else if (!target.dataset.triedJpeg) {
+                    target.dataset.triedJpeg = "true";
+                    target.src = "/images/acao.jpeg";
+                  }
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070A0F]/80 via-transparent to-transparent pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Right: Swap Form */}
+          <div className="lg:col-span-1">
+            <div className="glass-card rounded-3xl p-5 border border-white/[0.08] shadow-2xl h-full">
           {/* Card header: title + settings */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs tracking-[0.25em] text-[#6B7A88] font-mono">
@@ -1163,6 +1241,9 @@ export default function SwapPage() {
           </div>
         </div>
       </div>
+    </div>
+    </div>
+    </main>
     </div>
   );
 }

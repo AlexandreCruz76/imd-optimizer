@@ -12,6 +12,7 @@ const navLinks = [
   { href: "#architecture", label: "Architecture" },
   { href: "/swap", label: "Swap" },
   { href: "/pool", label: "Meta Hook Pool" },
+  { href: "/arbitrage", label: "Arbitrage" },
 ];
 
 export function Navbar() {
