@@ -86,9 +86,12 @@ export default function MetaHookPoolPage() {
   }, []);
 
   useEffect(() => {
-    loadPool();
+    const boot = setTimeout(loadPool, 0);
     const id = setInterval(loadPool, 15000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(boot);
+      clearInterval(id);
+    };
   }, [loadPool]);
 
   const price = pool ? parseFloat(pool.price) || 0 : 0;

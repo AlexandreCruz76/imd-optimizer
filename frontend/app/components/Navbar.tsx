@@ -5,6 +5,7 @@ import { useWallet } from "./WalletProvider";
 import { useState, useEffect } from "react";
 
 const navLinks = [
+  { href: "/", label: "Home" },
   { href: "/swap", label: "Swap" },
   { href: "/arbitrage", label: "Arbitrage" },
   { href: "/vault", label: "Vault" },
@@ -30,7 +31,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
           {/* Left: Brand with avatar.jpg */}
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <div className="relative w-10 h-10 rounded-full overflow-hidden border border-[#00F58C]/50 shadow-[0_0_12px_rgba(0,245,140,0.3)] bg-[#0D121A] flex-shrink-0">
               <img
                 src="/images/avatar.jpg"
@@ -42,7 +43,7 @@ export function Navbar() {
               <h1 className="text-xl font-bold text-white tracking-tight">IMD Optimizer</h1>
               <p className="text-xs text-[#6B7A88] tracking-wide">The Agentic V4 Meta-Hook</p>
             </div>
-          </div>
+          </Link>
 
           {/* Center: Navigation Links */}
           <div className="hidden md:flex items-center gap-6">

@@ -64,7 +64,9 @@ const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
 const ROUTER_ABI = [
   "function getPoolState() view returns (uint160, int24, bool)",
   "function getStats() view returns (uint256,uint256,uint256,uint256)",
-  "function feeBps() view returns (uint256)",
+  "function identityTier(address user) view returns (uint8)",
+  "function swapFeeBps(address user) view returns (uint256)",
+  "function successFeeBps(address user) view returns (uint256)",
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
   "function executeProtectedSellAndBurn(uint256 standardAmount, uint256 minAmountOut) external",
@@ -85,6 +87,8 @@ interface SepoliaInfo {
     sqrtPriceX96: bigint;
     routerEth: bigint;
     feeBps: number;
+    tier: number;
+    successFeeBps: number;
   minDelay: number;
   lastOpBlock: number;
   blockNumber: number;
@@ -96,7 +100,8 @@ interface SepoliaInfo {
 
 const SLIPPAGE_PRESETS = ["0.1", "0.5", "1.0"];
 
-const FEE_TIER = { pct: "0.05%", label: "V4 Hook" };
+const FEE_TIER = { pct: "0.00%–0.50%", label: "Identity-Fi Tier" };
+const TIER_LABELS = ["Alpha", "Partner", "Holder", "Retail"];
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
@@ -375,11 +380,13 @@ export default function SwapPage() {
         hasMint = false;
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, provider);
-      const [state, stats, feeBps, minDelay, lastOp, bn, routerEth] =
+      const [state, stats, userFeeBps, userTier, userSuccessBps, minDelay, lastOp, bn, routerEth] =
         await Promise.all([
           router.getPoolState(),
           router.getStats(),
-          router.feeBps(),
+          router.swapFeeBps(address),
+          router.identityTier(address),
+          router.successFeeBps(address),
           router.minBlockDelay(),
           router.lastOperationBlock(address),
           provider.getBlockNumber(),
@@ -394,7 +401,9 @@ export default function SwapPage() {
         hasMint,
         sqrtPriceX96: state[0] as bigint,
         routerEth,
-        feeBps: Number(feeBps),
+        feeBps: Number(userFeeBps),
+        tier: Number(userTier),
+        successFeeBps: Number(userSuccessBps),
         minDelay: Number(minDelay),
         lastOpBlock: Number(lastOp),
         blockNumber: bn,
@@ -730,6 +739,14 @@ export default function SwapPage() {
                   ETH — reduza o valor
                 </div>
               )}
+            {realMode && connected && sep && (
+              <div className="glass-card rounded-2xl p-3 border border-[#00F58C]/30 text-xs text-[#00F58C] font-mono">
+                Your Swap Fee: {(sep.feeBps / 100).toFixed(2)}% · Tier{" "}
+                {sep.tier} ({TIER_LABELS[sep.tier] ?? "Retail"}) · Success Fee:{" "}
+                {(sep.successFeeBps / 100).toFixed(2)}% — V4 MEV Protection:
+                ACTIVE
+              </div>
+            )}
 
       {/* Swap Card with Artwork Panel */}
       <div className="max-w-5xl mx-auto w-full">
@@ -1050,8 +1067,18 @@ export default function SwapPage() {
                   color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
                 />
                 <InfoRow
-                  label="Protocol fee"
-                  value={sep ? `${(sep.feeBps / 100).toFixed(2)}%` : "—"}
+                  label="Your Swap Fee (Identity-Fi Tier)"
+                  value={
+                    sep
+                      ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${sep.tier} (${
+                          TIER_LABELS[sep.tier] ?? "Retail"
+                        })`
+                      : "—"
+                  }
+                />
+                <InfoRow
+                  label="Success Fee (só sobre o lucro)"
+                  value={sep ? `${(sep.successFeeBps / 100).toFixed(2)}%` : "—"}
                 />
                 <InfoRow
                   label="Anti-sandwich cooldown"
