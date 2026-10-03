@@ -7,11 +7,9 @@ import { useState, useEffect } from "react";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/swap", label: "Swap" },
-  { href: "/arbitrage", label: "Arbitrage" },
-  { href: "/vault", label: "Vault" },
-  { href: "/nft-mint", label: "NFT" },
-  { href: "/staking", label: "Staking" },
   { href: "/pool", label: "Meta Hook Pool" },
+  { href: "/arbitrage", label: "Arbitrage" },
+  { href: "/staking", label: "Staking" },
 ];
 
 export function Navbar() {
