@@ -271,52 +271,6 @@ export default function HomePage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#070A0E]/90 via-transparent to-transparent" />
                 </div>
               </div>
-
-              <div className="grid lg:grid-cols-2 gap-8 items-center">
-                <div className="relative lg:order-2">
-                  <div className="relative rounded-3xl overflow-hidden border border-emerald-500/20 bg-[#0B111A]/80 shadow-[0_0_50px_rgba(0,245,140,0.15)]">
-                    <img src="/images/acao3.jpg" alt="Agentic Oracle" className="w-full h-[400px] object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#070A0E]/90 via-transparent to-transparent" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h4 className="text-xl font-bold">Agentic Oracle Network</h4>
-                  <p className="text-slate-400">
-                    Decentralized node network providing real-time MEV detection, TWAP price feeds, and toxicity scoring.
-                    $BLD stakers operate nodes and earn 60% of protocol fees.
-                  </p>
-                  <div className="space-y-3">
-                    <OracleItem title="100+ Node Target" desc="Geographically distributed validators ensuring censorship-resistant price feeds" />
-                    <OracleItem title="Sub-Second Latency" desc="TWAP feeds updated every block with cryptographic verification" />
-                    <OracleItem title="Slashing for Invalid Data" desc="Economic security via stake slashing on proven data manipulation" />
-                    <OracleItem title="60% Fees → Stakers" desc="OptimizerVaultV2 split: 60% Stakers · 20% Treasury · 15% Devs · 5% Buy-and-Burn" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-2 gap-8 items-center">
-                <div>
-                  <h4 className="text-xl font-bold mb-4">Elastic Supply Contraction</h4>
-                  <p className="text-slate-400 mb-6">
-                    Algorithmic, self-stabilizing monetary policy. When MEV extraction spikes, the system automatically contracts supply.
-                  </p>
-                  <div className="grid md:grid-cols-3 gap-4 mb-6">
-                    <BurnItem value="Live" label="$IMD Auto-Burned (on-chain)" accent="#00F58C" />
-                    <BurnItem value="50%" label="Penalty → Buy-and-Burn" accent="#FFB000" />
-                    <BurnItem value="100%" label="Burned → 0xdEaD" accent="#00F5FF" />
-                  </div>
-                  <ul className="space-y-2 text-sm text-slate-400">
-                    <li className="flex items-start gap-2"><span className="text-amber-400">▸</span> TWAP Buybacks: Captured ETH executes time-weighted purchases on $IMD/ETH pools</li>
-                    <li className="flex items-start gap-2"><span className="text-amber-400">▸</span> Immediate Burn: Purchased tokens sent to dead address within same block</li>
-                    <li className="flex items-start gap-2"><span className="text-amber-400">▸</span> Epoch Accounting: Burns recorded per epoch (90 days), rate published on-chain</li>
-                    <li className="flex items-start gap-2"><span className="text-amber-400">▸</span> Supply Floor: Contraction continues until equilibrium — no inflationary minting ever</li>
-                  </ul>
-                </div>
-                <div className="relative rounded-3xl overflow-hidden border border-emerald-500/20 bg-[#0B111A]/80 shadow-[0_0_50px_rgba(0,245,140,0.15)]">
-                  <img src="/images/heli.png" alt="Elastic supply contraction" className="w-full h-[400px] object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#070A0E]/90 via-transparent to-transparent" />
-                </div>
-              </div>
             </div>
 
             {/* Protocol Metrics */}
@@ -345,11 +299,6 @@ export default function HomePage() {
                 <ArchCard title="V4 Hook Contract" description="Singleton-deployed hook implementing beforeSwap/afterSwap for MEV capture. Gas-optimized with minimal storage reads." features={["Solidity 0.8.24", "Gas optimized (~45k per swap)", "Formal verification pending", "Sepolia: 0x...HookAddr"]} />
                 <ArchCard title="Agentic Oracle Network" description="Decentralized node network providing real-time MEV detection, TWAP feeds, and toxicity scoring. $BLD stakers operate nodes." features={["100+ nodes target", "Sub-second latency", "Slashing for invalid data", "Yield: 60% p/ stakers"]} />
                 <ArchCard title="Elastic Tokenomics" description="Algorithmic supply contraction via MEV-funded buybacks. No admin keys, no minting. Hard-capped deflationary asset." features={["Hard cap: 1B $IMD", "Burn address: 0x...dead", "Epoch: 90 days", "Audit: TBD"]} />
-              </div>
-
-              <div className="rounded-3xl bg-[#0B111A]/80 border border-slate-700/50 p-8 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
-                <h4 className="text-xl font-bold mb-8 text-center">Data Flow Architecture</h4>
-                <ArchitectureFlow />
               </div>
             </div>
 
@@ -457,27 +406,6 @@ function HookCard({ hook, title, accent, steps }: { hook: string; title: string;
   );
 }
 
-function OracleItem({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="flex items-start gap-3 p-3 rounded-xl bg-[#070A0F]/80 border border-slate-700/50">
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg bg-slate-800/50 flex-shrink-0">🌐</div>
-      <div>
-        <div className="font-semibold text-white text-sm">{title}</div>
-        <div className="text-xs text-slate-400">{desc}</div>
-      </div>
-    </div>
-  );
-}
-
-function BurnItem({ value, label, accent }: { value: string; label: string; accent: string }) {
-  return (
-    <div className="bg-[#070A0F]/80 rounded-xl p-4 border border-slate-700/50 text-center">
-      <div className="text-2xl font-bold mb-1" style={{ color: accent }}>{value}</div>
-      <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">{label}</div>
-    </div>
-  );
-}
-
 function StatCard({ title, value, change, icon, description, accent, badge }: { 
   title: string; value: string; change: string; icon: string; description: string; accent: string; badge?: string;
 }) {
@@ -517,39 +445,6 @@ function ArchCard({ title, description, features }: {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function ArchitectureFlow() {
-  const steps = [
-    { label: "USER / WALLET", desc: "Swap Intent" },
-    { label: "UNISWAP V4 SINGLETON", desc: "PoolManager" },
-    { label: "beforeSwap HOOK", desc: "Toxicity Scan • Dynamic Fees • Tier Check" },
-    { label: "SWAP EXECUTION", desc: "Price Impact • Settlement" },
-    { label: "afterSwap HOOK", desc: "LVR Measurement • Buyback Trigger • Tier Accrual" },
-    { label: "AGENTIC EXECUTION", desc: "MEV Scanner • Oracle Nodes • Buyback & Burn Engine" },
-    { label: "TIER REDISTRIBUTION", desc: "$BLD Alpha → $IMD Alpha → $IMD Holder → Retail" },
-  ];
-
-  return (
-    <div className="relative">
-      <div className="absolute left-8 md:left-[160px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-emerald-500 via-cyan-500 to-amber-500 hidden md:block" />
-      <div className="space-y-6 md:space-y-8">
-        {steps.map((step, i) => (
-          <div key={i} className="relative flex items-start gap-4 md:pl-[180px]">
-            <div className="relative flex-shrink-0 w-16 md:w-[140px] md:pr-4 md:text-right">
-              <div className="relative z-10 w-6 h-6 md:w-10 md:h-10 rounded-full border-2 border-slate-700/50 bg-[#070A0F] flex items-center justify-center mx-auto md:mx-0 md:ml-auto">
-                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500" />
-              </div>
-              <p className="mt-1 md:mt-0 font-mono text-[10px] md:text-xs font-semibold text-white text-center md:text-right">{step.label}</p>
-            </div>
-            <div className="flex-1 pt-0.5 md:pt-0">
-              <p className="text-xs text-slate-400">{step.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
