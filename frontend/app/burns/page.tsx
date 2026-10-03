@@ -46,27 +46,6 @@ export default function BurnsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (connected) {
-      interval = setInterval(() => {
-        const currentBurned = parseFloat(burned);
-        const currentVolume = parseFloat(volume);
-        const newBurnedNum = Math.min(currentVolume + Math.random() * 0.5, 500);
-        const newBurned = newBurnedNum.toFixed(2);
-        const newProgress = Math.min((newBurnedNum / 500) * 100, 100);
-
-        setBurned(newBurned);
-        setVolume((parseFloat(volume) + Math.random() * 0.3).toFixed(2));
-        setProgress(newProgress);
-      }, 800);
-
-      return () => clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [connected]);
-
   async function handleBurn() {
     if (!connected) return;
     setLoading(true);
@@ -88,8 +67,10 @@ export default function BurnsPage() {
       } else {
         setError(data.error || "Burn failed");
       }
-    } catch (err: any) {
-      setError(err.message || "Burn failed");
+    } catch {
+      setError(
+        "Endpoint /api/burn não configurado — Buy-and-Burn assistido entra após o deploy (a auto-burn DEC-017 do hook já funciona on-chain)."
+      );
     } finally {
       setLoading(false);
     }
@@ -129,32 +110,44 @@ export default function BurnsPage() {
             </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Volume Processed</div>
-            <div className="text-3xl font-semibold text-[var(--color-accent-cyan)]">{volume} ETH</div>
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Volume Processado</div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-cyan)]">
+              {txHash && volume !== "0" ? `${volume} ETH` : "— ETH"}
+            </div>
+            <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
+              volume de burn registrado nesta sessão (getStats após execução)
+            </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
             <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Supply Reduction</div>
-            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">{progress}%</div>
+            <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">
+              {progress > 0 ? `${progress}%` : "—"}
+            </div>
+            <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
+              redução medida após execução — meta por tier (DEC-017)
+            </div>
           </div>
         </div>
 
         {/* Elastic Progress Bar */}
-        <div className="mb-8">
-          <div className="progress-bar h-2 rounded-full">
-            <div
-              className="progress-bar-fill"
-              style={{ width: progress }}
-              role="progressbar"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
+        {progress > 0 && (
+          <div className="mb-8">
+            <div className="progress-bar h-2 rounded-full">
+              <div
+                className="progress-bar-fill"
+                style={{ width: progress }}
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <div className="flex justify-between text-xs mt-2">
+              <span className="text-[#00ff4160]">{burned} $IMD burned</span>
+              <span className="text-[#00ff4160]">{progress.toFixed(1)}%</span>
+            </div>
           </div>
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-[#00ff4160]">{burned} $IMD burned</span>
-            <span className="text-[#00ff4160]">{progress.toFixed(1)}%</span>
-          </div>
-        </div>
+        )}
 
         {/* Transaction Result */}
         {txHash && (

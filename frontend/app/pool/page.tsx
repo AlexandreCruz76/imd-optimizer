@@ -143,9 +143,12 @@ export default function MetaHookPoolPage() {
 
   useEffect(() => {
     if (address) {
-      loadUser();
+      const boot = setTimeout(loadUser, 0);
       const id = setInterval(loadUser, 30000);
-      return () => clearInterval(id);
+      return () => {
+        clearTimeout(boot);
+        clearInterval(id);
+      };
     }
   }, [address, loadUser]);
 

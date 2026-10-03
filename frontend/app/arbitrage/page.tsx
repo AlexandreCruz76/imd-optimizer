@@ -1,29 +1,153 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ethers } from "ethers";
 import { Navbar } from "../components/Navbar";
+import { useWallet } from "../components/WalletProvider";
 
 const SPREAD_PRESETS = [0.2, 0.5, 1.0];
 
-const MOCK_LOGS = [
-  { route: "ETH → IMD (Hook)", edge: 0.84, gas: 142000, status: "EXECUTED" },
-  { route: "IMD → ETH (Native)", edge: 0.52, gas: 158000, status: "EXECUTED" },
-  { route: "ETH → IMD (Hook)", edge: 0.31, gas: 165000, status: "SKIPPED" },
-  { route: "IMD → ETH (Native)", edge: 1.12, gas: 134000, status: "EXECUTED" },
-  { route: "ETH → IMD (Hook)", edge: 0.67, gas: 149000, status: "PENDING" },
+const ROUTER_ABI = [
+  "function executeCustomArbitrage(address venueBuy, address venueSell, address token, uint256 amountIn, uint256 minProfit) payable",
 ];
 
+interface ArbHistory {
+  timestamp: string;
+  spread: number;
+  winner: "hook" | "native";
+}
+
+interface ArbFeed {
+  current: { spread: number; hookAPY: number; nativeAPY: number };
+  history: ArbHistory[];
+}
+
+interface ArbConfig {
+  optimizerRouter?: string;
+  arbVenueBuy?: string;
+  arbVenueSell?: string;
+  standardToken?: string;
+}
+
 export default function ArbitragePage() {
+  const { connected, signer, connect } = useWallet();
   const [capitalAmount, setCapitalAmount] = useState("");
   const [capitalToken, setCapitalToken] = useState<"ETH" | "IMD">("ETH");
   const [targetSpread, setTargetSpread] = useState(0.5);
   const [maxGasCeiling, setMaxGasCeiling] = useState(50);
   const [armed, setArmed] = useState(false);
+  const [feed, setFeed] = useState<ArbFeed | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [config, setConfig] = useState<ArbConfig>({});
+  const [status, setStatus] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
 
-  const grossSpread = 1.24;
-  const gasFriction = 0.38;
-  const netCapturedEdge = grossSpread - gasFriction - targetSpread;
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/arbitrage")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!alive || d.error) return;
+          setFeed(d);
+          setUpdatedAt(
+            new Date().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+          );
+        })
+        .catch(() => {});
+    load();
+    const iv = setInterval(load, 30000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then(setConfig)
+      .catch(() => {});
+  }, []);
+
+  const grossSpread = feed?.current.spread ?? 0;
+  const hookApy = feed?.current.hookAPY ?? 0;
+  const nativeApy = feed?.current.nativeAPY ?? 0;
+  const netCapturedEdge = grossSpread - targetSpread;
+
+  async function handleArmExecute() {
+    if (capitalToken !== "ETH") {
+      setStatus("Execute exige capital em ETH (as venues são pagas em ETH).");
+      return;
+    }
+    const amt = parseFloat(capitalAmount || "0");
+    if (!armed) {
+      if (amt <= 0) {
+        setStatus("Informe o capital em ETH para arbitragem.");
+        return;
+      }
+      if (
+        !config.arbVenueBuy ||
+        !config.arbVenueSell ||
+        !config.standardToken
+      ) {
+        setStatus(
+          "Venues ausentes: ARB_VENUE_BUY / ARB_VENUE_SELL / STANDARD_TOKEN no .env"
+        );
+        return;
+      }
+      if (!connected) await connect();
+      setArmed(true);
+      setStatus("Engine ARMED — clique novamente para executar on-chain.");
+      return;
+    }
+    if (!connected) {
+      await connect();
+      return;
+    }
+    if (!signer || !config.optimizerRouter) {
+      setStatus("Conecte a carteira para assinar a transação.");
+      return;
+    }
+    setExecuting(true);
+    setStatus(null);
+    try {
+      const router = new ethers.Contract(
+        config.optimizerRouter,
+        ROUTER_ABI,
+        signer
+      );
+      const amountIn = ethers.parseEther(capitalAmount);
+      const minProfit =
+        (amountIn * BigInt(Math.round(targetSpread * 100))) / 10000n;
+      const tx = await router.executeCustomArbitrage(
+        config.arbVenueBuy,
+        config.arbVenueSell,
+        config.standardToken,
+        amountIn,
+        minProfit,
+        { value: amountIn }
+      );
+      setStatus(`tx: ${tx.hash.slice(0, 18)}… — aguardando confirmação`);
+      await tx.wait();
+      setStatus(`confirmada on-chain: ${tx.hash.slice(0, 22)}…`);
+      setArmed(false);
+    } catch (err) {
+      setStatus(
+        `falha: ${
+          err instanceof Error
+            ? err.message.slice(0, 130)
+            : "execução revertida (lock NFT / cooldown / venue)"
+        }`
+      );
+    } finally {
+      setExecuting(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
@@ -49,9 +173,9 @@ export default function ArbitragePage() {
             <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                ORACLE SYNC: OPTIMAL
+                FEED: {feed ? "LIVE (30s)" : "CARREGANDO…"}
               </span>
-              <span className="text-emerald-400">LATENCY: ~120ms</span>
+              <span className="text-emerald-400">UPD: {updatedAt ?? "—"}</span>
             </div>
           </div>
 
@@ -141,11 +265,30 @@ export default function ArbitragePage() {
 
                 {/* Arm Button */}
                 <button
-                  onClick={() => setArmed(!armed)}
-                  className="w-full bg-emerald-500 text-black font-bold py-3 rounded-xl hover:bg-emerald-400 active:scale-[0.98] transition-all"
+                  onClick={handleArmExecute}
+                  disabled={executing}
+                  className={`w-full font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-60 ${
+                    armed
+                      ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                      : "bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700"
+                  }`}
                 >
-                  {armed ? "ARBITRAGE ENGINE ARMED" : "ARM ARBITRAGE ENGINE"}
+                  {executing
+                    ? "EXECUTING ON-CHAIN…"
+                    : armed
+                    ? "▶ EXECUTE ATOMIC ARBITRAGE"
+                    : "ARM ARBITRAGE ENGINE"}
                 </button>
+                {status && (
+                  <div className="text-[11px] font-mono text-slate-400 break-all border border-slate-700/50 bg-slate-900/40 rounded-xl px-3 py-2">
+                    {status}
+                  </div>
+                )}
+                <div className="text-[10px] font-mono text-slate-500 leading-relaxed">
+                  Requer Genesis Key NFT (lock por minBlockDelay) — o contrato
+                  valida o lock, o cooldown anti-sandwich e as venues na
+                  execução. minProfit = capital × target spread.
+                </div>
               </div>
 
               {/* RIGHT CARD: Telemetry & Metrics */}
@@ -158,32 +301,34 @@ export default function ArbitragePage() {
                 {/* Status Strip */}
                 <div className="grid grid-cols-2 gap-3 p-4 bg-slate-900/40 border border-slate-700/50 rounded-xl">
                   <div className="text-center">
-                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">ORACLE SYNC</div>
-                    <div className="text-sm font-mono text-emerald-400 font-bold">OPTIMAL</div>
+                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">FEED</div>
+                    <div className="text-sm font-mono text-emerald-400 font-bold">
+                      {feed ? "LIVE (30s)" : "CARREGANDO…"}
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">LATENCY</div>
-                    <div className="text-sm font-mono text-emerald-400">~120ms</div>
+                    <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">UPDATED</div>
+                    <div className="text-sm font-mono text-emerald-400">{updatedAt ?? "—"}</div>
                   </div>
                 </div>
 
                 {/* Math Breakdown */}
                 <div className="space-y-2 border-t border-b border-slate-800/50 py-4">
-                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">MATHEMATICAL BASE BREAKDOWN</div>
+                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">SPREAD BREAKDOWN (APY · The Graph / Indexer)</div>
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-xs text-slate-400 font-mono uppercase">GROSS SPREAD</span>
+                    <span className="text-xs text-slate-400 font-mono uppercase">SPREAD (HOOK − NATIVE)</span>
                     <span className="font-mono text-emerald-400 text-lg">{grossSpread.toFixed(2)}%</span>
                   </div>
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-xs text-slate-400 font-mono uppercase">GAS FRICTION</span>
-                    <span className="font-mono text-rose-500 text-lg">-{gasFriction.toFixed(2)}%</span>
+                    <span className="text-xs text-slate-400 font-mono uppercase">APY HOOK / NATIVE</span>
+                    <span className="font-mono text-slate-300 text-base">{hookApy.toFixed(2)}% / {nativeApy.toFixed(2)}%</span>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-xs text-slate-400 font-mono uppercase">TARGET THRESHOLD</span>
                     <span className="font-mono text-slate-300 text-lg">{targetSpread.toFixed(2)}%</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-t border-slate-700/50">
-                    <span className="text-xs text-slate-400 font-mono uppercase">NET CAPTURED EDGE</span>
+                    <span className="text-xs text-slate-400 font-mono uppercase">SPREAD − TARGET</span>
                     <span className="font-mono font-bold text-lg" style={{ color: netCapturedEdge > 0 ? "#00F58C" : "#FF567E" }}>
                       {netCapturedEdge > 0 ? "+" : ""}{netCapturedEdge.toFixed(2)}%
                     </span>
@@ -192,34 +337,49 @@ export default function ArbitragePage() {
 
                 {/* Execution Log Table */}
                 <div className="flex-1 overflow-y-auto">
-                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">EXECUTION LOG</div>
+                  <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mb-3">EXECUTION LOG — SNAPSHOTS REAIS (30s)</div>
                   <div className="bg-slate-900/30 border border-slate-700/50 rounded-xl overflow-hidden">
                     <table className="w-full text-xs font-mono">
                       <thead>
                         <tr className="text-slate-400 border-b border-slate-700/50">
-                          <th className="text-left py-2 px-3">ROUTE</th>
-                          <th className="py-2 px-3">EDGE %</th>
-                          <th className="py-2 px-3">GAS</th>
+                          <th className="text-left py-2 px-3">WINNER</th>
+                          <th className="py-2 px-3">SPREAD %</th>
+                          <th className="py-2 px-3">HORA</th>
                           <th className="py-2 px-3">STATUS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {MOCK_LOGS.map((log, i) => (
-                          <tr key={i} className="border-t border-slate-800/50 hover:bg-emerald-500/5">
-                            <td className="py-2 px-3 text-slate-300">{log.route}</td>
-                            <td className="py-2 px-3 text-emerald-400">{log.edge >= 0 ? "+" : ""}{log.edge.toFixed(2)}%</td>
-                            <td className="py-2 px-3 text-slate-400">{log.gas.toLocaleString()}</td>
-                            <td className="py-2 px-3">
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                                log.status === "EXECUTED" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
-                                log.status === "SKIPPED" ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" :
-                                "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                              }`}>
-                                {log.status}
-                              </span>
+                        {feed && feed.history.length > 0 ? (
+                          feed.history.slice(-6).reverse().map((log, i) => {
+                            const actionable = Math.abs(log.spread) >= 2;
+                            return (
+                              <tr key={i} className="border-t border-slate-800/50 hover:bg-emerald-500/5">
+                                <td className="py-2 px-3 text-slate-300">
+                                  {log.winner === "hook" ? "ETH→IMD (Hook)" : "IMD→ETH (Native)"}
+                                </td>
+                                <td className="py-2 px-3 text-emerald-400">{log.spread >= 0 ? "+" : ""}{log.spread.toFixed(2)}%</td>
+                                <td className="py-2 px-3 text-slate-400">
+                                  {new Date(log.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                    actionable
+                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                  }`}>
+                                    {actionable ? "ACTIONABLE" : "HOLD"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr className="border-t border-slate-800/50">
+                            <td colSpan={4} className="py-4 px-3 text-center text-slate-500">
+                              aguardando feed /api/arbitrage…
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>

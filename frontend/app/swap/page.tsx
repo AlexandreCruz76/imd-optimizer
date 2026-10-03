@@ -61,7 +61,9 @@ const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
 const ROUTER_ABI = [
   "function getPoolState() view returns (uint160, int24, bool)",
   "function getStats() view returns (uint256,uint256,uint256,uint256)",
-  "function feeBps() view returns (uint256)",
+  "function identityTier(address) view returns (uint8)",
+  "function swapFeeBps(address) view returns (uint16)",
+  "function successFeeBps(address) view returns (uint16)",
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
   "function executeProtectedSellAndBurn(uint256 standardAmount, uint256 minAmountOut) external",
@@ -82,6 +84,8 @@ interface SepoliaInfo {
   sqrtPriceX96: bigint;
   routerEth: bigint;
   feeBps: number;
+  tier: number;
+  successFeeBps: number;
   minDelay: number;
   lastOpBlock: number;
   blockNumber: number;
@@ -93,7 +97,14 @@ interface SepoliaInfo {
 
 const SLIPPAGE_PRESETS = ["0.1", "0.5", "1.0"];
 
-const FEE_TIER = { pct: "0.05%", label: "V4 Hook" };
+const TIER_LABELS: Record<number, string> = {
+  0: "T1 Buildercoin NFT",
+  1: "T2 Identity (md)",
+  2: "T3 $IMD/$BLD",
+  3: "T4 Retail",
+};
+
+const FEE_TIER = { pct: "0.00%–0.50%", label: "Identity-Fi Tier" };
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
@@ -369,11 +380,13 @@ export default function SwapPage() {
         hasMint = false;
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, provider);
-      const [state, stats, feeBps, minDelay, lastOp, bn, routerEth] =
+      const [state, stats, fee, tierV, sFee, minDelay, lastOp, bn, routerEth] =
         await Promise.all([
           router.getPoolState(),
           router.getStats(),
-          router.feeBps(),
+          router.swapFeeBps(address),
+          router.identityTier(address),
+          router.successFeeBps(address),
           router.minBlockDelay(),
           router.lastOperationBlock(address),
           provider.getBlockNumber(),
@@ -388,7 +401,9 @@ export default function SwapPage() {
         hasMint,
         sqrtPriceX96: state[0] as bigint,
         routerEth,
-        feeBps: Number(feeBps),
+        feeBps: Number(fee),
+        tier: Number(tierV),
+        successFeeBps: Number(sFee),
         minDelay: Number(minDelay),
         lastOpBlock: Number(lastOp),
         blockNumber: bn,
@@ -686,6 +701,16 @@ export default function SwapPage() {
         <div className="fixed inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_3px] opacity-20" />
 
         {/* State Banners */}
+        {realMode && sep && (
+          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400 font-mono">
+            DEC-020 Identity-Fi · Your Swap Fee:{" "}
+            <span className="text-white">
+              {(sep.feeBps / 100).toFixed(2)}% (Tier {sep.tier + 1} ·{" "}
+              {TIER_LABELS[sep.tier] ?? "—"})
+            </span>{" "}
+            · V4 MEV Protection: ACTIVE
+          </div>
+        )}
         {isSepolia && !routerAddr && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
             ⚠ Contracts not deployed on Sepolia — run <span className="text-white">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
@@ -985,8 +1010,18 @@ export default function SwapPage() {
                     color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
                   />
                   <InfoRow
-                    label="Protocol Fee"
-                    value={sep ? `${(sep.feeBps / 100).toFixed(2)}%` : "—"}
+                    label="Your Swap Fee (Identity-Fi Tier)"
+                    value={
+                      sep
+                        ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${
+                            sep.tier + 1
+                          } (${TIER_LABELS[sep.tier] ?? "—"})`
+                        : "—"
+                    }
+                  />
+                  <InfoRow
+                    label="Success Fee (só sobre o lucro)"
+                    value={sep ? `${(sep.successFeeBps / 100).toFixed(2)}%` : "—"}
                   />
                   <InfoRow
                     label="Anti-Sandwich Cooldown"
