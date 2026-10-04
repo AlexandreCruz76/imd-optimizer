@@ -5,7 +5,6 @@ import { useWallet } from "./WalletProvider";
 import { useState, useEffect } from "react";
 
 const navLinks = [
-  { href: "/", label: "Home" },
   { href: "/swap", label: "Swap" },
   { href: "/pool", label: "Meta Hook Pool" },
   { href: "/arbitrage", label: "Arbitrage" },
