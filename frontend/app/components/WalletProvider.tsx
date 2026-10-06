@@ -58,9 +58,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connected = !!address;
 
   // Detecção: MetaMask real (EIP-6963 rdns io.metamask) tem prioridade;
-  // window.ethereum só entra como fallback (a Phantom se finge de MetaMask lá)
+  // outros providers anunciados (Phantom, Coinbase…) viram fallback antes de
+  // window.ethereum (a Phantom se finge de MetaMask lá)
   useEffect(() => {
     let done = false;
+    let fallback: Eip1193 | null = null;
+    let fallbackName = "Carteira";
     const w = window.ethereum as
       | (Eip1193 & { isPhantom?: boolean })
       | undefined;
@@ -78,20 +81,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const rdns = d.info?.rdns ?? "";
       const isRealMM =
         rdns === "io.metamask" || rdns.endsWith(".io.metamask") || rdns === "io.metamask.flask";
-      if (isRealMM) pick(d.provider, d.info?.name || "MetaMask");
+      if (isRealMM) {
+        pick(d.provider, d.info?.name || "MetaMask");
+      } else if (!fallback) {
+        fallback = d.provider;
+        fallbackName = rdns.startsWith("app.phantom")
+          ? "Phantom"
+          : rdns.includes("coinbase")
+          ? "Coinbase Wallet"
+          : rdns.includes("rainbow")
+          ? "Rainbow"
+          : d.info?.name || "Carteira";
+      }
     };
     window.addEventListener("eip6963:announceProvider", onAnnounce);
     window.dispatchEvent(new Event("eip6963:requestProvider"));
     // fallback após esperar os anúncios EIP-6963
     const t = setTimeout(() => {
       if (!done) {
-        const name =
-          w?.isPhantom || (window as { phantom?: unknown }).phantom
-            ? "Phantom"
-            : w?.isMetaMask
-            ? "MetaMask"
-            : "Carteira";
-        pick(w ?? null, name);
+        if (fallback) {
+          pick(fallback, fallbackName);
+        } else {
+          const name =
+            w?.isPhantom || (window as { phantom?: unknown }).phantom
+              ? "Phantom"
+              : w?.isMetaMask
+              ? "MetaMask"
+              : "Carteira";
+          pick(w ?? null, name);
+        }
       }
       window.removeEventListener("eip6963:announceProvider", onAnnounce);
     }, 250);
@@ -181,18 +199,71 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setWalletError(null);
   }, []);
 
-  const switchChain = useCallback(async (targetChainId: number) => {
-    if (!window.ethereum) return;
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${targetChainId.toString(16)}` }],
-      });
-      setChainId(targetChainId);
-    } catch (err) {
-      console.error("Chain switch failed:", err);
-    }
-  }, []);
+  const switchChain = useCallback(
+    async (targetChainId: number) => {
+      // Usa o provider ESCOLHIDO (ex.: MetaMask via EIP-6963), não
+      // window.ethereum — que pode ser outra extensão (Phantom) e falhar.
+      const p = injected ?? (window.ethereum as Eip1193 | undefined) ?? null;
+      if (!p) {
+        setWalletError("Nenhuma carteira detectada para trocar de rede.");
+        return;
+      }
+      const hexId = `0x${targetChainId.toString(16)}`;
+      try {
+        await p.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: hexId }],
+        });
+        setChainId(targetChainId);
+        setWalletError(null);
+      } catch (err) {
+        const e = err as { code?: number; message?: string };
+        const rawMsg = e.message ?? "";
+        // Rede desconhecida na carteira (4902/4900) — adiciona a Sepolia
+        if ((e.code === 4902 || e.code === 4900) && targetChainId === 11155111) {
+          try {
+            await p.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: hexId,
+                  chainName: "Sepolia",
+                  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                  rpcUrls: ["https://ethereum-sepolia-rpc.publicnode.com"],
+                  blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                },
+              ],
+            });
+            setChainId(targetChainId);
+            setWalletError(null);
+            return;
+          } catch (err2) {
+            const raw2 = (err2 as Error)?.message ?? "";
+            setWalletError(
+              `Falha ao adicionar a Sepolia no ${walletName}: ${raw2.slice(0, 120) || "erro desconhecido"}`
+            );
+            console.error("Chain add failed:", err2);
+            return;
+          }
+        }
+        if (e.code === 4001) {
+          setWalletError(`Troca de rede rejeitada no ${walletName}.`);
+        } else if (e.code === -32002) {
+          setWalletError(`${walletName} já tem um pedido pendente — abra a extensão.`);
+        } else if (/unexpected|context invalidated/i.test(rawMsg)) {
+          setWalletError(
+            `Erro da extensão ${walletName} — desbloqueie a carteira, recarregue a página e tente de novo.`
+          );
+        } else {
+          setWalletError(
+            `Falha ao trocar de rede no ${walletName}: ${rawMsg.slice(0, 120) || "erro desconhecido"}`
+          );
+        }
+        console.error("Chain switch failed:", err);
+      }
+    },
+    [injected, walletName]
+  );
 
   // Reconexão silenciosa (sem popup) se a carteira já autorizou antes
   useEffect(() => {
