@@ -168,16 +168,9 @@ export default function HomePage() {
                 <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
                   The Living Identity (Dynamic ID NFT)
                 </h3>
-                <p className="text-slate-400 leading-relaxed">
+                <p className="text-slate-400 leading-relaxed max-w-xl">
                   Your NFT is forged as a Recruit (Bronze Card), but it evolves in real-time. The smart contract actively reads your interactions with the protocol. As your address executes successful arbitrages or commits to prolonged staking (Diamond Hands), your NFT automatically levels up. Your Card evolves from Bronze to Silver, Gold, and ultimately Neon—dynamically updating your on-chain metadata and your visual prestige on the secondary market
                 </p>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <MetricCard value="0 – 0.5%" label="Swap Fee por Tier" accent="#00F58C" />
-                  <MetricCard value="5 – 25%" label="Success Fee só Lucro" accent="#00F5FF" />
-                  <MetricCard value="0x – 4x Yield Multiplier" label="" accent="#FFB000" />
-                  <MetricCard value="2 – 5%" label="Unstake Penalty" accent="#FF567E" />
-                </div>
               </div>
 
               <div className="relative">
@@ -185,7 +178,7 @@ export default function HomePage() {
                   <img
                     src="/images/colecao.png"
                     alt="Living Identity — Collection"
-                    className="w-full h-[400px] object-cover"
+                    className="w-full aspect-[3/2] object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#070A0E]/90 via-transparent to-transparent" />
                 </div>
@@ -299,15 +292,6 @@ function FeatureCard({ title, desc, accent, bgImage }: { title: string; desc: st
         <h4 className="font-mono text-sm font-bold text-white uppercase tracking-wider text-center mb-3">{title}</h4>
         <p className="text-sm text-slate-400 leading-relaxed text-center">{desc}</p>
       </div>
-    </div>
-  );
-}
-
-function MetricCard({ value, label, accent }: { value: string; label: string; accent: string }) {
-  return (
-    <div className="bg-[#0B111A]/80 border border-slate-700/50 rounded-xl p-4 text-center">
-      <div className="text-2xl md:text-3xl font-bold mb-1" style={{ color: accent }}>{value}</div>
-      <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">{label}</div>
     </div>
   );
 }
