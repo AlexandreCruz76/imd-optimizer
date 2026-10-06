@@ -164,12 +164,14 @@ export default function HomePage() {
 
             {/* Living Identity Section */}
             <div className="grid lg:grid-cols-2 gap-8 items-center">
-              <div className="space-y-6">
-                <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  The Living Identity (Dynamic ID NFT)
-                </h3>
-                <p className="text-slate-400 leading-relaxed max-w-xl">
-                  Your NFT is forged as a Recruit (Bronze Card), but it evolves in real-time. The smart contract actively reads your interactions with the protocol. As your address executes successful arbitrages or commits to prolonged staking (Diamond Hands), your NFT automatically levels up. Your Card evolves from Bronze to Silver, Gold, and ultimately Neon—dynamically updating your on-chain metadata and your visual prestige on the secondary market
+              <div>
+                <p className="max-w-xl">
+                  <span className="block text-2xl md:text-3xl font-bold tracking-tight text-[#E8E8E8] mb-4">
+                    The Living Identity (Dynamic ID NFT)
+                  </span>
+                  <span className="text-slate-400 leading-relaxed">
+                    Your NFT is forged as a Recruit (Bronze Card), but it evolves in real-time. The smart contract actively reads your interactions with the protocol. As your address executes successful arbitrages or commits to prolonged staking (Diamond Hands), your NFT automatically levels up. Your Card evolves from Bronze to Silver, Gold, and ultimately Neon—dynamically updating your on-chain metadata and your visual prestige on the secondary market
+                  </span>
                 </p>
               </div>
 
