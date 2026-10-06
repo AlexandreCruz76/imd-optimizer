@@ -97,7 +97,7 @@ interface AttackLogEntry {
 }
 
 export default function MetaHookPoolPage() {
-  const { connected, address, connect } = useWallet();
+  const { connected, address, connecting, walletError, connect } = useWallet();
   const [pool, setPool] = useState<PoolState | null>(null);
   const [lp, setLp] = useState<UserLp | null>(null);
   const [ethSeries, setEthSeries] = useState<number[]>([]);
@@ -402,14 +402,24 @@ export default function MetaHookPoolPage() {
 
               <button
                 onClick={() => connect()}
-                disabled={connected}
+                disabled={connected || connecting}
                 className="w-full bg-emerald-500 text-black font-black py-3 rounded-xl shadow-[0_0_20px_rgba(0,245,140,0.3)] transition-all hover:shadow-[0_0_30px_rgba(0,245,140,0.5)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                {connected ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}` : "CONNECT WALLET"}
+                {connected
+                  ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}`
+                  : connecting
+                  ? "ABRINDO METAMASK…"
+                  : "CONNECT METAMASK"}
               </button>
+
+              {walletError && !connected && (
+                <div className="text-xs font-mono text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2">
+                  {walletError}
+                </div>
+              )}
 
               <div className="text-center text-xs text-slate-500 font-mono">
                 Conexão usada apenas para Tier + métricas · formulário de

@@ -1099,8 +1099,8 @@ export default function SwapPage() {
             >
               {btnState === "connect"
                 ? connecting
-                  ? "CONNECTING..."
-                  : "CONNECT WALLET"
+                  ? "ABRINDO METAMASK…"
+                  : "CONNECT METAMASK"
                 : btnState === "enter"
                 ? "ENTER AN AMOUNT"
                 : btnState === "loading"

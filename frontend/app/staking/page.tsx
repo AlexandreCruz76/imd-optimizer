@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useWallet } from "../components/WalletProvider";
 
 export default function StakingPage() {
-  const { connected } = useWallet();
+  const { connected, connect } = useWallet();
   const [error, setError] = useState<string | null>(null);
 
   function handleDemo(message: string) {
@@ -133,13 +133,15 @@ export default function StakingPage() {
 
         <button
           onClick={() =>
-            handleDemo(
-              "O stake real fica disponível com o deploy do BuilderStakingVault."
-            )
+            connected
+              ? handleDemo(
+                  "O stake real fica disponível com o deploy do BuilderStakingVault."
+                )
+              : connect()
           }
           className="w-full py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
         >
-          {connected ? "STAKE NOW" : "CONNECT WALLET PARA STAKING"}
+          {connected ? "STAKE NOW" : "CONNECT METAMASK PARA STAKING"}
         </button>
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
