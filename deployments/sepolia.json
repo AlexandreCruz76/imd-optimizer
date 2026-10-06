@@ -9,6 +9,10 @@
   "MockPool": "0x13076fBbc9Db59bf099f293EbC6b7391a6248d05",
   "Buildercoin": "0x724A0a04f7b5f67992D4cEB3F859B3FbA8c808e4",
   "BLDTestToken": "0xc2296194eD329a1024FE801a374d9f7acF0acC4b",
+  "imdToken": "0x2c2ffC6C0cD0Ba216c7002BF4185bd974C24124e",
+  "builderToken": "0x97cf945E7cFAf895828c19F35F48f856AC9DBBd4",
+  "wethSepolia": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "usdcSepolia": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   "buildercoinSplit": {
     "coreTeam": "0x8Ab3B2f1cB6fdce2a5a845aB766F01491db865ef",
     "infraSecurity": "0x8A675aB5a047EA8b8f71Ed8Dc35ec287E113c2A6",

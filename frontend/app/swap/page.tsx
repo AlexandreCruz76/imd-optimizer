@@ -18,7 +18,7 @@ const TOKENS: Token[] = [
   {
     symbol: "IMD",
     name: "IMD Token",
-    address: "0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7",
+    address: "0x2c2ffC6C0cD0Ba216c7002BF4185bd974C24124e",
     decimals: 18,
     color: "#00F58C",
     logo: "/images/imd.jpg",
@@ -26,7 +26,7 @@ const TOKENS: Token[] = [
   {
     symbol: "BUILDER",
     name: "Buildercoin",
-    address: "0x22ec88b9ff78c6f2458ab1a7aa8bb99d84bd4b86",
+    address: "0x97cf945E7cFAf895828c19F35F48f856AC9DBBd4",
     decimals: 18,
     color: "#FFB000",
     logo: "/images/builder.jpg",
@@ -34,14 +34,14 @@ const TOKENS: Token[] = [
   {
     symbol: "WETH",
     name: "Wrapped Ether",
-    address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    address: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
     decimals: 18,
     color: "#8C9EFF",
   },
   {
     symbol: "USDC",
     name: "USD Coin",
-    address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     decimals: 6,
     color: "#2775CA",
   },
