@@ -20,7 +20,43 @@ interface KeyInfo {
   totalMEVReceived?: string;
 }
 
-const BUILDERCOIN_ABI = ["function mint() payable"];
+const BUILDERCOIN_ABI = [
+  "function mint() payable",
+  "error MintNotOpen()",
+  "error MaxSupplyReached()",
+  "error WrongPayment(uint256 sent, uint256 required)",
+  "error SplitNotConfigured()",
+  "error SplitWalletRejected(address wallet)",
+];
+
+function mapMintError(err: unknown): string {
+  const e = err as {
+    code?: number | string;
+    shortMessage?: string;
+    message?: string;
+    info?: { error?: { code?: number } };
+    args?: readonly unknown[];
+    name?: string;
+  };
+  const code = e.code ?? e.info?.error?.code;
+  if (code === 4001 || code === "ACTION_REJECTED")
+    return "Transação rejeitada na carteira.";
+  if (code === -32603) return "Erro interno da carteira — tente novamente.";
+  const msg = e.message || "";
+  if (e.name === "WrongPayment")
+    return `Valor errado: envie exatamente 0.05 ETH.`;
+  if (e.name === "MintNotOpen") return "Mint fechado no contrato (mintOpen = false).";
+  if (e.name === "MaxSupplyReached") return "Esgotado: 501/501 mintados.";
+  if (e.name === "SplitNotConfigured")
+    return "Split 40/40/20 não configurado no contrato.";
+  if (e.name === "SplitWalletRejected")
+    return "Carteira de split rejeitou o receive() — mint revertido.";
+  if (msg.includes("insufficient funds"))
+    return "ETH insuficiente na carteira (precisa de 0.05 ETH + gas na Sepolia).";
+  if (msg.includes("network") || msg.includes("chain"))
+    return "Carteira na rede errada — selecione Sepolia.";
+  return e.shortMessage || e.message || "Mint falhou.";
+}
 
 const DEFAULT_STATUS: MintStatus = {
   deployed: false,
@@ -32,7 +68,15 @@ const DEFAULT_STATUS: MintStatus = {
 };
 
 export default function NFTMintPage() {
-  const { connected, address, signer, connect } = useWallet();
+  const {
+    connected,
+    address,
+    signer,
+    connect,
+    chainId,
+    switchChain,
+    walletError,
+  } = useWallet();
   const [status, setStatus] = useState<MintStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [minting, setMinting] = useState(false);
@@ -62,27 +106,33 @@ export default function NFTMintPage() {
 
   async function mint() {
     setError(null);
-    if (!connected) {
-      await connect();
-      return;
-    }
-    if (!status?.deployed) {
-      setError(
-        "Buildercoin não configurado (GENESIS_KEY_ADDRESS ausente no .env do servidor)."
-      );
-      return;
-    }
-    if (!signer || !address) {
-      setError("Carteira não pronta — reconecte.");
-      return;
-    }
-    if (!status.mintOpen) {
-      setError("Mint fechado (mintOpen = false no contrato).");
-      return;
-    }
-
-    setMinting(true);
     try {
+      if (!connected) {
+        await connect();
+        return;
+      }
+      if (!status?.deployed) {
+        setError(
+          "Buildercoin não configurado (GENESIS_KEY_ADDRESS ausente no .env do servidor)."
+        );
+        return;
+      }
+      if (chainId !== null && chainId !== 11155111) {
+        setError(
+          `Carteira na rede ${chainId} — troque para Sepolia e tente de novo.`
+        );
+        return;
+      }
+      if (!signer || !address) {
+        setError("Carteira não pronta — reconecte.");
+        return;
+      }
+      if (!status.mintOpen) {
+        setError("Mint fechado (mintOpen = false no contrato).");
+        return;
+      }
+
+      setMinting(true);
       const configRes = await fetch("/api/config");
       const cfg = await configRes.json();
       const keyAddr = cfg.genesisKey || "";
@@ -90,10 +140,19 @@ export default function NFTMintPage() {
         setError("GENESIS_KEY_ADDRESS não encontrada no /api/config.");
         return;
       }
+      const price = ethers.parseEther(status.mintPrice);
+      const provider = signer.provider;
+      if (provider) {
+        const bal = await provider.getBalance(address);
+        if (bal < price + ethers.parseEther("0.002")) {
+          setError(
+            `Saldo insuficiente: precisa de ${status.mintPrice} ETH + gas (tem ${ethers.formatEther(bal)} ETH).`
+          );
+          return;
+        }
+      }
       const contract = new ethers.Contract(keyAddr, BUILDERCOIN_ABI, signer);
-      const tx = await contract.mint({
-        value: ethers.parseEther(status.mintPrice),
-      });
+      const tx = await contract.mint({ value: price });
       setTxHash(tx.hash);
       await tx.wait();
       fetchMintStatus();
@@ -101,9 +160,7 @@ export default function NFTMintPage() {
       const keysData = await keysRes.json();
       setUserKeys(keysData.keys || []);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message.slice(0, 140) : "Mint falhou";
-      setError(msg);
+      setError(mapMintError(err));
     } finally {
       setMinting(false);
     }
@@ -149,6 +206,23 @@ export default function NFTMintPage() {
             Connect wallet
           </button>{" "}
           — Sepolia Testnet
+          {walletError && (
+            <div className="mt-2 text-xs text-amber-300 break-words">
+              CARTERA: {walletError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {connected && chainId !== null && chainId !== 11155111 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center text-amber-400 text-sm">
+          Rede errada (chain {chainId}) —{" "}
+          <button
+            onClick={() => switchChain(11155111)}
+            className="font-bold underline hover:text-amber-300"
+          >
+            MUDAR PARA SEPOLIA
+          </button>
         </div>
       )}
 
@@ -196,14 +270,24 @@ export default function NFTMintPage() {
         </ul>
         <button
           onClick={() => mint()}
-          disabled={minting || !status.mintOpen}
+          disabled={
+            minting ||
+            !status.mintOpen ||
+            (chainId !== null && chainId !== 11155111)
+          }
           className={`w-full py-2.5 text-xs font-bold tracking-wider rounded-xl ${
-            status.mintOpen && !minting
+            status.mintOpen &&
+            !minting &&
+            (chainId === null || chainId === 11155111)
               ? "bg-emerald-500 text-black hover:bg-emerald-400"
               : "bg-emerald-500/10 text-emerald-500/40 cursor-not-allowed"
           }`}
         >
-          {minting ? "MINTING…" : `MINT — ${status.mintPrice} ETH`}
+          {minting
+            ? "MINTING…"
+            : chainId !== null && chainId !== 11155111
+            ? "WRONG NETWORK — MUDAR PARA SEPOLIA"
+            : `MINT — ${status.mintPrice} ETH`}
         </button>
       </div>
 
