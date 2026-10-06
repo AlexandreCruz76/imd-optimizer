@@ -4,6 +4,11 @@ import { ethers } from "ethers";
 export const dynamic = "force-dynamic";
 
 const ABI = [
+  // Buildercoin (dNFT) — ERC721Enumerable + tokenLevel
+  "function balanceOf(address) view returns (uint256)",
+  "function tokenOfOwnerByIndex(address, uint256) view returns (uint256)",
+  "function tokenLevel(uint256) view returns (uint8)",
+  // legado (OptimizerGenesisKey antigo)
   "function getOwnerKeys(address) view returns (uint256[])",
   "function getKeyInfo(uint256) view returns (uint8 tier, uint256 mintedAt, uint256 totalMEVReceived, uint256 lastClaimAt, bool active)",
   "function getPendingMEV(address) view returns (uint256)",
@@ -12,8 +17,9 @@ const ABI = [
 const TIER_NAMES = ["NONE", "GENESIS", "BACKER"];
 
 /**
- * GET /api/nft/keys — chaves reais do usuário (getOwnerKeys + getKeyInfo).
- * Sem contrato configurado → lista vazia (front esconde a seção).
+ * GET /api/nft/keys — tokens reais do usuário.
+ * Buildercoin novo: balanceOf + tokenOfOwnerByIndex + tokenLevel (Enumerable).
+ * Legado: getOwnerKeys + getKeyInfo. Sem contrato → lista vazia.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -34,26 +40,68 @@ export async function GET(req: NextRequest) {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const c = new ethers.Contract(addr, ABI, provider);
-    const tokenIds: bigint[] = await c.getOwnerKeys(address);
+
+    // 1) Lista de tokenIds: legado primeiro, senão Enumerable
+    let tokenIds: bigint[] = [];
+    let legacy = true;
+    try {
+      tokenIds = ((await c.getOwnerKeys(address)) as bigint[]) ?? [];
+    } catch {
+      legacy = false;
+      const bal = (await c.balanceOf(address)) as bigint;
+      for (let i = 0n; i < bal; i++) {
+        tokenIds.push((await c.tokenOfOwnerByIndex(address, i)) as bigint);
+      }
+    }
+
+    // 2) Detalhe por token (level do dNFT novo quando existir)
     const keys = await Promise.all(
       tokenIds.map(async (id) => {
-        const info = await c.getKeyInfo(id);
+        let level = 0;
+        try {
+          level = Number(await c.tokenLevel(id));
+        } catch {
+          /* contrato legado sem tokenLevel */
+        }
+
+        if (legacy) {
+          try {
+            const info = await c.getKeyInfo(id);
+            return {
+              tokenId: Number(id),
+              tier: TIER_NAMES[Number(info[0])] ?? "GENESIS",
+              level,
+              mintedAt: Number(info[1]),
+              totalMEVReceived: ethers.formatEther(info[2] as bigint),
+              active: Boolean(info[4]),
+            };
+          } catch {
+            /* cai para o formato Buildercoin */
+          }
+        }
+
         return {
           tokenId: Number(id),
-          tier: TIER_NAMES[Number(info[0])] ?? "GENESIS",
-          mintedAt: Number(info[1]),
-          totalMEVReceived: ethers.formatEther(info[2] as bigint),
-          active: Boolean(info[4]),
+          tier: "Buildercoin",
+          level,
+          mintedAt: 0,
+          totalMEVReceived: "0",
+          active: true,
         };
       })
     );
-    const pending: bigint = await c.getPendingMEV(address);
-    return NextResponse.json({
-      address,
-      keys,
-      totalMEV: ethers.formatEther(pending),
-      deployed: true,
-    });
+
+    let totalMEV = "0";
+    if (legacy) {
+      try {
+        const pending = (await c.getPendingMEV(address)) as bigint;
+        totalMEV = ethers.formatEther(pending);
+      } catch {
+        /* sem MEV pendente */
+      }
+    }
+
+    return NextResponse.json({ address, keys, totalMEV, deployed: true });
   } catch {
     return NextResponse.json({ address, keys: [], totalMEV: "0", deployed: true });
   }

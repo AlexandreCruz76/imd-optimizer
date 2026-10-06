@@ -242,7 +242,7 @@ export default function MetaHookPoolPage() {
         provider = new ethers.JsonRpcProvider(
           cfg.rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com"
         );
-        // 1) Optimizer NFT (OptimizerGenesisKey.balanceOf)
+        // 1) Optimizer NFT (Buildercoin dNFT — balanceOf)
         if (!alive) return;
         if (cfg?.genesisKey) {
           try {
@@ -399,7 +399,7 @@ export default function MetaHookPoolPage() {
                         : "nenhum"
                     }
                     color={nftHeld !== null && nftHeld > 0 ? "#FFD700" : "#00F58C"}
-                    sub="OptimizerGenesisKey.balanceOf() on-chain"
+                    sub="Buildercoin.balanceOf() on-chain"
                   />
                   <StatRow
                     label="IDENTITY MD / TIER (NFT)"

@@ -7,14 +7,17 @@ const ABI = [
   "function mintOpen() view returns (bool)",
   "function totalSupply() view returns (uint256)",
   "function MAX_SUPPLY() view returns (uint256)",
+  "function MINT_PRICE() view returns (uint256)",
+  // legado (OptimizerGenesisKey antigo, enquanto GENESIS_KEY_ADDRESS não migrar)
   "function priceETH() view returns (uint256)",
   "function priceETHBacker() view returns (uint256)",
 ];
 
 /**
- * GET /api/nft/status — estado real do OptimizerGenesisKey (DEC-020).
- * Sem GENESIS_KEY_ADDRESS configurado → defaults honestos do contrato
- * (501 / 0.05 ETH / mint fechado / deployed: false).
+ * GET /api/nft/status — estado real do Buildercoin (dNFT) na Sepolia.
+ * Detecção automática: tenta MINT_PRICE() (Buildercoin novo) e cai para
+ * priceETH()/priceETHBacker() (OptimizerGenesisKey legado).
+ * Sem GENESIS_KEY_ADDRESS → defaults honestos (501 / 0.05 ETH / deployed: false).
  */
 export async function GET() {
   const addr = process.env.GENESIS_KEY_ADDRESS || "";
@@ -26,8 +29,10 @@ export async function GET() {
     mintOpen: false,
     totalMinted: 0,
     maxSupply: 501,
+    mintPrice: "0.05",
     genesisPrice: "0.05",
     backerPrice: "1.0",
+    contract: "",
     targetRaise: "25.05 ETH",
   };
 
@@ -36,23 +41,39 @@ export async function GET() {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const c = new ethers.Contract(addr, ABI, provider);
-    const [open, minted, max, price, backer] = await Promise.all([
+    const [open, minted, max] = await Promise.all([
       c.mintOpen(),
       c.totalSupply(),
       c.MAX_SUPPLY(),
-      c.priceETH(),
-      c.priceETHBacker(),
     ]);
     const maxNum = Number(max);
-    const priceEth = Number(ethers.formatEther(price));
+
+    let mintPrice: string;
+    let genesisPrice: string;
+    let backerPrice = "";
+    let kind = "buildercoin";
+    try {
+      const p = (await c.MINT_PRICE()) as bigint;
+      mintPrice = ethers.formatEther(p);
+      genesisPrice = mintPrice;
+    } catch {
+      kind = "genesiskey";
+      const [p, b] = await Promise.all([c.priceETH(), c.priceETHBacker()]);
+      genesisPrice = ethers.formatEther(p as bigint);
+      backerPrice = ethers.formatEther(b as bigint);
+      mintPrice = genesisPrice;
+    }
+
     return NextResponse.json({
       deployed: true,
       mintOpen: Boolean(open),
       totalMinted: Number(minted),
       maxSupply: maxNum,
-      genesisPrice: ethers.formatEther(price),
-      backerPrice: ethers.formatEther(backer),
-      targetRaise: `${(maxNum * priceEth).toFixed(2)} ETH`,
+      mintPrice,
+      genesisPrice,
+      backerPrice,
+      contract: kind,
+      targetRaise: `${(maxNum * Number(mintPrice)).toFixed(2)} ETH`,
     });
   } catch {
     return NextResponse.json(base);

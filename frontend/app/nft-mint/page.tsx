@@ -9,28 +9,25 @@ interface MintStatus {
   mintOpen: boolean;
   totalMinted: number;
   maxSupply: number;
-  genesisPrice: string;
-  backerPrice: string;
+  mintPrice: string;
   targetRaise: string;
 }
 
 interface KeyInfo {
-  tier: string;
-  totalMEVReceived: string;
+  tokenId?: number;
+  tier?: string;
+  level?: number;
+  totalMEVReceived?: string;
 }
 
-const GENESIS_KEY_ABI = [
-  "function mintGenesis() payable",
-  "function mintBacker() payable",
-];
+const BUILDERCOIN_ABI = ["function mint() payable"];
 
 const DEFAULT_STATUS: MintStatus = {
   deployed: false,
   mintOpen: false,
   totalMinted: 0,
   maxSupply: 501,
-  genesisPrice: "0.05",
-  backerPrice: "1.0",
+  mintPrice: "0.05",
   targetRaise: "25.05 ETH",
 };
 
@@ -63,7 +60,7 @@ export default function NFTMintPage() {
       .catch(() => setUserKeys([]));
   }, [connected, address]);
 
-  async function mint(tier: "GENESIS" | "BACKER") {
+  async function mint() {
     setError(null);
     if (!connected) {
       await connect();
@@ -71,7 +68,7 @@ export default function NFTMintPage() {
     }
     if (!status?.deployed) {
       setError(
-        "GenesisKey não configurado (GENESIS_KEY_ADDRESS ausente no .env do servidor)."
+        "Buildercoin não configurado (GENESIS_KEY_ADDRESS ausente no .env do servidor)."
       );
       return;
     }
@@ -93,12 +90,10 @@ export default function NFTMintPage() {
         setError("GENESIS_KEY_ADDRESS não encontrada no /api/config.");
         return;
       }
-      const contract = new ethers.Contract(keyAddr, GENESIS_KEY_ABI, signer);
-      const priceEth = tier === "GENESIS" ? status.genesisPrice : status.backerPrice;
-      const tx =
-        tier === "GENESIS"
-          ? await contract.mintGenesis({ value: ethers.parseEther(priceEth) })
-          : await contract.mintBacker({ value: ethers.parseEther(priceEth) });
+      const contract = new ethers.Contract(keyAddr, BUILDERCOIN_ABI, signer);
+      const tx = await contract.mint({
+        value: ethers.parseEther(status.mintPrice),
+      });
       setTxHash(tx.hash);
       await tx.wait();
       fetchMintStatus();
@@ -134,9 +129,9 @@ export default function NFTMintPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Optimizer Genesis Key</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Buildercoin</h1>
           <p className="text-xs text-emerald-500/50">
-            ERC-721 · pool única de {maxSupply} (Genesis + Backer)
+            dNFT ERC-721 · pool única de {maxSupply} · evolui de Level no protocolo
           </p>
         </div>
       </header>
@@ -187,59 +182,34 @@ export default function NFTMintPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
-          <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">GENESIS KEY</div>
-          <p className="text-xs text-emerald-500/50 mb-3">
-            {status.genesisPrice} ETH · pool única de {maxSupply}
-          </p>
-          <ul className="space-y-2 text-xs text-emerald-400 mb-4">
-            <li>✓ Swap 0.00% (Tier Alpha — Identity-Fi)</li>
-            <li>✓ Success fee mínima: 5% só sobre o lucro</li>
-            <li>✓ Yield 4x no Builder Staking</li>
-            <li>✓ Participa da arbitragem (Aba ARBITRAGE)</li>
-          </ul>
-          <button
-            onClick={() => mint("GENESIS")}
-            disabled={minting || !status.mintOpen}
-            className={`w-full py-2.5 text-xs font-bold tracking-wider rounded-xl ${
-              status.mintOpen && !minting
-                ? "bg-emerald-500 text-black hover:bg-emerald-400"
-                : "bg-emerald-500/10 text-emerald-500/40 cursor-not-allowed"
-            }`}
-          >
-            {minting ? "MINTING…" : `MINT GENESIS — ${status.genesisPrice} ETH`}
-          </button>
-        </div>
-
-        <div className="bg-[#0B111A]/80 border border-amber-500/20 rounded-2xl p-5">
-          <div className="text-[10px] text-amber-500/60 tracking-widest font-mono mb-4">BACKER KEY</div>
-          <p className="text-xs text-emerald-500/50 mb-3">
-            {status.backerPrice} ETH · mesma pool de {maxSupply}
-          </p>
-          <ul className="space-y-2 text-xs text-amber-400 mb-4">
-            <li>✓ Todos os benefícios do Genesis</li>
-            <li>✓ Prioridade em allocações</li>
-            <li>✓ Peso 2x em governança</li>
-            <li>✓ Badge “BACKER”</li>
-          </ul>
-          <button
-            onClick={() => mint("BACKER")}
-            disabled={minting || !status.mintOpen}
-            className={`w-full py-2.5 text-xs font-bold tracking-wider rounded-xl ${
-              status.mintOpen && !minting
-                ? "bg-amber-500 text-black hover:bg-amber-400"
-                : "bg-amber-500/10 text-amber-500/40 cursor-not-allowed"
-            }`}
-          >
-            {minting ? "MINTING…" : `MINT BACKER — ${status.backerPrice} ETH`}
-          </button>
-        </div>
+      <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+        <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">BUILDCOIN (dNFT)</div>
+        <p className="text-xs text-emerald-500/50 mb-3">
+          {status.mintPrice} ETH · pool única de {maxSupply} · split 40/40/20
+          on-chain
+        </p>
+        <ul className="space-y-2 text-xs text-emerald-400 mb-4">
+          <li>✓ Swap 0.00% (Tier Alpha — Identity-Fi)</li>
+          <li>✓ Success fee mínima: 5% só sobre o lucro</li>
+          <li>✓ Yield 4x no Builder Staking</li>
+          <li>✓ dNFT evolui de Level (Bronze → Neon) via updateTokenLevel</li>
+        </ul>
+        <button
+          onClick={() => mint()}
+          disabled={minting || !status.mintOpen}
+          className={`w-full py-2.5 text-xs font-bold tracking-wider rounded-xl ${
+            status.mintOpen && !minting
+              ? "bg-emerald-500 text-black hover:bg-emerald-400"
+              : "bg-emerald-500/10 text-emerald-500/40 cursor-not-allowed"
+          }`}
+        >
+          {minting ? "MINTING…" : `MINT — ${status.mintPrice} ETH`}
+        </button>
       </div>
 
       <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
         <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">
-          WHERE DOES THE {status.genesisPrice} ETH GO? — RADICAL HONESTY
+          WHERE DOES THE {status.mintPrice} ETH GO? — RADICAL HONESTY
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="bg-slate-900/40 rounded-xl p-3">
@@ -280,14 +250,18 @@ export default function NFTMintPage() {
       {connected && userKeys.length > 0 && (
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
           <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">
-            YOUR KEYS ({userKeys.length})
+            YOUR TOKENS ({userKeys.length})
           </div>
           <div className="space-y-2">
             {userKeys.map((key, i) => (
               <div key={i} className="flex justify-between text-xs p-3 bg-slate-900/30 rounded-xl border border-slate-700/50">
-                <span className="text-emerald-400">Key #{i + 1}</span>
-                <span className="text-emerald-500/60">Tier: {key.tier}</span>
-                <span className="text-emerald-500/60">MEV: {key.totalMEVReceived} ETH</span>
+                <span className="text-emerald-400">Token #{key.tokenId ?? i + 1}</span>
+                <span className="text-emerald-500/60">
+                  {key.level ? `Level ${key.level} · ` : ""}{key.tier ?? "Buildercoin"}
+                </span>
+                {key.totalMEVReceived && key.totalMEVReceived !== "0" && (
+                  <span className="text-emerald-500/60">MEV: {key.totalMEVReceived} ETH</span>
+                )}
               </div>
             ))}
           </div>
@@ -298,9 +272,9 @@ export default function NFTMintPage() {
         <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">HOW IT WORKS</div>
         <ol className="space-y-2 text-xs text-emerald-500/60 list-decimal list-inside">
           <li>Connect wallet — Sepolia Testnet (mainnet após aprovação)</li>
-          <li>Escolha Genesis ({status.genesisPrice} ETH) ou Backer ({status.backerPrice} ETH)</li>
+          <li>Minte por {status.mintPrice} ETH — split 40/40/20 automático na mesma tx</li>
           <li>Assine a transação (mint on-chain via contrato)</li>
-          <li>Receba o ERC-721 (pool única de {maxSupply})</li>
+          <li>Receba o dNFT (pool única de {maxSupply}) com Level 1 (Bronze)</li>
           <li>Swap 0.00% + success fee mínima + yield 4x (Tier Alpha)</li>
           <li>Libera a aba ARBITRAGE (The Spear)</li>
         </ol>
