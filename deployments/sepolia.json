@@ -7,7 +7,22 @@
   "MockStandardToken": "0x8a095f673d49970641aF3B0fD9e4313DAdC9700C",
   "MockWETH": "0xe51512ebC6972c4306fbD1D8E35887D918DF1823",
   "MockPool": "0x13076fBbc9Db59bf099f293EbC6b7391a6248d05",
+  "Buildercoin": "0x724A0a04f7b5f67992D4cEB3F859B3FbA8c808e4",
+  "BLDTestToken": "0xc2296194eD329a1024FE801a374d9f7acF0acC4b",
+  "buildercoinSplit": {
+    "coreTeam": "0x8Ab3B2f1cB6fdce2a5a845aB766F01491db865ef",
+    "infraSecurity": "0x8A675aB5a047EA8b8f71Ed8Dc35ec287E113c2A6",
+    "marketingGrowth": "0x63E6142C34676393fA63f328dB918073EDbb57b5"
+  },
+  "buildercoinTestCollection": {
+    "minted": 20,
+    "base": 10,
+    "evolution": 10,
+    "mintPriceEth": "0.05",
+    "baseURI": "http://localhost:3000/api/metadata/"
+  },
   "routerFundedEth": "0.03",
   "deployedAt": "2026-09-29T10:44:37.176Z",
+  "buildercoinDeployedAt": "2026-10-06",
   "note": "Deploy real — contratos com codigo na Sepolia (verifique em sepolia.etherscan.io)"
 }

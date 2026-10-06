@@ -254,8 +254,18 @@ export default function NFTMintPage() {
           </div>
           <div className="space-y-2">
             {userKeys.map((key, i) => (
-              <div key={i} className="flex justify-between text-xs p-3 bg-slate-900/30 rounded-xl border border-slate-700/50">
-                <span className="text-emerald-400">Token #{key.tokenId ?? i + 1}</span>
+              <div key={i} className="flex justify-between items-center text-xs p-3 bg-slate-900/30 rounded-xl border border-slate-700/50">
+                <span className="flex items-center gap-3">
+                  {key.tokenId ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/metadata/${key.tokenId}/image`}
+                      alt={`Buildercoin #${key.tokenId}`}
+                      className="w-9 h-9 rounded-lg border border-slate-700/50"
+                    />
+                  ) : null}
+                  <span className="text-emerald-400">Token #{key.tokenId ?? i + 1}</span>
+                </span>
                 <span className="text-emerald-500/60">
                   {key.level ? `Level ${key.level} · ` : ""}{key.tier ?? "Buildercoin"}
                 </span>
