@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
 
 interface PoolState {
@@ -78,24 +79,21 @@ function StatRow({ label, value, color = "#00F58C", sub }: { label: string; valu
   );
 }
 
-function DualStat({ leftLabel, leftValue, leftColor, rightLabel, rightValue, rightColor, sub }: { 
-  leftLabel: string; leftValue: string; leftColor?: string;
-  rightLabel: string; rightValue: string; rightColor?: string;
-  sub?: string;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-4 py-2 border-t border-slate-800/50">
-      <div>
-        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">{leftLabel}</div>
-        <div className="font-mono font-bold tracking-tight text-white" style={{ color: leftColor }}>{leftValue}</div>
-      </div>
-      <div>
-        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">{rightLabel}</div>
-        <div className="font-mono font-bold tracking-tight text-white" style={{ color: rightColor }}>{rightValue}</div>
-      </div>
-      {sub && <div className="col-span-2 font-mono text-[10px] tracking-widest text-slate-500 uppercase mt-1">{sub}</div>}
-    </div>
-  );
+const TIER_NAMES = [
+  "T1 · Buildercoin NFT (Alpha)",
+  "T2 · Identity md (Partner)",
+  "T3 · $IMD/$BLD (Holder)",
+  "T4 · Retail",
+];
+
+const ROUTER_ABI = [
+  "function identityTier(address) view returns (uint8)",
+];
+
+interface AttackLogEntry {
+  time: string;
+  deltaEth: number;
+  totalEth: number;
 }
 
 export default function MetaHookPoolPage() {
@@ -105,8 +103,10 @@ export default function MetaHookPoolPage() {
   const [ethSeries, setEthSeries] = useState<number[]>([]);
   const [mevSeries, setMevSeries] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [ethInput, setEthInput] = useState("");
-  const [imdInput, setImdInput] = useState("");
+  const [mevIntercepted, setMevIntercepted] = useState<number | null>(null);
+  const [tier, setTier] = useState<number | null>(null);
+  const [attackLog, setAttackLog] = useState<AttackLogEntry[]>([]);
+  const prevMevRef = useRef<number | null>(null);
 
   const loadPool = useCallback(async () => {
     try {
@@ -181,12 +181,73 @@ export default function MetaHookPoolPage() {
   const monthlyYield = dailyYield * 30;
   const annualYield = dailyYield * 365;
 
-  const handleDeposit = async (token: "ETH" | "IMD") => {
-    const amount = token === "ETH" ? ethInput : imdInput;
-    if (!amount || parseFloat(amount) <= 0) return;
-    if (!connected) return;
-    console.log(`Deposit ${amount} ${token}`);
-  };
+  // RADAR: MEV interceptado on-chain (OptimizerRouter.getStats) + histórico de deltas
+  useEffect(() => {
+    let alive = true;
+    const loadMetrics = async () => {
+      try {
+        const res = await fetch("/api/metrics");
+        const json = await res.json();
+        if (!alive || json?.mevInterceptedEth == null) return;
+        const total = parseFloat(json.mevInterceptedEth);
+        if (!isFinite(total)) return;
+        const prev = prevMevRef.current;
+        if (prev !== null && total > prev) {
+          const now = new Date().toLocaleTimeString("en-US", { hour12: false });
+          setAttackLog((log) =>
+            [
+              {
+                time: now,
+                deltaEth: total - prev,
+                totalEth: total,
+              },
+              ...log,
+            ].slice(0, 8)
+          );
+        }
+        prevMevRef.current = total;
+        setMevIntercepted(total);
+      } catch {}
+    };
+    const boot = setTimeout(loadMetrics, 0);
+    const iv = setInterval(loadMetrics, 30000);
+    return () => {
+      alive = false;
+      clearTimeout(boot);
+      clearInterval(iv);
+    };
+  }, []);
+
+  // RADAR: Tier do utilizador via identityTier (NFT / identidade) no router
+  useEffect(() => {
+    let alive = true;
+    if (!connected || !address) {
+      const t = setTimeout(() => setTier(null), 0);
+      return () => clearTimeout(t);
+    }
+    (async () => {
+      try {
+        const cfgRes = await fetch("/api/config");
+        const cfg = await cfgRes.json();
+        if (!alive || !cfg?.optimizerRouter) return;
+        const provider = new ethers.JsonRpcProvider(
+          cfg.rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com"
+        );
+        const router = new ethers.Contract(
+          cfg.optimizerRouter,
+          ROUTER_ABI,
+          provider
+        );
+        const t = await router.identityTier(address);
+        if (alive) setTier(Number(t));
+      } catch {
+        if (alive) setTier(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [connected, address]);
 
   const formatTime = () => {
     const now = new Date();
@@ -270,60 +331,72 @@ export default function MetaHookPoolPage() {
           </Card>
         </div>
 
-        {/* Bottom Row: Deposit Form + Yield/P&L */}
+        {/* Bottom Row: Radar Anti-MEV + Yield/P&L */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Deposit Form */}
-          <Card title="DEPOSIT FORM [SYS.03]">
+          {/* LEFT: Radar Anti-MEV (dashboard analítico — sem depósitos) */}
+          <Card title="RADAR ANTI-MEV [SYS.03]">
             <div className="space-y-4">
-              {connected && lp ? (
-                <>
-                  <DualStat
-                    leftLabel="YOUR ETH BALANCE"
-                    leftValue={fmt(positionEth, 4) + " ETH"}
-                    leftColor="#00F58C"
-                    rightLabel="YOUR IMD BALANCE"
-                    rightValue={fmt(imdBalance, 2) + " IMD"}
-                    rightColor="#00F58C"
-                    sub={`pool share: ${shareOfPool.toFixed(4)}%`}
+              {connected ? (
+                <div className="space-y-3">
+                  <StatRow
+                    label="IDENTITY TIER (NFT)"
+                    value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "consultando…"}
+                    color="#00F5FF"
+                    sub="identityTier() no OptimizerRouter"
                   />
-                  <StatRow label="LP FEES EARNED" value={fmt(feeEarned, 4) + " ETH"} color="#00F58C" sub="acumulado na posição"/>
-                </>
+                  <StatRow
+                    label="MEV INTERCEPTADO"
+                    value={mevIntercepted !== null ? fmt(mevIntercepted, 4) + " ETH" : "—"}
+                    color="#00F58C"
+                    sub="OptimizerRouter.getStats() on-chain"
+                  />
+                  <StatRow
+                    label="VOLUME PROTEGIDO 24H"
+                    value={fmtUsd(hookVol)}
+                    color="#00F58C"
+                    sub="volume processado no pool com hook"
+                  />
+                  <div className="border-t border-slate-800/50 pt-2">
+                    <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">
+                      HISTÓRICO DE ATAQUES BLOQUEADOS
+                    </div>
+                    {attackLog.length > 0 ? (
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {attackLog.map((e, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs font-mono"
+                          >
+                            <span className="text-slate-400">{e.time}</span>
+                            <span className="text-emerald-400">
+                              +{fmt(e.deltaEth, 4)} ETH interceptado
+                            </span>
+                            <span className="text-slate-500">
+                              total {fmt(e.totalEth, 4)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs font-mono text-slate-500 bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-3 py-2">
+                        nenhuma nova interceptação observada nesta sessão
+                        (leitura do contador a cada 30s)
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <div className="text-center py-4 text-slate-400 font-mono text-sm">Connect wallet to view balances</div>
+                <div className="text-center py-4 text-slate-400 font-mono text-sm">
+                  Conecte a carteira para identificar seu Tier (NFT) e ver as
+                  métricas do protocolo
+                </div>
               )}
-
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-4">
-                  <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase block mb-2">DEPOSIT ETH</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={ethInput}
-                    onChange={(e) => setEthInput(e.target.value)}
-                    placeholder="0.0000"
-                    className="w-full bg-[#070A0F]/80 border border-slate-700/50 rounded-xl px-3 py-2 text-white font-mono text-lg placeholder-slate-500 outline-none focus:border-emerald-500/50"
-                    min="0"
-                    step="0.0001"
-                  />
-                </div>
-                <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-4">
-                  <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase block mb-2">DEPOSIT IMD</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={imdInput}
-                    onChange={(e) => setImdInput(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-[#070A0F]/80 border border-slate-700/50 rounded-xl px-3 py-2 text-white font-mono text-lg placeholder-slate-500 outline-none focus:border-emerald-500/50"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
 
               <div className="flex items-center gap-3 pt-2">
                 <div className="text-xs font-mono text-slate-400">
-                  LP FEE: <span className="text-white">0.05%</span> · TVL: <span className="text-emerald-400">{fmtUsd(totalTVL)}</span>
+                  HOOK: <span className="text-white">contrato passivo</span> ·
+                  sem depósitos diretos · TVL:{" "}
+                  <span className="text-emerald-400">{fmtUsd(totalTVL)}</span>
                 </div>
               </div>
 
@@ -335,12 +408,16 @@ export default function MetaHookPoolPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                {connected ? "WALLET CONNECTED" : "CONNECT WALLET"}
+                {connected ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}` : "CONNECT WALLET"}
               </button>
 
-              {!connected && (
-                <div className="text-center text-xs text-slate-500 font-mono">Connect wallet to deposit liquidity</div>
-              )}
+              <div className="text-center text-xs text-slate-500 font-mono">
+                Conexão usada apenas para Tier + métricas · formulário de
+                depósito ($BLD) fica em{" "}
+                <Link href="/staking" className="text-emerald-400 hover:text-emerald-300 underline">
+                  Staking
+                </Link>
+              </div>
             </div>
           </Card>
 
