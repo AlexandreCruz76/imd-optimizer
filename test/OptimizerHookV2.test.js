@@ -52,7 +52,7 @@ describe("OptimizerHookV2 — DEC-017 (interceptação, burn, contador)", functi
     );
     oracle = await IMEVOracle.deploy([owner.address]);
 
-    const GenesisKey = await ethers.getContractFactory("OptimizerGenesisKey");
+    const GenesisKey = await ethers.getContractFactory("Buildercoin");
     genesisKey = await GenesisKey.deploy();
     identityMD = await GenesisKey.deploy();
 

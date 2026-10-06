@@ -19,7 +19,7 @@ The **full implementation** of these contracts is **proprietary** and kept in a 
 | `IOptimizerHook.sol` | 3-Layer Meta-Hook for Uniswap V4 |
 | `IOptimizerVault.sol` | ERC-4626-style vault for yield distribution |
 | `IBuilderStakingVault.sol` | Stake $BLD to earn fees |
-| `IOptimizerGenesisKey.sol` | ERC-721 NFT for protocol access |
+| `IBuildercoin.sol` | dNFT ERC-721 NFT for protocol access |
 | `IAdoptionVault.sol` | Fundraising for mainnet deployment |
 | `IMigrationRouter.sol` | Atomic migration between pools |
 

@@ -68,7 +68,7 @@
 | `OptimizerVaultV2` | `0xBc6Dc23FFbCDFe1fCa602361eb566a299a5036e1` | Vault (split 60/20/15/5, claimYield 0%) |
 | `OptimizerRouter` | `0x4b614E3eb18551ef0f1e65891fb9dABD4a397926` | Router with MEV protection |
 | `IMEVOracle` | `0x70a49c8dC0EEb818E3673D2c3FB4ac2bB213180d` | Bot registry (ECDSA-attested) |
-| `OptimizerGenesisKey` | deploy via `scripts/` | ERC-721 — `MAX_SUPPLY = 501` (0.05 ETH) |
+| `Buildercoin` | deploy via `scripts/` | dNFT ERC-721 — `MAX_SUPPLY = 501` (0.05 ETH, split 40/40/20) |
 
 > **Note:** This repository contains **interfaces** (`contracts/public/`) + tests + frontend.
 > Full implementations open together with the BETA mainnet release — see
@@ -276,7 +276,7 @@ Until then: interfaces, tests and frontend are public; contracts stay on Sepolia
 ## ✅ Test Results
 
 ```
-✅ 139/139 Tests Passing (DEC-020)
+✅ 151/151 Tests Passing (DEC-020 + Buildercoin dNFT)
 ✅ 0 Critical Issues
 ✅ Tier fees testadas (0/10/30/50 bps · 500/1000/2000/2500 bps)
 ✅ Security: ReentrancyGuard + block delay + snapshot de tier
@@ -286,10 +286,10 @@ Until then: interfaces, tests and frontend are public; contracts stay on Sepolia
 |-------|------|-------|--------|
 | OptimizerVault + BuilderStaking | `test/OptimizerVaultTest.test.js` | 55 | ✅ |
 | OptimizerRouter | `test/OptimizerRouter.test.js` | 29 | ✅ |
-| OptimizerGenesisKey | `test/OptimizerGenesisKey.test.js` | 25 | ✅ |
+| Buildercoin + BuilderStaking | `test/Buildercoin.test.js` | 37 | ✅ |
 | OptimizerRouterAggregator | `test/OptimizerRouterAggregator.test.js` | 19 | ✅ |
 | OptimizerHookV2 | `test/OptimizerHookV2.test.js` | 11 | ✅ |
-| **TOTAL** | — | **139** | **✅** |
+| **TOTAL** | — | **151** | **✅** |
 
 ---
 
@@ -301,7 +301,7 @@ Until then: interfaces, tests and frontend are public; contracts stay on Sepolia
 | [PITCH_INVESTIDOR.md](PITCH_INVESTIDOR.md) | Pitch — exec summary |
 | [README-HOOKS.md](README-HOOKS.md) | Hooks overview |
 | [contracts/public/](contracts/public/) | Public interfaces (I*.sol) |
-| [test/](test/) | Full test suite (139 tests) |
+| [test/](test/) | Full test suite (151 tests) |
 | [frontend/README.md](frontend/README.md) | Frontend setup |
 
 > Full architecture & strategy documentation ships with the open-source BETA

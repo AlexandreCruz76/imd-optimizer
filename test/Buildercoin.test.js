@@ -1,115 +1,234 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("OptimizerGenesisKey", function () {
-  let genesisKey;
-  let owner, addr1, addr2;
+describe("Buildercoin", function () {
+  let buildercoin;
+  let owner, minter, core, infra, marketing;
 
-  beforeEach(async function () {
-    [owner, addr1, addr2] = await ethers.getSigners();
-    const GenesisKey = await ethers.getContractFactory("OptimizerGenesisKey");
-    genesisKey = await GenesisKey.deploy();
-    await genesisKey.waitForDeployment();
-  });
+  const PRICE = ethers.parseEther("0.05");
+  const MAX_SUPPLY = 501;
+
+  async function deployRaw() {
+    [owner, minter, core, infra, marketing] = await ethers.getSigners();
+    const Buildercoin = await ethers.getContractFactory("Buildercoin");
+    buildercoin = await Buildercoin.deploy();
+    await buildercoin.waitForDeployment();
+  }
+
+  async function deployConfigured() {
+    await deployRaw();
+    await buildercoin.setSplitWallets(core.address, infra.address, marketing.address);
+    await buildercoin.setMintOpen(true);
+  }
 
   describe("Deployment", function () {
-    it("Should set correct name and symbol", async function () {
-      expect(await genesisKey.name()).to.equal("Optimizer Genesis Key");
-      expect(await genesisKey.symbol()).to.equal("OGKEY");
+    beforeEach(deployRaw);
+
+    it("Should set name Buildercoin and symbol BLD (especificação)", async function () {
+      expect(await buildercoin.name()).to.equal("Buildercoin");
+      expect(await buildercoin.symbol()).to.equal("BLD");
     });
 
-    it("Should have max supply of 501 (DEC-020 — Tier 1 Buildercoin)", async function () {
-      expect(await genesisKey.MAX_SUPPLY()).to.equal(501);
+    it("Should lock max supply at 501 and mint price at 0.05 ETH", async function () {
+      expect(await buildercoin.MAX_SUPPLY()).to.equal(MAX_SUPPLY);
+      expect(await buildercoin.MINT_PRICE()).to.equal(PRICE);
     });
 
-    it("Should start with mint closed", async function () {
-      expect(await genesisKey.mintOpen()).to.equal(false);
+    it("Should start with mint closed and zero supply", async function () {
+      expect(await buildercoin.mintOpen()).to.equal(false);
+      expect(await buildercoin.totalSupply()).to.equal(0);
+    });
+
+    it("Should authorize the owner (admin) at deploy", async function () {
+      expect(await buildercoin.isAuthorized(owner.address)).to.equal(true);
+      expect(await buildercoin.isAuthorized(minter.address)).to.equal(false);
     });
   });
 
-  describe("Minting", function () {
-    beforeEach(async function () {
-      await genesisKey.setMintOpen(true);
+  describe("Minting + Split de Gênese", function () {
+    beforeEach(deployConfigured);
+
+    it("Should mint at exactly 0.05 ETH with tokenLevel starting at 1", async function () {
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      expect(await buildercoin.totalSupply()).to.equal(1);
+      expect(await buildercoin.ownerOf(1)).to.equal(minter.address);
+      expect(await buildercoin.tokenLevel(1)).to.equal(1);
+      expect(await buildercoin.balanceOf(minter.address)).to.equal(1);
     });
 
-    it("Should mint Genesis key with correct price (0,05 ETH — DEC-020)", async function () {
-      const price = ethers.parseEther("0.05");
-      await genesisKey.connect(addr1).mintGenesis({ value: price });
-      expect(await genesisKey.totalMinted()).to.equal(1);
-      expect(await genesisKey.ownerOf(1)).to.equal(addr1.address);
+    it("Should reject wrong payment (0.01 ETH)", async function () {
+      await expect(
+        buildercoin.connect(minter).mint({ value: ethers.parseEther("0.01") })
+      )
+        .to.be.revertedWithCustomError(buildercoin, "WrongPayment")
+        .withArgs(ethers.parseEther("0.01"), PRICE);
     });
 
-    it("Should mint Backer key with correct price", async function () {
-      const price = ethers.parseEther("1.0");
-      await genesisKey.connect(addr1).mintBacker({ value: price });
-      expect(await genesisKey.totalMinted()).to.equal(1);
-      expect(await genesisKey.ownerOf(1)).to.equal(addr1.address);
+    it("Should reject excess payment (0.06 ETH) — sem troco, sem ETH preso", async function () {
+      await expect(
+        buildercoin.connect(minter).mint({ value: ethers.parseEther("0.06") })
+      ).to.be.revertedWithCustomError(buildercoin, "WrongPayment");
     });
 
     it("Should reject mint when closed", async function () {
-      await genesisKey.setMintOpen(false);
+      await buildercoin.setMintOpen(false);
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") })
-      ).to.be.revertedWithCustomError(genesisKey, "MintNotOpen");
+        buildercoin.connect(minter).mint({ value: PRICE })
+      ).to.be.revertedWithCustomError(buildercoin, "MintNotOpen");
     });
 
-    it("Should reject insufficient payment", async function () {
+    it("Should reject mint while split wallets are placeholders", async function () {
+      await deployRaw();
+      await buildercoin.setMintOpen(true);
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.01") })
-      ).to.be.revertedWithCustomError(genesisKey, "InsufficientPayment");
+        buildercoin.connect(minter).mint({ value: PRICE })
+      ).to.be.revertedWithCustomError(buildercoin, "SplitNotConfigured");
     });
 
-    it("Should reject mint after max supply (501)", async function () {
-      // preço zerado para o loop não depender de saldo de ETH
-      await genesisKey.setPrice(0);
-      for (let i = 0; i < 501; i++) {
-        await genesisKey.connect(addr1).mintGenesis({ value: 0 });
+    it("Should split 40/40/20 atomically and keep ZERO ETH in the contract", async function () {
+      const coreBefore = await ethers.provider.getBalance(core.address);
+      const infraBefore = await ethers.provider.getBalance(infra.address);
+      const marketingBefore = await ethers.provider.getBalance(marketing.address);
+
+      await buildercoin.connect(minter).mint({ value: PRICE });
+
+      expect(await ethers.provider.getBalance(core.address)).to.equal(
+        coreBefore + (PRICE * 40n) / 100n
+      );
+      expect(await ethers.provider.getBalance(infra.address)).to.equal(
+        infraBefore + (PRICE * 40n) / 100n
+      );
+      expect(await ethers.provider.getBalance(marketing.address)).to.equal(
+        marketingBefore + (PRICE * 20n) / 100n
+      );
+      expect(await ethers.provider.getBalance(await buildercoin.getAddress())).to.equal(0);
+    });
+
+    it("Should emit Minted + GenesisSplit on every mint", async function () {
+      await expect(buildercoin.connect(minter).mint({ value: PRICE }))
+        .to.emit(buildercoin, "Minted")
+        .withArgs(minter.address, 1, PRICE)
+        .and.to.emit(buildercoin, "GenesisSplit")
+        .withArgs((PRICE * 40n) / 100n, (PRICE * 40n) / 100n, (PRICE * 20n) / 100n);
+    });
+
+    it("Should enforce hard cap of 501 mints", async function () {
+      for (let i = 0; i < MAX_SUPPLY; i++) {
+        await buildercoin.connect(minter).mint({ value: PRICE });
       }
+      expect(await buildercoin.totalSupply()).to.equal(MAX_SUPPLY);
       await expect(
-        genesisKey.connect(addr1).mintGenesis({ value: 0 })
-      ).to.be.revertedWithCustomError(genesisKey, "MaxSupplyReached");
+        buildercoin.connect(minter).mint({ value: PRICE })
+      ).to.be.revertedWithCustomError(buildercoin, "MaxSupplyReached");
     });
 
-    it("Should track owner keys correctly", async function () {
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
-      const keys = await genesisKey.getOwnerKeys(addr1.address);
-      expect(keys.length).to.equal(2);
-    });
-
-    it("Should refund excess payment", async function () {
-      const excess = ethers.parseEther("0.6");
-      const balanceBefore = await ethers.provider.getBalance(addr1.address);
-      const tx = await genesisKey.connect(addr1).mintGenesis({ value: excess });
-      const receipt = await tx.wait();
-      const gasUsed = receipt.gasUsed * receipt.gasPrice;
-      const balanceAfter = await ethers.provider.getBalance(addr1.address);
-      expect(balanceBefore - balanceAfter).to.be.lessThan(excess);
+    it("Should support ERC721Enumerable listing (tokenOfOwnerByIndex)", async function () {
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      expect(await buildercoin.tokenOfOwnerByIndex(minter.address, 0)).to.equal(1);
+      expect(await buildercoin.tokenOfOwnerByIndex(minter.address, 1)).to.equal(2);
+      expect(await buildercoin.remainingSupply()).to.equal(MAX_SUPPLY - 2);
     });
   });
 
-  describe("MEV Distribution", function () {
+  describe("dNFT Levels (tokenLevel / updateTokenLevel)", function () {
     beforeEach(async function () {
-      await genesisKey.setMintOpen(true);
-      await genesisKey.connect(addr1).mintGenesis({ value: ethers.parseEther("0.05") });
-      await genesisKey.connect(addr2).mintGenesis({ value: ethers.parseEther("0.05") });
+      await deployConfigured();
+      await buildercoin.connect(minter).mint({ value: PRICE });
     });
 
-    it("Should deposit MEV correctly", async function () {
-      const contractAddr = await genesisKey.getAddress();
-      const contractBalanceBefore = await ethers.provider.getBalance(contractAddr);
-      await owner.sendTransaction({
-        to: contractAddr,
-        value: ethers.parseEther("1.0"),
-      });
-      const contractBalanceAfter = await ethers.provider.getBalance(contractAddr);
-      expect(contractBalanceAfter - contractBalanceBefore).to.equal(ethers.parseEther("1.0"));
+    it("Should start every token at level 1", async function () {
+      expect(await buildercoin.tokenLevel(1)).to.equal(1);
     });
 
-    it("Should calculate MEV share correctly", async function () {
-      await genesisKey.depositMEV({ value: ethers.parseEther("1.0") });
-      const share = await genesisKey.getPendingMEV(addr1.address);
-      expect(share).to.equal(ethers.parseEther("0.5"));
+    it("Should reject update from non-authorized caller", async function () {
+      await expect(
+        buildercoin.connect(minter).updateTokenLevel(1, 2)
+      ).to.be.revertedWithCustomError(buildercoin, "NotAuthorized");
+    });
+
+    it("Should allow owner (admin) to update level and emit event", async function () {
+      await expect(buildercoin.updateTokenLevel(1, 3))
+        .to.emit(buildercoin, "TokenLevelUpdated")
+        .withArgs(1, 1, 3, owner.address);
+      expect(await buildercoin.tokenLevel(1)).to.equal(3);
+    });
+
+    it("Should reject levels outside 1..4 (Bronze..Neon)", async function () {
+      await expect(
+        buildercoin.updateTokenLevel(1, 0)
+      ).to.be.revertedWithCustomError(buildercoin, "LevelOutOfRange");
+      await expect(
+        buildercoin.updateTokenLevel(1, 5)
+      ).to.be.revertedWithCustomError(buildercoin, "LevelOutOfRange");
+    });
+
+    it("Should revert update for nonexistent token", async function () {
+      await expect(
+        buildercoin.updateTokenLevel(999, 2)
+      ).to.be.revertedWithCustomError(buildercoin, "ERC721NonexistentToken");
+    });
+
+    it("Should grant update rights via setAuthorized (relayer / protocol contracts)", async function () {
+      await buildercoin.setAuthorized(minter.address, true);
+      expect(await buildercoin.isAuthorized(minter.address)).to.equal(true);
+      await buildercoin.connect(minter).updateTokenLevel(1, 4);
+      expect(await buildercoin.tokenLevel(1)).to.equal(4);
+
+      await buildercoin.setAuthorized(minter.address, false);
+      await expect(
+        buildercoin.connect(minter).updateTokenLevel(1, 2)
+      ).to.be.revertedWithCustomError(buildercoin, "NotAuthorized");
+    });
+
+    it("Should protect admin functions with onlyOwner", async function () {
+      await expect(
+        buildercoin.connect(minter).setAuthorized(minter.address, true)
+      ).to.be.revertedWithCustomError(buildercoin, "OwnableUnauthorizedAccount");
+      await expect(
+        buildercoin.connect(minter).setMintOpen(false)
+      ).to.be.revertedWithCustomError(buildercoin, "OwnableUnauthorizedAccount");
+      await expect(
+        buildercoin.connect(minter).setBaseURI("https://evil.example/")
+      ).to.be.revertedWithCustomError(buildercoin, "OwnableUnauthorizedAccount");
+      await expect(
+        buildercoin
+          .connect(minter)
+          .setSplitWallets(minter.address, minter.address, minter.address)
+      ).to.be.revertedWithCustomError(buildercoin, "OwnableUnauthorizedAccount");
+    });
+  });
+
+  describe("tokenURI (espelho do backend)", function () {
+    beforeEach(deployConfigured);
+
+    it("Should serve default baseURI + tokenId", async function () {
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      expect(await buildercoin.tokenURI(1)).to.equal("https://api.imd.fun/metadata/1");
+    });
+
+    it("Should honor setBaseURI migration", async function () {
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      await buildercoin.setBaseURI("https://api.imd.fun/v2/");
+      expect(await buildercoin.tokenURI(1)).to.equal("https://api.imd.fun/v2/1");
+    });
+
+    it("Should revert tokenURI for nonexistent token", async function () {
+      await expect(buildercoin.tokenURI(42)).to.be.revertedWithCustomError(
+        buildercoin,
+        "ERC721NonexistentToken"
+      );
+    });
+  });
+
+  describe("Identity-Fi interop (gate Tier 1)", function () {
+    beforeEach(deployConfigured);
+
+    it("balanceOf > 0 only for holders — gate usado por Router/Vault/Hook", async function () {
+      expect(await buildercoin.balanceOf(minter.address)).to.equal(0);
+      await buildercoin.connect(minter).mint({ value: PRICE });
+      expect(await buildercoin.balanceOf(minter.address)).to.equal(1);
+      expect(await buildercoin.balanceOf(core.address)).to.equal(0);
     });
   });
 });
@@ -312,9 +431,10 @@ describe("BuilderStakingVault", function () {
     });
 
     it("yield ponderado: NFT Tier 1 rende 4x — stake 0 ⇒ peso 0 (DEC-020)", async function () {
-      // Buildercoin NFT = OptimizerGenesisKey (Tier 1, 4x)
-      const Genesis = await ethers.getContractFactory("OptimizerGenesisKey");
-      const genesis = await Genesis.deploy();
+      // Buildercoin NFT = contrato Tier 1 (4x)
+      const Buildercoin = await ethers.getContractFactory("Buildercoin");
+      const genesis = await Buildercoin.deploy();
+      await genesis.setSplitWallets(owner.address, owner.address, owner.address);
       await genesis.setMintOpen(true);
       await stakingVault.setIdentityConfig(
         await genesis.getAddress(),
@@ -330,7 +450,7 @@ describe("BuilderStakingVault", function () {
       await stakingVault.connect(addr2).stake(amount, 30);
 
       // NFT mintado depois do stake → checkpoint atualiza o peso gravado
-      await genesis.connect(addr2).mintGenesis({ value: ethers.parseEther("0.05") });
+      await genesis.connect(addr2).mint({ value: ethers.parseEther("0.05") });
       await stakingVault.checkpoint(addr2.address);
 
       // Peso vivo: addr1 = 100 × 1x; addr2 = 100 × 4x
@@ -338,7 +458,7 @@ describe("BuilderStakingVault", function () {
       expect(await stakingVault.yieldWeightOf(addr2.address)).to.equal(amount * 4n);
 
       // Stake 0 ⇒ peso 0 mesmo com NFT Tier 1 (multiplicador não é combustível)
-      await genesis.connect(owner).mintGenesis({ value: ethers.parseEther("0.05") });
+      await genesis.connect(owner).mint({ value: ethers.parseEther("0.05") });
       expect(await stakingVault._yieldMultiplierBps(owner.address)).to.equal(40000);
       expect(await stakingVault.yieldWeightOf(owner.address)).to.equal(0);
 
