@@ -90,6 +90,10 @@ const ROUTER_ABI = [
   "function identityTier(address) view returns (uint8)",
 ];
 
+const GENESIS_KEY_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+];
+
 interface AttackLogEntry {
   time: string;
   deltaEth: number;
@@ -105,6 +109,7 @@ export default function MetaHookPoolPage() {
   const [error, setError] = useState<string | null>(null);
   const [mevIntercepted, setMevIntercepted] = useState<number | null>(null);
   const [tier, setTier] = useState<number | null>(null);
+  const [nftHeld, setNftHeld] = useState<number | null>(null);
   const [attackLog, setAttackLog] = useState<AttackLogEntry[]>([]);
   const prevMevRef = useRef<number | null>(null);
 
@@ -218,30 +223,62 @@ export default function MetaHookPoolPage() {
     };
   }, []);
 
-  // RADAR: Tier do utilizador via identityTier (NFT / identidade) no router
+  // RADAR: Identidade do utilizador — Optimizer NFT (GenesisKey) + tier (identityTier)
   useEffect(() => {
     let alive = true;
     if (!connected || !address) {
-      const t = setTimeout(() => setTier(null), 0);
+      const t = setTimeout(() => {
+        setTier(null);
+        setNftHeld(null);
+      }, 0);
       return () => clearTimeout(t);
     }
     (async () => {
+      let provider: ethers.JsonRpcProvider | null = null;
       try {
         const cfgRes = await fetch("/api/config");
         const cfg = await cfgRes.json();
-        if (!alive || !cfg?.optimizerRouter) return;
-        const provider = new ethers.JsonRpcProvider(
+        provider = new ethers.JsonRpcProvider(
           cfg.rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com"
         );
-        const router = new ethers.Contract(
-          cfg.optimizerRouter,
-          ROUTER_ABI,
-          provider
-        );
-        const t = await router.identityTier(address);
-        if (alive) setTier(Number(t));
+        // 1) Optimizer NFT (OptimizerGenesisKey.balanceOf)
+        if (!alive) return;
+        if (cfg?.genesisKey) {
+          try {
+            const key = new ethers.Contract(
+              cfg.genesisKey,
+              GENESIS_KEY_ABI,
+              provider
+            );
+            const bal = await key.balanceOf(address);
+            if (alive) setNftHeld(Number(bal));
+          } catch {
+            if (alive) setNftHeld(-1);
+          }
+        } else if (alive) {
+          setNftHeld(-1);
+        }
+        // 2) Identity tier (identityTier)
+        if (cfg?.optimizerRouter) {
+          try {
+            const router = new ethers.Contract(
+              cfg.optimizerRouter,
+              ROUTER_ABI,
+              provider
+            );
+            const t = await router.identityTier(address);
+            if (alive) setTier(Number(t));
+          } catch {
+            if (alive) setTier(null);
+          }
+        } else if (alive) {
+          setTier(null);
+        }
       } catch {
-        if (alive) setTier(null);
+        if (alive) {
+          setTier(null);
+          setNftHeld(-1);
+        }
       }
     })();
     return () => {
@@ -339,7 +376,21 @@ export default function MetaHookPoolPage() {
               {connected ? (
                 <div className="space-y-3">
                   <StatRow
-                    label="IDENTITY TIER (NFT)"
+                    label="OPTIMIZER NFT"
+                    value={
+                      nftHeld === null
+                        ? "consultando…"
+                        : nftHeld === -1
+                        ? "—"
+                        : nftHeld > 0
+                        ? `${nftHeld} Buildercoin`
+                        : "nenhum"
+                    }
+                    color={nftHeld !== null && nftHeld > 0 ? "#FFD700" : "#00F58C"}
+                    sub="OptimizerGenesisKey.balanceOf() on-chain"
+                  />
+                  <StatRow
+                    label="IDENTITY MD / TIER (NFT)"
                     value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "consultando…"}
                     color="#00F5FF"
                     sub="identityTier() no OptimizerRouter"
