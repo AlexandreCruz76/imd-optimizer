@@ -162,15 +162,14 @@ export default function HomePage() {
               />
             </div>
 
-            {/* LVR Mitigation Section */}
+            {/* Living Identity Section */}
             <div className="grid lg:grid-cols-2 gap-8 items-center">
               <div className="space-y-6">
                 <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  Loss-Versus-Rebalancing (LVR) Mitigation
+                  The Living Identity (Dynamic ID NFT)
                 </h3>
                 <p className="text-slate-400 leading-relaxed">
-                  LVR is the silent value leak every LP suffers when arbitrageurs exploit stale pool prices.
-                  Traditional AMMs passively accept this loss. IMD Optimizer&apos;s V4 hooks actively intervene at the protocol level.
+                  Your NFT is forged as a Recruit (Bronze Card), but it evolves in real-time. The smart contract actively reads your interactions with the protocol. As your address executes successful arbitrages or commits to prolonged staking (Diamond Hands), your NFT automatically levels up. Your Card evolves from Bronze to Silver, Gold, and ultimately Neon—dynamically updating your on-chain metadata and your visual prestige on the secondary market
                 </p>
 
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -185,7 +184,7 @@ export default function HomePage() {
                 <div className="relative rounded-3xl overflow-hidden border border-emerald-500/20 bg-[#0B111A]/80 shadow-[0_0_50px_rgba(0,245,140,0.15)]">
                   <img
                     src="/images/colecao.png"
-                    alt="LVR Mitigation — Collection"
+                    alt="Living Identity — Collection"
                     className="w-full h-[400px] object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#070A0E]/90 via-transparent to-transparent" />
