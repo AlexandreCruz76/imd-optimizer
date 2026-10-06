@@ -283,6 +283,7 @@ export default function SwapPage() {
   const {
     connected,
     connecting,
+    walletName,
     connect,
     address,
     provider,
@@ -1099,8 +1100,8 @@ export default function SwapPage() {
             >
               {btnState === "connect"
                 ? connecting
-                  ? "ABRINDO METAMASK…"
-                  : "CONNECT METAMASK"
+                  ? `ABRINDO ${walletName.toUpperCase()}…`
+                  : `CONNECT ${walletName.toUpperCase()}`
                 : btnState === "enter"
                 ? "ENTER AN AMOUNT"
                 : btnState === "loading"

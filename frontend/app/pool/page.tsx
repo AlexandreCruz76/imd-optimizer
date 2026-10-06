@@ -97,7 +97,7 @@ interface AttackLogEntry {
 }
 
 export default function MetaHookPoolPage() {
-  const { connected, address, connecting, walletError, connect } = useWallet();
+  const { connected, address, connecting, walletError, walletName, connect } = useWallet();
   const [pool, setPool] = useState<PoolState | null>(null);
   const [lp, setLp] = useState<UserLp | null>(null);
   const [ethSeries, setEthSeries] = useState<number[]>([]);
@@ -411,8 +411,8 @@ export default function MetaHookPoolPage() {
                 {connected
                   ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}`
                   : connecting
-                  ? "ABRINDO METAMASK…"
-                  : "CONNECT METAMASK"}
+                  ? `ABRINDO ${walletName.toUpperCase()}…`
+                  : `CONNECT ${walletName.toUpperCase()}`}
               </button>
 
               {walletError && !connected && (

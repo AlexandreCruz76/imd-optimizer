@@ -12,7 +12,7 @@ const navLinks = [
 ];
 
 export function Navbar() {
-  const { connected, address, chainId, connecting, walletError, connect, disconnect } = useWallet();
+  const { connected, address, chainId, connecting, walletError, walletName, connect, disconnect } = useWallet();
   const [hasMetaMask, setHasMetaMask] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export function Navbar() {
                   disabled={!hasMetaMask || connecting}
                   className="bg-[#00F58C] text-[#05080A] font-semibold px-5 py-2 rounded-full hover:brightness-110 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {connecting ? "Abrindo MetaMask…" : "Connect MetaMask"}
+                  {connecting ? `Abrindo ${walletName}…` : `Connect ${walletName}`}
                 </button>
               </div>
             )}

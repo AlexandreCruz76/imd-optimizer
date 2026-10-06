@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useWallet } from "../components/WalletProvider";
 
 export default function StakingPage() {
-  const { connected, connect } = useWallet();
+  const { connected, walletName, connect } = useWallet();
   const [error, setError] = useState<string | null>(null);
 
   function handleDemo(message: string) {
@@ -141,7 +141,7 @@ export default function StakingPage() {
           }
           className="w-full py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
         >
-          {connected ? "STAKE NOW" : "CONNECT METAMASK PARA STAKING"}
+          {connected ? "STAKE NOW" : `CONNECT ${walletName.toUpperCase()} PARA STAKING`}
         </button>
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">

@@ -17,6 +17,7 @@ interface WalletContextType {
   connected: boolean;
   connecting: boolean;
   walletError: string | null;
+  walletName: string;
   connect: () => Promise<void>;
   disconnect: () => void;
   switchChain: (chainId: number) => Promise<void>;
@@ -31,6 +32,7 @@ const WalletContext = createContext<WalletContextType>({
   connected: false,
   connecting: false,
   walletError: null,
+  walletName: "MetaMask",
   connect: async () => {},
   disconnect: () => {},
   switchChain: async () => {},
@@ -48,39 +50,51 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [balance, setBalance] = useState("0");
   const [connecting, setConnecting] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletName, setWalletName] = useState<string>("MetaMask");
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [injected, setInjected] = useState<Eip1193 | null>(null);
 
   const connected = !!address;
 
-  // Detecção: prefere MetaMask (EIP-6963), senão window.ethereum
+  // Detecção: MetaMask real (EIP-6963 rdns io.metamask) tem prioridade;
+  // window.ethereum só entra como fallback (a Phantom se finge de MetaMask lá)
   useEffect(() => {
     let done = false;
-    const w = window.ethereum as Eip1193 | undefined;
-    const pick = (p: Eip1193 | null | undefined) => {
+    const w = window.ethereum as
+      | (Eip1193 & { isPhantom?: boolean })
+      | undefined;
+    const pick = (p: Eip1193 | null | undefined, name: string) => {
       if (done || !p) return;
       done = true;
       setInjected(p);
+      setWalletName(name);
     };
-    if (w?.isMetaMask) pick(w);
     const onAnnounce = (evt: Event) => {
       const d = (evt as CustomEvent).detail as
         | { info?: { rdns?: string; name?: string }; provider?: Eip1193 }
         | undefined;
       if (!d?.provider) return;
-      const isMM =
-        /metamask/i.test(d.info?.rdns ?? "") ||
-        /metamask/i.test(d.info?.name ?? "") ||
-        d.provider.isMetaMask === true;
-      if (isMM) pick(d.provider);
+      const rdns = d.info?.rdns ?? "";
+      const isRealMM =
+        rdns === "io.metamask" || rdns.endsWith(".io.metamask") || rdns === "io.metamask.flask";
+      if (isRealMM) pick(d.provider, d.info?.name || "MetaMask");
     };
     window.addEventListener("eip6963:announceProvider", onAnnounce);
     window.dispatchEvent(new Event("eip6963:requestProvider"));
+    // fallback após esperar os anúncios EIP-6963
     const t = setTimeout(() => {
-      if (!done) pick(w ?? null);
+      if (!done) {
+        const name =
+          w?.isPhantom || (window as { phantom?: unknown }).phantom
+            ? "Phantom"
+            : w?.isMetaMask
+            ? "MetaMask"
+            : "Carteira";
+        pick(w ?? null, name);
+      }
       window.removeEventListener("eip6963:announceProvider", onAnnounce);
-    }, 150);
+    }, 250);
     return () => {
       clearTimeout(t);
       window.removeEventListener("eip6963:announceProvider", onAnnounce);
@@ -112,7 +126,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const p = injected ?? (window.ethereum as Eip1193 | undefined) ?? null;
     if (!p) {
       setWalletError(
-        "MetaMask não detectado — instale a extensão em metamask.io/download e recarregue a página."
+        "Nenhuma carteira detectada — instale a MetaMask em metamask.io/download e recarregue a página."
       );
       return;
     }
@@ -132,18 +146,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       await applySession(accounts[0], p);
     } catch (err) {
       const code = (err as { code?: number }).code;
+      const rawMsg = (err as Error)?.message ?? "";
       if (code === 4001) {
         setWalletError(
-          "Conexão rejeitada no MetaMask — clique de novo e aprove no popup da extensão."
+          `Conexão rejeitada no ${walletName} — clique de novo e aprove no popup da extensão.`
         );
       } else if (code === -32002) {
         setWalletError(
-          "MetaMask já tem um pedido pendente — abra a extensão e aprove a solicitação."
+          `${walletName} já tem um pedido pendente — abra a extensão e aprove a solicitação.`
+        );
+      } else if (/unexpected|context invalidated|could not establish connection/i.test(rawMsg)) {
+        setWalletError(
+          `Erro da extensão ${walletName}: "${rawMsg.slice(0, 80)}" — desbloqueie a carteira, atualize/recarregue a extensão e tente de novo.`
         );
       } else {
         setWalletError(
-          `Falha ao conectar no MetaMask: ${
-            (err as Error)?.message?.slice(0, 120) ?? "erro desconhecido"
+          `Falha ao conectar no ${walletName}: ${
+            rawMsg.slice(0, 120) || "erro desconhecido"
           }`
         );
       }
@@ -151,7 +170,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setConnecting(false);
     }
-  }, [injected, applySession]);
+  }, [injected, applySession, walletName]);
 
   const disconnect = useCallback(() => {
     setAddress(null);
@@ -231,6 +250,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         connected,
         connecting,
         walletError,
+        walletName,
         connect,
         disconnect,
         switchChain,
