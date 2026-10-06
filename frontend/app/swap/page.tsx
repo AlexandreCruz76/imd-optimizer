@@ -56,7 +56,11 @@ const PRICES_USD: Record<string, number> = {
 
 const LIQUIDITY_USD = 5_000_000;
 
-const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
+const ERC20_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address,address) view returns (uint256)",
+  "function approve(address,uint256) returns (bool)",
+];
 
 const ROUTER_ABI = [
   "function getPoolState() view returns (uint160, int24, bool)",
@@ -83,9 +87,9 @@ interface SepoliaInfo {
   hasMint: boolean;
   sqrtPriceX96: bigint;
   routerEth: bigint;
-  feeBps: number;
-  tier: number;
-  successFeeBps: number;
+  feeBps: number | null;
+  tier: number | null;
+  successFeeBps: number | null;
   minDelay: number;
   lastOpBlock: number;
   blockNumber: number;
@@ -114,6 +118,29 @@ function fmt(n: number, decimals = 6): string {
   if (!isFinite(n) || n === 0) return "0";
   if (n > 0 && n < 1e-6) return n.toExponential(2);
   return n.toLocaleString("en-US", { maximumFractionDigits: decimals });
+}
+
+function mapSwapError(err: unknown): string {
+  const e = err as {
+    code?: number | string;
+    shortMessage?: string;
+    message?: string;
+    info?: { error?: { code?: number } };
+  };
+  const code = e.code ?? e.info?.error?.code;
+  if (code === 4001 || code === "ACTION_REJECTED")
+    return "Transação rejeitada na carteira.";
+  if (code === -32603) return "Erro interno da carteira — tente novamente.";
+  const msg = e.message || "";
+  if (msg.includes("insufficient funds"))
+    return "ETH insuficiente para gas na Sepolia.";
+  if (msg.includes("panic") || msg.includes("underflow"))
+    return "Quote excedeu os limites do contrato — tente outro valor.";
+  if (msg.includes("no ETH liquidity") || msg.includes("slippage"))
+    return "Liquidez/slippage da venue — tente um valor menor ou aumente a tolerância.";
+  if (msg.includes("insufficient allowance") || msg.includes("ERC20InsufficientAllowance"))
+    return "Approve do token necessario — tente novamente.";
+  return e.shortMessage || e.message || "Falha no swap.";
 }
 
 function TokenLogo({ token, size = 32 }: { token: Token; size?: number }) {
@@ -290,6 +317,7 @@ export default function SwapPage() {
     signer,
     chainId,
     switchChain,
+    walletError,
   } = useWallet();
   const [tokenIn, setTokenIn] = useState<Token>(TOKENS[0]);
   const [tokenOut, setTokenOut] = useState<Token>(TOKENS[2]);
@@ -381,18 +409,31 @@ export default function SwapPage() {
         hasMint = false;
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, provider);
-      const [state, stats, fee, tierV, sFee, minDelay, lastOp, bn, routerEth] =
+      const [state, stats, minDelay, lastOp, bn, routerEth] =
         await Promise.all([
           router.getPoolState(),
           router.getStats(),
-          router.swapFeeBps(address),
-          router.identityTier(address),
-          router.successFeeBps(address),
           router.minBlockDelay(),
           router.lastOperationBlock(address),
           provider.getBlockNumber(),
           provider.getBalance(routerAddr),
         ]);
+      // Funcoes DEC-020 podem nao existir no build do router — leituras
+      // individuais para nao derrubar o painel inteiro (Promise.all).
+      const [fee, tierV, sFee] = await Promise.all([
+        router
+          .swapFeeBps(address)
+          .then((v: unknown) => Number(v))
+          .catch(() => null),
+        router
+          .identityTier(address)
+          .then((v: unknown) => Number(v))
+          .catch(() => null),
+        router
+          .successFeeBps(address)
+          .then((v: unknown) => Number(v))
+          .catch(() => null),
+      ]);
       setSep({
         tokenSymbol: symbol as string,
         tokenDecimals: Number(decimals),
@@ -402,9 +443,9 @@ export default function SwapPage() {
         hasMint,
         sqrtPriceX96: state[0] as bigint,
         routerEth,
-        feeBps: Number(fee),
-        tier: Number(tierV),
-        successFeeBps: Number(sFee),
+        feeBps: fee,
+        tier: tierV,
+        successFeeBps: sFee,
         minDelay: Number(minDelay),
         lastOpBlock: Number(lastOp),
         blockNumber: bn,
@@ -484,7 +525,7 @@ export default function SwapPage() {
     try {
       const amt = ethers.parseUnits(amount, sep.tokenDecimals);
       const price = (sep.sqrtPriceX96 * sep.sqrtPriceX96) / (2n ** 192n);
-      const out = (amt * price) / (10n ** 18n);
+      const out = amt * price;
       if (out === 0n) return null;
       const slipBps = BigInt(Math.min(Math.round(slipNum * 100), 1000));
       const minOut = (out * (10000n - slipBps)) / 10000n;
@@ -507,7 +548,7 @@ export default function SwapPage() {
       await tx.wait();
       loadSepolia();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Faucet failed");
+      setError(mapSwapError(err));
     } finally {
       setFaucetBusy(false);
     }
@@ -544,6 +585,20 @@ export default function SwapPage() {
       setTxHash(null);
       setRealStats(null);
       try {
+        // Approve defensivo: builds novos do router exigem allowance;
+        // o build antigo da Sepolia nao usa os tokens do utilizador.
+        if (standardAddr && address) {
+          const erc = new ethers.Contract(standardAddr, ERC20_ABI, signer);
+          try {
+            const allow: bigint = await erc.allowance(address, routerAddr);
+            if (allow < realQuote.amt) {
+              const atx = await erc.approve(routerAddr, realQuote.amt);
+              await atx.wait();
+            }
+          } catch {
+            // build sem exigencia de approve — segue para o swap
+          }
+        }
         const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
         const tx = await router.executeProtectedSellAndBurn(
           realQuote.amt,
@@ -566,8 +621,7 @@ export default function SwapPage() {
         setResult({ block: receipt.blockNumber });
         loadSepolia();
       } catch (err: unknown) {
-        const anyErr = err as { shortMessage?: string; message?: string };
-        setError(anyErr.shortMessage || anyErr.message || "Swap failed");
+        setError(mapSwapError(err));
       } finally {
         setLoading(false);
       }
@@ -706,8 +760,11 @@ export default function SwapPage() {
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400 font-mono">
             DEC-020 Identity-Fi · Your Swap Fee:{" "}
             <span className="text-white">
-              {(sep.feeBps / 100).toFixed(2)}% (Tier {sep.tier + 1} ·{" "}
-              {TIER_LABELS[sep.tier] ?? "—"})
+              {sep.feeBps !== null && sep.tier !== null
+                ? `${(sep.feeBps / 100).toFixed(2)}% (Tier ${
+                    sep.tier + 1
+                  } · ${TIER_LABELS[sep.tier] ?? "—"})`
+                : "n/d — build do router sem tiers DEC-020"}
             </span>{" "}
             · V4 MEV Protection: ACTIVE
           </div>
@@ -979,7 +1036,7 @@ export default function SwapPage() {
                     value={
                       realQuote
                         ? `1 ${sep?.tokenSymbol ?? "STANDARD"} = ${fmt(
-                            Number(realQuote.price) / 1e18,
+                            Number(realQuote.price),
                             6
                           )} ETH`
                         : "—"
@@ -1013,7 +1070,7 @@ export default function SwapPage() {
                   <InfoRow
                     label="Your Swap Fee (Identity-Fi Tier)"
                     value={
-                      sep
+                      sep && sep.feeBps !== null && sep.tier !== null
                         ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${
                             sep.tier + 1
                           } (${TIER_LABELS[sep.tier] ?? "—"})`
@@ -1022,7 +1079,11 @@ export default function SwapPage() {
                   />
                   <InfoRow
                     label="Success Fee (só sobre o lucro)"
-                    value={sep ? `${(sep.successFeeBps / 100).toFixed(2)}%` : "—"}
+                    value={
+                      sep && sep.successFeeBps !== null
+                        ? `${(sep.successFeeBps / 100).toFixed(2)}%`
+                        : "—"
+                    }
                   />
                   <InfoRow
                     label="Anti-Sandwich Cooldown"
@@ -1116,7 +1177,15 @@ export default function SwapPage() {
             </button>
 
             {!connected && (
-              <div className="mt-3 text-[10px] text-slate-500 text-center font-mono">Connect your wallet to swap</div>
+              <div className="mt-3 text-[10px] text-slate-500 text-center font-mono">
+                {walletError ? (
+                  <span className="text-amber-400 break-words">
+                    CARTERA: {walletError}
+                  </span>
+                ) : (
+                  "Connect your wallet to swap"
+                )}
+              </div>
             )}
           </div>
 
