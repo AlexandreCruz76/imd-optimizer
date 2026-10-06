@@ -110,6 +110,7 @@ export default function MetaHookPoolPage() {
   const [mevIntercepted, setMevIntercepted] = useState<number | null>(null);
   const [tier, setTier] = useState<number | null>(null);
   const [nftHeld, setNftHeld] = useState<number | null>(null);
+  const [liveTime, setLiveTime] = useState<string | null>(null);
   const [attackLog, setAttackLog] = useState<AttackLogEntry[]>([]);
   const prevMevRef = useRef<number | null>(null);
 
@@ -286,10 +287,21 @@ export default function MetaHookPoolPage() {
     };
   }, [connected, address]);
 
-  const formatTime = () => {
-    const now = new Date();
-    return now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  };
+  // Relógio LIVE — só no cliente (evita hydration mismatch de Date no SSR)
+  useEffect(() => {
+    const tick = () =>
+      setLiveTime(
+        new Date().toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
@@ -322,7 +334,7 @@ export default function MetaHookPoolPage() {
           <div className="flex items-center gap-4 text-xs tracking-widest">
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              LIVE {formatTime()}
+              LIVE {liveTime ?? "--:--:--"}
             </span>
             <button onClick={loadPool} className="text-emerald-400 hover:text-emerald-300 cursor-pointer font-bold">REFRESH</button>
           </div>
