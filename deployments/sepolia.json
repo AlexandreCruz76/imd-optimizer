@@ -1,7 +1,7 @@
 {
   "network": "sepolia",
   "deployer": "0x067fFf62022B1fF522f0624f4a03E42Fb6cBA0B0",
-  "OptimizerRouter": "0x91b4d44908B0deeaeFe65afF074051635B65cC81",
+  "OptimizerRouter": "0xfF3081Cd8442022C8766979FB3392df1C23C8205",
   "OptimizerVaultV2": "0x39Ecb3990e994538c1D983420e8d4Faf99C2C9BF",
   "MockStandardCore": "0xadea80101534a8d02832123fe90A33832f224169",
   "MockStandardToken": "0x8a095f673d49970641aF3B0fD9e4313DAdC9700C",
@@ -28,5 +28,15 @@
   "routerFundedEth": "0.03",
   "deployedAt": "2026-09-29T10:44:37.176Z",
   "buildercoinDeployedAt": "2026-10-06",
-  "note": "Deploy real — contratos com codigo na Sepolia (verifique em sepolia.etherscan.io)"
+  "note": "Deploy real - contratos com codigo na Sepolia (verifique em sepolia.etherscan.io). swapPools = venues mock com hopSwap (DEC-017) e preco por pool.",
+  "OptimizerRouterLegacy": "0x91b4d44908B0deeaeFe65afF074051635B65cC81",
+  "TestUSD": "0xB6f89BA6BD12A047A2278F5C69cEA0a08E762490",
+  "swapPools": {
+    "STANDARD": "0x254C8D06Fa9f1d685855E19a172832188ADA567a",
+    "IMD": "0x9896A9EfF86f85E4a2d94f914E7e1427CB53251D",
+    "BUILDER": "0xF03cd7a663773A2ec595B68d19bA183054Da9E40",
+    "WETH": "0x26F40E6f8A262cc32Bb6725310a7f9652C856447",
+    "USD-T": "0x060aa7aC2b3F58326E6f9ddC90194E03b722feCd"
+  },
+  "swapV2DeployedAt": "2026-10-06T13:46:27.684Z"
 }
