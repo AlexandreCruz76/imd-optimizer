@@ -16,8 +16,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className={`${monoFont.variable} min-h-screen flex flex-col bg-[#0B0E14] antialiased`}>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body
+        className={`${monoFont.variable} min-h-screen flex flex-col bg-[#0B0E14] antialiased`}
+        suppressHydrationWarning
+      >
         <WalletProvider>
           {children}
         </WalletProvider>
