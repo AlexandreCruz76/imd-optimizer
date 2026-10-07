@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Navbar } from "./components/Navbar";
-import { WalletProvider } from "./components/WalletProvider";
+import { Sidebar } from "./components/Sidebar";
 
 const DEPLOYMENT_STATUS = "Sepolia Testnet";
 
@@ -49,11 +49,11 @@ function LiveMetricsBar() {
 
 export default function HomePage() {
   return (
-    <WalletProvider>
-      <div className="min-h-screen bg-[#070A0F] font-mono">
+    <div className="min-h-screen bg-[#070A0F] font-mono">
         <Navbar />
+        <Sidebar />
 
-        <main className="pt-20 pb-16 px-4 md:px-8">
+        <main className="pt-20 pb-16 px-4 md:px-8 lg:pl-60">
           {/* Ambient Background */}
           <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,rgba(0,245,140,0.03)_0%,transparent_70%)]" />
 
@@ -274,7 +274,6 @@ export default function HomePage() {
           </div>
         </main>
       </div>
-    </WalletProvider>
   );
 }
 

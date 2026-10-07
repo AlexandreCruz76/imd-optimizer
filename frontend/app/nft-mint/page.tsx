@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
+import { Navbar } from "../components/Navbar";
 
 interface MintStatus {
   deployed: boolean;
@@ -178,7 +179,9 @@ export default function NFTMintPage() {
   const supplyPct = maxSupply > 0 ? (status.totalMinted / maxSupply) * 100 : 0;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6">
+    <>
+    <Navbar />
+    <div className="max-w-3xl mx-auto p-4 md:p-6 pt-20 md:pt-24 space-y-6">
       <header className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full border border-emerald-500 bg-[#0D121A] flex items-center justify-center">
           <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,5 +377,6 @@ export default function NFTMintPage() {
         </ol>
       </div>
     </div>
+    </>
   );
 }
