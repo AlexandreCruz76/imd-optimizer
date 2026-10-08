@@ -153,18 +153,77 @@ function hopInv(a: bigint, sqrt: bigint): bigint {
   return (s * Q96) / sqrt;
 }
 
+type Quote = {
+  amt: bigint;
+  gross: bigint;
+  out: bigint;
+  minOut: bigint;
+  feeTotal: bigint;
+  price: number;
+  slipBps: bigint;
+};
+
+function computeQuote(
+  amountStr: string,
+  tokenIn: Token,
+  tokenOut: Token,
+  sIn: bigint | undefined,
+  sOut: bigint | undefined,
+  feeBps: number,
+  slipPct: number
+): Quote | null {
+  if (!amountStr) return null;
+  if (isEth(tokenIn) && isEth(tokenOut)) return null;
+  try {
+    const amt = ethers.parseUnits(amountStr, tokenIn.decimals);
+    if (amt <= 0n) return null;
+    if (!isEth(tokenIn) && !sIn) return null;
+    if (!isEth(tokenOut) && !sOut) return null;
+    let gross: bigint;
+    if (isEth(tokenIn)) {
+      gross = hopInv(amt, sOut!);
+    } else if (isEth(tokenOut)) {
+      gross = hopFwd(amt, sIn!);
+    } else {
+      const eth = hopFwd(amt, sIn!);
+      if (eth === 0n) return null;
+      gross = hopInv(eth, sOut!);
+    }
+    if (gross === 0n) return null;
+    const feeTotal = (gross * BigInt(feeBps)) / 10000n;
+    const net = gross - feeTotal;
+    if (net <= 0n) return null;
+    const slipBps = BigInt(Math.min(Math.round(slipPct * 100), 1000));
+    const minOut = (net * (10000n - slipBps)) / 10000n;
+    const amtF = Number(amt) / 10 ** tokenIn.decimals;
+    const outF = Number(net) / 10 ** tokenOut.decimals;
+    return {
+      amt,
+      gross,
+      out: net,
+      minOut,
+      feeTotal,
+      price: amtF > 0 ? outF / amtF : 0,
+      slipBps,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function mapSwapError(err: unknown): string {
   const e = err as {
     code?: number | string;
     shortMessage?: string;
     message?: string;
+    reason?: string;
     info?: { error?: { code?: number } };
   };
   const code = e.code ?? e.info?.error?.code;
   if (code === 4001 || code === "ACTION_REJECTED")
     return "Transação rejeitada na carteira.";
   if (code === -32603) return "Erro interno da carteira — tente novamente.";
-  const msg = e.message || "";
+  const msg = [e.shortMessage, e.reason, e.message].filter(Boolean).join(" ");
   if (msg.includes("insufficient funds"))
     return "ETH insuficiente para gas na Sepolia.";
   if (msg.includes("panic") || msg.includes("underflow"))
@@ -181,7 +240,9 @@ function mapSwapError(err: unknown): string {
     return "Approve do token necessario — tente novamente.";
   if (msg.includes("could not coalesce"))
     return "Estimativa de gas falhou na Sepolia (revert sem mensagem) — confira se a carteira tem ETH para gas/value e se o valor cabe na liquidez da pool, e tente de novo.";
-  return e.shortMessage || e.message || "Falha no swap.";
+  if (msg.includes("missing revert data"))
+    return "Simulação falhou antes de abrir a carteira (revert sem mensagem) — o valor provavelmente não cabe na liquidez da pool; tente um valor menor.";
+  return e.shortMessage || e.reason || e.message || "Falha no swap.";
 }
 
 function TokenLogo({ token, size = 32 }: { token: Token; size?: number }) {
@@ -367,6 +428,7 @@ export default function SwapPage() {
   const [customSlippage, setCustomSlippage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<"approve" | "sim" | "send" | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -586,45 +648,15 @@ export default function SwapPage() {
 
   const realQuote = useMemo(() => {
     if (!realMode || !amount || amountNum <= 0) return null;
-    if (isEth(tokenIn) && isEth(tokenOut)) return null;
-    try {
-      const amt = ethers.parseUnits(amount, tokenIn.decimals);
-      if (amt <= 0n) return null;
-      const sIn = isEth(tokenIn) ? null : poolSqrt[tokenIn.symbol];
-      const sOut = isEth(tokenOut) ? null : poolSqrt[tokenOut.symbol];
-      if (!isEth(tokenIn) && !sIn) return null;
-      if (!isEth(tokenOut) && !sOut) return null;
-      let gross: bigint;
-      if (isEth(tokenIn)) {
-        gross = hopInv(amt, sOut!);
-      } else if (isEth(tokenOut)) {
-        gross = hopFwd(amt, sIn!);
-      } else {
-        const eth = hopFwd(amt, sIn!);
-        if (eth === 0n) return null;
-        gross = hopInv(eth, sOut!);
-      }
-      if (gross === 0n) return null;
-      const feeBps = BigInt(sep?.feeBps ?? 50);
-      const feeTotal = (gross * feeBps) / 10000n;
-      const net = gross - feeTotal;
-      if (net <= 0n) return null;
-      const slipBps = BigInt(Math.min(Math.round(slipNum * 100), 1000));
-      const minOut = (net * (10000n - slipBps)) / 10000n;
-      const amtF = Number(amt) / 10 ** tokenIn.decimals;
-      const outF = Number(net) / 10 ** tokenOut.decimals;
-      return {
-        amt,
-        gross,
-        out: net,
-        minOut,
-        feeTotal,
-        price: amtF > 0 ? outF / amtF : 0,
-        slipBps,
-      };
-    } catch {
-      return null;
-    }
+    return computeQuote(
+      amount,
+      tokenIn,
+      tokenOut,
+      poolSqrt[tokenIn.symbol],
+      poolSqrt[tokenOut.symbol],
+      sep?.feeBps ?? 50,
+      slipNum
+    );
   }, [
     realMode,
     amount,
@@ -725,15 +757,67 @@ export default function SwapPage() {
     }
 
     setLoading(true);
+    setPhase(null);
     setTxHash(null);
     setRealStats(null);
     setResult(null);
     try {
+      let q: Quote = realQuote;
+      let freshIn: bigint | undefined;
+      let freshOut: bigint | undefined;
+      try {
+        if (pIn)
+          freshIn = (await new ethers.Contract(pIn, POOL_ABI, provider)
+            .hopSqrtPriceX96()) as bigint;
+        if (pOut)
+          freshOut = (await new ethers.Contract(pOut, POOL_ABI, provider)
+            .hopSqrtPriceX96()) as bigint;
+        const fresh = computeQuote(
+          amount,
+          tokenIn,
+          tokenOut,
+          freshIn,
+          freshOut,
+          sep?.feeBps ?? 50,
+          slipNum
+        );
+        if (fresh) {
+          if (fresh.out < realQuote.minOut) {
+            setError(
+              `Preço mudou desde a cotação exibida: saída agora ${fmt(
+                parseFloat(ethers.formatUnits(fresh.out, tokenOut.decimals)),
+                6
+              )} ${tokenOut.symbol}, mínimo prometido ${fmt(
+                parseFloat(
+                  ethers.formatUnits(realQuote.minOut, tokenOut.decimals)
+                ),
+                6
+              )} ${tokenOut.symbol} — confira os valores atualizados e clique de novo.`
+            );
+            loadSepolia();
+            return;
+          }
+          q = fresh;
+          setPoolSqrt((prev) => {
+            const next = { ...prev };
+            if (freshIn !== undefined && !isEth(tokenIn))
+              next[tokenIn.symbol] = freshIn;
+            if (freshOut !== undefined && !isEth(tokenOut))
+              next[tokenOut.symbol] = freshOut;
+            return next;
+          });
+        }
+      } catch {
+        // leitura fresca indisponivel — segue com a cotação exibida;
+        // o staticCall abaixo valida tudo antes de abrir a carteira
+      }
+
       if (!isEth(tokenIn) && address) {
         const erc = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
         const allow: bigint = await erc.allowance(address, routerAddr);
-        if (allow < realQuote.amt) {
-          const atx = await erc.approve(routerAddr, realQuote.amt);
+        if (allow < q.amt) {
+          setPhase("approve");
+          const atx = await erc.approve(routerAddr, ethers.MaxUint256);
           await atx.wait();
         }
       }
@@ -750,12 +834,17 @@ export default function SwapPage() {
         path = [tokenIn.address, ETH_ADDR, tokenOut.address];
       }
       const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
+      setPhase("sim");
+      await router.executeMultiHop.staticCall(venues, path, q.amt, q.minOut, {
+        value: isEth(tokenIn) ? q.amt : 0n,
+      });
+      setPhase("send");
       const tx = await router.executeMultiHop(
         venues,
         path,
-        realQuote.amt,
-        realQuote.minOut,
-        { value: isEth(tokenIn) ? realQuote.amt : 0n }
+        q.amt,
+        q.minOut,
+        { value: isEth(tokenIn) ? q.amt : 0n }
       );
       setTxHash(tx.hash as string);
       const receipt = await tx.wait();
@@ -812,6 +901,7 @@ export default function SwapPage() {
       setError(mapSwapError(err));
     } finally {
       setLoading(false);
+      setPhase(null);
     }
   }
 
@@ -1259,7 +1349,11 @@ export default function SwapPage() {
                 : btnState === "quote"
                 ? "CALCULATING QUOTE…"
                 : btnState === "loading"
-                ? "SENDING TX…"
+                ? phase === "approve"
+                  ? "APPROVANDO TOKEN…"
+                  : phase === "send"
+                  ? "SENDING TX…"
+                  : "SIMULANDO…"
                 : cooldownBlocks > 0
                 ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
                 : "EXECUTE PROTECTED SWAP"}
