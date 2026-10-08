@@ -397,11 +397,16 @@ function InfoRow({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-slate-400 font-mono uppercase tracking-wider">{label}</span>
+    <div className="flex items-start justify-between gap-3 py-1">
       <span
-        className={`${mono ? "font-mono" : ""}`}
-        style={{ color: color || "white" }}
+        className="text-slate-400 font-mono uppercase tracking-wider text-[11px] shrink-0 max-w-[48%] leading-snug"
+        title={label}
+      >
+        {label}
+      </span>
+      <span
+        className={`${mono ? "font-mono" : ""} text-[11px] text-right leading-snug break-words min-w-0`}
+        style={{ color: color || "rgba(255,255,255,0.92)" }}
       >
         {value}
       </span>
@@ -972,7 +977,7 @@ export default function SwapPage() {
 
       <main className="pt-20 pb-8 px-4 md:px-8">
         {/* Header */}
-        <div className="mb-6 max-w-5xl mx-auto">
+        <div className="mb-6 max-w-lg mx-auto">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <img
@@ -1047,7 +1052,7 @@ export default function SwapPage() {
 
         {/* State Banners */}
         {realMode && sep && (
-          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400 font-mono">
+          <div className="relative z-10 max-w-lg mx-auto mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400 font-mono">
             DEC-020 Identity-Fi · Your Swap Fee:{" "}
             <span className="text-white/92">
               {sep.feeBps !== null && sep.tier !== null
@@ -1060,28 +1065,28 @@ export default function SwapPage() {
           </div>
         )}
         {isSepolia && !routerAddr && (
-          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
+          <div className="relative z-10 max-w-lg mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
             ⚠ Contracts not deployed on Sepolia — run <span className="text-white/92">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
           </div>
         )}
         {poolsMissing && (
-          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
+          <div className="relative z-10 max-w-lg mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
             ⚠ SWAP_POOLS_JSON missing in .env.local — pair pools not configured (SWAP_POOLS_JSON / WETH_ADDRESS)
           </div>
         )}
         {realMode && connected && cooldownBlocks > 0 && (
-          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 font-mono">
+          <div className="relative z-10 max-w-lg mx-auto mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 font-mono">
             Anti-sandwich: wait {cooldownBlocks} block(s) after last wallet operation
           </div>
         )}
         {realMode && sep && realQuote && isEth(tokenOut) && realQuote.out > sep.routerEth && (
-          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-400 font-mono">
+          <div className="relative z-10 max-w-lg mx-auto mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-400 font-mono">
             Sell exceeds router fund (mock 1:1): available {fmt(parseFloat(ethers.formatUnits(sep.routerEth, 18)), 4)} ETH — reduce amount
           </div>
         )}
 
         {/* Swap Card */}
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-lg mx-auto">
           <div className="glass-card rounded-3xl p-5 border border-emerald-500/25 shadow-[var(--elevation-1)] hover:shadow-[var(--elevation-2)] transition-shadow duration-150 bg-[#0B111A]/90">
             {/* Card header: title + MEV badge + settings */}
             <div className="flex items-center justify-between mb-4">
@@ -1263,102 +1268,107 @@ export default function SwapPage() {
             </div>
 
             {/* Details */}
-            <div className="mt-3 rounded-2xl bg-[#070A0F]/40 border border-slate-800/50 px-4 py-3 space-y-1.5">
-              <>
-                  <InfoRow
-                    label="Rate (on-chain)"
-                    value={
-                      realQuote
-                        ? `1 ${tokenIn.symbol} = ${fmt(
-                            realQuote.price,
-                            6
-                          )} ${tokenOut.symbol}`
-                        : "—"
-                    }
-                  />
-                  <InfoRow
-                    label="Minimum Received"
-                    value={
-                      realQuote
-                        ? `${fmt(
-                            parseFloat(
-                              ethers.formatUnits(
-                                realQuote.minOut,
-                                tokenOut.decimals
-                              )
-                            ),
-                            6
-                          )} ${tokenOut.symbol}`
-                        : "—"
-                    }
-                    color="#00F58C"
-                  />
-                  <InfoRow
-                    label="Slippage Tolerance"
-                    value={
-                      realMode && realQuote
-                        ? `${Number(realQuote.slipBps) / 100}%${
-                            slipNum > 10 ? " · max contract 10%" : ""
-                          }`
-                        : `${effectiveSlippage}%`
-                    }
-                    color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
-                  />
-                  <InfoRow
-                    label="Your Swap Fee (Identity-Fi Tier)"
-                    value={
-                      sep && sep.feeBps !== null && sep.tier !== null
-                        ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${
-                            sep.tier + 1
-                          } (${TIER_LABELS[sep.tier] ?? "—"})${
-                            realQuote
-                              ? ` · ${fmt(
-                                  parseFloat(
-                                    ethers.formatUnits(
-                                      realQuote.feeTotal,
-                                      tokenOut.decimals
-                                    )
-                                  ),
-                                  6
-                                )} ${tokenOut.symbol}`
-                              : ""
-                          }`
-                        : "—"
-                    }
-                  />
-                  <InfoRow
-                    label="Success Fee (profit only)"
-                    value={
-                      sep && sep.successFeeBps !== null
-                        ? `${(sep.successFeeBps / 100).toFixed(2)}%`
-                        : "—"
-                    }
-                  />
-                  <InfoRow
-                    label="Anti-Sandwich Cooldown"
-                    value={
-                      sep
-                        ? `${cooldownBlocks} block(s) · min ${sep.minDelay}`
-                        : "—"
-                    }
-                    color={cooldownBlocks > 0 ? "#FFB000" : undefined}
-                  />
-                  <InfoRow
-                    label="Route"
-                    value={`${tokenIn.symbol} → ${tokenOut.symbol} ${
-                      !isEth(tokenIn) && !isEth(tokenOut)
-                        ? "(2 hops via ETH)"
-                        : "(1 hop)"
-                    } · OptimizerRouter`}
-                  />
-                  {priceImpactPct !== null && (
-                    <InfoRow
-                      label="Est. cost vs USD ref (fee + impact)"
-                      value={`${priceImpactPct >= 0 ? "" : "+"}${fmt(Math.abs(priceImpactPct), 3)}%`}
-                      color={priceImpactPct > 3 ? "#FFB000" : priceImpactPct < 0 ? "#00F58C" : undefined}
-                    />
-                  )}
-              </>
+            <div className="mt-3 rounded-2xl bg-[#070A0F]/40 border border-slate-800/50 px-4 py-3 divide-y divide-white/[0.05]">
+              <InfoRow
+                label="Rate (on-chain)"
+                value={
+                  realQuote
+                    ? `1 ${tokenIn.symbol} = ${fmt(
+                        realQuote.price,
+                        6
+                      )} ${tokenOut.symbol}`
+                    : "—"
+                }
+              />
+              <InfoRow
+                label="Minimum Received"
+                value={
+                  realQuote
+                    ? `${fmt(
+                        parseFloat(
+                          ethers.formatUnits(
+                            realQuote.minOut,
+                            tokenOut.decimals
+                          )
+                        ),
+                        6
+                      )} ${tokenOut.symbol}`
+                    : "—"
+                }
+                color="#00F58C"
+              />
+              <InfoRow
+                label="Slippage Tolerance"
+                value={
+                  realMode && realQuote
+                    ? `${Number(realQuote.slipBps) / 100}%${
+                        slipNum > 10 ? " · max contract 10%" : ""
+                      }`
+                    : `${effectiveSlippage}%`
+                }
+                color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
+              />
+              <InfoRow
+                label="Swap Fee (Tier)"
+                value={
+                  sep && sep.feeBps !== null && sep.tier !== null
+                    ? `${(sep.feeBps / 100).toFixed(2)}% · T${sep.tier + 1}${
+                        realQuote
+                          ? ` · ${fmt(
+                              parseFloat(
+                                ethers.formatUnits(
+                                  realQuote.feeTotal,
+                                  tokenOut.decimals
+                                )
+                              ),
+                              6
+                            )} ${tokenOut.symbol}`
+                          : ""
+                      }`
+                    : "—"
+                }
+              />
+              <InfoRow
+                label="Success Fee"
+                value={
+                  sep && sep.successFeeBps !== null
+                    ? `${(sep.successFeeBps / 100).toFixed(2)}% (profit only)`
+                    : "—"
+                }
+              />
+              <InfoRow
+                label="Anti-Sandwich Cooldown"
+                value={
+                  sep
+                    ? `${cooldownBlocks} block(s) · min ${sep.minDelay}`
+                    : "—"
+                }
+                color={cooldownBlocks > 0 ? "#FFB000" : undefined}
+              />
+              <InfoRow
+                label="Route"
+                value={`${tokenIn.symbol} → ${tokenOut.symbol} ${
+                  !isEth(tokenIn) && !isEth(tokenOut)
+                    ? "(2 hops via ETH)"
+                    : "(1 hop)"
+                }`}
+              />
+              {priceImpactPct !== null && (
+                <InfoRow
+                  label="Cost vs USD ref"
+                  value={`${priceImpactPct >= 0 ? "" : "+"}${fmt(
+                    Math.abs(priceImpactPct),
+                    3
+                  )}% (fee + impact)`}
+                  color={
+                    priceImpactPct > 3
+                      ? "#FFB000"
+                      : priceImpactPct < 0
+                      ? "#00F58C"
+                      : undefined
+                  }
+                />
+              )}
             </div>
 
             {/* CTA */}
@@ -1464,22 +1474,22 @@ export default function SwapPage() {
                 </button>
               )}
               {result && (
-                <div className="mt-2 space-y-1 text-xs">
+                <div className="mt-3 divide-y divide-white/[0.05]">
                   <InfoRow
-                    label="Block (Sepolia)"
+                    label="Block"
                     value={result.block !== undefined ? String(result.block) : "—"}
                     color="#00F58C"
                   />
                   {result.userOut !== undefined && (
                     <InfoRow
-                      label="MultiHopExecuted event · net output"
+                      label="Net output (event)"
                       value={`${fmt(parseFloat(result.userOut), 6)} ${tokenOut.symbol}`}
                       color="#00F58C"
                     />
                   )}
                   {result.feeTotal !== undefined && (
                     <InfoRow
-                      label="Event · fee recorded"
+                      label="Fee recorded"
                       value={`${fmt(parseFloat(result.feeTotal), 6)} ${tokenOut.symbol}`}
                       color="#FFB000"
                     />
@@ -1487,24 +1497,24 @@ export default function SwapPage() {
                 </div>
               )}
               {realStats && (
-                <div className="mt-2 space-y-1 text-xs">
+                <div className="mt-3 divide-y divide-white/[0.05]">
                   <InfoRow
-                    label="Router · Sell Volume"
+                    label="Sell Volume"
                     value={`${fmt(parseFloat(realStats.sellVolume), 4)} ETH`}
                     color="#00F58C"
                   />
                   <InfoRow
-                    label="Router · MEV Captured"
+                    label="MEV Captured"
                     value={`${fmt(parseFloat(realStats.mevCaptured), 4)} ETH`}
                     color="#00F58C"
                   />
                   <InfoRow
-                    label="Router · Burns"
+                    label="Burns"
                     value={realStats.burnsExecuted}
                     color="#FF567E"
                   />
                   <InfoRow
-                    label="Router · Yield Distributed"
+                    label="Yield Distributed"
                     value={`${fmt(parseFloat(realStats.yieldDistributed), 4)} ETH`}
                     color="#00F58C"
                   />
