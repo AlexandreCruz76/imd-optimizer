@@ -26,7 +26,7 @@ const TOKENS: Token[] = [
     color: "#8C9EFF",
   },
   {
-    symbol: "STANDARD",
+    symbol: "STD",
     name: "Standard Token (faucet)",
     address: "0x8a095f673d49970641aF3B0fD9e4313DAdC9700C",
     decimals: 18,
@@ -66,7 +66,7 @@ const TOKENS: Token[] = [
 
 const PRICES_USD: Record<string, number> = {
   ETH: 2400,
-  STANDARD: 1,
+  STD: 1,
   "USD-T": 1,
   IMD: 0.1,
   BUILDER: 0.5,
@@ -1180,7 +1180,7 @@ export default function SwapPage() {
                     >
                       MAX
                     </button>
-                  ) : realMode && tokenIn.symbol === "STANDARD" && sep?.hasMint ? (
+                  ) : realMode && tokenIn.symbol === "STD" && sep?.hasMint ? (
                     <button
                       onClick={handleFaucet}
                       disabled={faucetBusy}
