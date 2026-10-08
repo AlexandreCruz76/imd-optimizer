@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { Navbar } from "../components/Navbar";
 import { useWallet } from "../components/WalletProvider";
 
 const SPREAD_PRESETS = [0.2, 0.5, 1.0];
@@ -231,9 +230,7 @@ export default function ArbitragePage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <Navbar />
-
-      <main className="pt-20 pb-8 px-4 md:px-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
+      <main className="pt-24 pb-8 px-4 md:px-8 flex items-center justify-center min-h-[calc(100vh-96px)]">
         {/* Subtle grid overlay (was scanlines) */}
         <div
           className="fixed inset-0 pointer-events-none z-0 opacity-[0.035]"

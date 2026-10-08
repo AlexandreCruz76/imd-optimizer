@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useWallet } from "../components/WalletProvider";
-import { Navbar } from "../components/Navbar";
 
 export default function BurnsPage() {
   const { connected, address } = useWallet();
@@ -79,7 +78,6 @@ export default function BurnsPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] text-[var(--color-foreground)]">
-      <Navbar />
       <div className="p-6 md:p-8 pt-24 max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
           <div>

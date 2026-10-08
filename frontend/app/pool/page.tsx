@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
-import { Navbar } from "../components/Navbar";
 
 interface PoolState {
   hookTVL: string;
@@ -306,9 +305,7 @@ export default function MetaHookPoolPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <Navbar />
-
-      <main className="pt-20 space-y-6 max-w-7xl mx-auto px-4 md:px-8">
+      <main className="pt-24 space-y-6 max-w-7xl mx-auto px-4 md:px-8">
         {/* Terminal Header */}
         <div className="flex items-center justify-between font-mono text-sm tracking-[0.25em] text-slate-300 uppercase mb-6">
           <div className="flex items-center gap-3">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Navbar } from "../components/Navbar";
 
 const toc = [
   { id: "overview", label: "Overview" },
@@ -28,12 +27,10 @@ export default function DocsPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <Navbar />
-
-      {/* Docs sidebar (open/close) */}
+      {/* Docs TOC sidebar (sits beside the global nav sidebar) */}
       <aside
-        className={`fixed left-0 top-[72px] bottom-0 w-64 z-40 flex flex-col border-r border-white/[0.08] bg-[#0B0F17]/95 backdrop-blur-xl transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed left-0 md:left-60 top-[72px] bottom-0 w-64 z-40 flex flex-col border-r border-white/[0.08] bg-[#0B0F17]/95 backdrop-blur-xl transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:-translate-x-[16rem]"
         }`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06]">

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useWallet } from "../components/WalletProvider";
 import { ethers } from "ethers";
 import { SEPOLIA_CONFIG, VAULT_ABI, TIER_NAMES, TIER_FEES, TIER_COSTS, TIER_MIN_DEPOSIT } from "@/lib/contract-config";
-import { Navbar } from "../components/Navbar";
 
 type VaultTab = "overview" | "deposit" | "withdraw" | "calculator" | "subscribe";
 
@@ -281,8 +280,7 @@ export default function Vault() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <Navbar />
-      <div className="pt-20 pb-8 px-4 md:px-8 max-w-5xl mx-auto space-y-4 fade-in">
+      <div className="pt-24 pb-8 px-4 md:px-8 max-w-5xl mx-auto space-y-4 fade-in">
       {/* ── Header with pool info ── */}
       <div className="terminal-panel p-3 border-glow">
         <div className="flex items-center justify-between">

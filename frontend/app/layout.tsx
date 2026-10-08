@@ -1,5 +1,6 @@
 import "./globals.css";
 import { WalletProvider } from "./components/WalletProvider";
+import { AppShell } from "./components/AppShell";
 import { JetBrains_Mono, Inter } from "next/font/google";
 
 const monoFont = JetBrains_Mono({
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <WalletProvider>
-          {children}
+          <AppShell>{children}</AppShell>
         </WalletProvider>
       </body>
     </html>

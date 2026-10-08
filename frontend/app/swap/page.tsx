@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
-import { Navbar } from "../components/Navbar";
 
 type Token = {
   symbol: string;
@@ -973,9 +972,7 @@ export default function SwapPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <Navbar />
-
-      <main className="pt-20 pb-8 px-4 md:px-8">
+      <main className="pt-24 pb-8 px-4 md:px-8">
         {/* Header */}
         <div className="mb-6 max-w-lg mx-auto">
           <div className="flex items-center justify-between gap-4">

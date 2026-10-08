@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useWallet } from "../components/WalletProvider";
-import { Navbar } from "../components/Navbar";
 
 export default function StakingPage() {
   const { connected, walletName, connect } = useWallet();
@@ -17,9 +16,7 @@ export default function StakingPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono p-4 md:p-6">
-      <Navbar />
-
-      <main className="pt-20 max-w-4xl mx-auto space-y-6">
+      <main className="pt-24 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full border border-emerald-500/40 bg-[#0B111A] flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(0,245,140,0.25)]">
             <img
