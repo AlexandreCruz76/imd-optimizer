@@ -169,7 +169,7 @@ export default function NFTMintPage() {
 
   if (loading || !status) {
     return (
-      <div className="flex items-center gap-2 text-emerald-500/40 h-64 justify-center">
+      <div className="flex items-center gap-2 text-emerald-500/40 h-64 justify-center" suppressHydrationWarning>
         <span className="animate-pulse">█</span> Loading…
       </div>
     );
