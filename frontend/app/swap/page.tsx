@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
+import { Navbar } from "../components/Navbar";
 
 type Token = {
   symbol: string;
@@ -437,6 +438,7 @@ export default function SwapPage() {
     feeTotal?: string;
     userOut?: string;
   } | null>(null);
+  const [quotedOut, setQuotedOut] = useState<string | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
 
   const [cfg, setCfg] = useState<{
@@ -761,6 +763,7 @@ export default function SwapPage() {
     setTxHash(null);
     setRealStats(null);
     setResult(null);
+    setQuotedOut(null);
     try {
       let q: Quote = realQuote;
       let freshIn: bigint | undefined;
@@ -811,6 +814,8 @@ export default function SwapPage() {
         // fresh read unavailable — keep the displayed quote;
         // the staticCall below validates everything before opening the wallet
       }
+
+      setQuotedOut(ethers.formatUnits(q.out, tokenOut.decimals));
 
       if (!isEth(tokenIn) && address) {
         const erc = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
@@ -908,6 +913,35 @@ export default function SwapPage() {
   const highSlip = slipNum > 5;
   const lowSlip = slipNum < 0.1;
 
+  const priceImpactPct = (() => {
+    const pInUsd = PRICES_USD[tokenIn.symbol];
+    const pOutUsd = PRICES_USD[tokenOut.symbol];
+    if (!realQuote || !pInUsd || !pOutUsd || amountNum <= 0) return null;
+    const outAmt = parseFloat(ethers.formatUnits(realQuote.out, tokenOut.decimals));
+    const inUsd = amountNum * pInUsd;
+    const outUsd = outAmt * pOutUsd;
+    if (inUsd <= 0 || outUsd <= 0) return null;
+    return ((inUsd - outUsd) / inUsd) * 100;
+  })();
+
+  async function handleAddTokenToWallet() {
+    if (!provider || tokenOut.address === ETH_ADDR) return;
+    try {
+      await provider.send("wallet_watchAsset", [
+        {
+          type: "ERC20",
+          options: {
+            address: tokenOut.address,
+            symbol: tokenOut.symbol,
+            decimals: tokenOut.decimals,
+          },
+        },
+      ]);
+    } catch {
+      // usuário recou — sem feedback necessário
+    }
+  }
+
   const poolsMissing = realMode && Object.keys(pools).length === 0;
   const quotePending =
     realMode &&
@@ -934,27 +968,7 @@ export default function SwapPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-emerald-500/50 shadow-[0_0_12px_rgba(0,245,140,0.3)] bg-[#0D121A] flex-shrink-0">
-              <img src="/images/avatar.jpg" alt="IMD Optimizer" className="w-full h-full object-cover" />
-            </div>
-            <span className="hidden sm:block text-xl font-bold text-white tracking-tight">IMD Optimizer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-              <span className="hidden sm:inline">Home</span>
-            </Link>
-            <Link href="/swap" className="text-sm font-medium text-emerald-400 font-bold hidden sm:inline">Swap</Link>
-            <Link href="/pool" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Meta Hook Pool</Link>
-            <Link href="/arbitrage" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Arbitrage</Link>
-            <Link href="/staking" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Staking</Link>
-            <Link href="/docs" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Docs</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="pt-20 pb-8 px-4 md:px-8">
         {/* Header */}
@@ -1050,9 +1064,22 @@ export default function SwapPage() {
         {/* Swap Card */}
         <div className="relative z-10 max-w-5xl mx-auto">
           <div className="glass-card rounded-3xl p-5 border border-emerald-500/25 shadow-2xl bg-[#0B111A]/90">
-            {/* Card header: title + settings */}
+            {/* Card header: title + MEV badge + settings */}
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs tracking-[0.25em] text-slate-400 font-mono uppercase">SWAP EXECUTION</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs tracking-[0.25em] text-slate-400 font-mono uppercase">SWAP EXECUTION</span>
+                <span className="relative group">
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 cursor-help select-none"
+                    title="MEV protection"
+                  >
+                    ⚡ MEV PROTECTED
+                  </span>
+                  <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-60 rounded-lg bg-slate-900 border border-white/[0.1] p-2.5 text-[10px] text-slate-300 font-mono leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-xl">
+                    Quote is simulated on-chain before your wallet opens; minimum received + anti-sandwich cooldown protect against sandwich attacks.
+                  </span>
+                </span>
+              </div>
               <button
                 onClick={() => setShowSettings((v) => !v)}
                 title="Transaction settings"
@@ -1190,6 +1217,8 @@ export default function SwapPage() {
                       ),
                       6
                     )
+                  ) : quotePending ? (
+                    <div className="skeleton h-8 w-36" aria-hidden="true" />
                   ) : (
                     <span className="text-slate-500/50">0.00</span>
                   )}
@@ -1303,6 +1332,13 @@ export default function SwapPage() {
                         : "(1 hop)"
                     } · OptimizerRouter`}
                   />
+                  {priceImpactPct !== null && (
+                    <InfoRow
+                      label="Est. cost vs USD ref (fee + impact)"
+                      value={`${priceImpactPct >= 0 ? "" : "+"}${fmt(Math.abs(priceImpactPct), 3)}%`}
+                      color={priceImpactPct > 3 ? "#FFB000" : priceImpactPct < 0 ? "#00F58C" : undefined}
+                    />
+                  )}
               </>
             </div>
 
@@ -1327,9 +1363,9 @@ export default function SwapPage() {
                   isEth(tokenOut) &&
                   realQuote.out > sep.routerEth)
               }
-              className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono uppercase transition-all ${
+              className={`w-full mt-4 py-3.5 rounded-xl text-sm font-semibold tracking-widest font-mono uppercase transition-all active:scale-[0.98] ${
                 btnState === "swap"
-                  ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_30px_rgba(0,245,140,0.25)]"
+                  ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)]"
                   : btnState === "connect" || btnState === "switch"
                   ? "bg-emerald-500/90 text-black hover:bg-emerald-500"
                   : btnState === "loading"
@@ -1339,7 +1375,7 @@ export default function SwapPage() {
             >
               {btnState === "connect"
                 ? connecting
-                  ? `ABRINDO ${walletName.toUpperCase()}…`
+                  ? `OPENING ${walletName.toUpperCase()}…`
                   : `CONNECT ${walletName.toUpperCase()}`
                 : btnState === "switch"
                 ? "SWITCH TO SEPOLIA"
@@ -1364,7 +1400,7 @@ export default function SwapPage() {
               <div className="mt-3 text-[10px] text-slate-500 text-center font-mono">
                 {walletError ? (
                   <span className="text-amber-400 break-words">
-                    CARTERA: {walletError}
+                    WALLET: {walletError}
                   </span>
                 ) : (
                   "Connect your wallet to swap"
@@ -1385,6 +1421,29 @@ export default function SwapPage() {
               >
                 {txHash}
               </a>
+              {result?.userOut !== undefined && quotedOut && (() => {
+                const actual = parseFloat(result.userOut!);
+                const quoted = parseFloat(quotedOut);
+                const pct = quoted > 0 ? ((actual - quoted) / quoted) * 100 : null;
+                if (pct === null || !isFinite(pct)) return null;
+                return (
+                  <div className="mt-2">
+                    <InfoRow
+                      label="Execution vs quote"
+                      value={`${pct >= 0 ? "+" : ""}${fmt(pct, 3)}% ${pct >= 0 ? "· at or above quoted output" : "· within minimum received"}`}
+                      color={pct >= 0 ? "#00F58C" : "#FFB000"}
+                    />
+                  </div>
+                );
+              })()}
+              {tokenOut.address !== ETH_ADDR && (
+                <button
+                  onClick={() => void handleAddTokenToWallet()}
+                  className="mt-3 text-[11px] font-mono uppercase tracking-wider text-emerald-400 hover:text-emerald-300 underline underline-offset-4"
+                >
+                  + Add {tokenOut.symbol} to wallet
+                </button>
+              )}
               {result && (
                 <div className="mt-2 space-y-1 text-xs">
                   <InfoRow
@@ -1401,7 +1460,7 @@ export default function SwapPage() {
                   )}
                   {result.feeTotal !== undefined && (
                     <InfoRow
-                      label="Evento · fee registrada"
+                      label="Event · fee recorded"
                       value={`${fmt(parseFloat(result.feeTotal), 6)} ${tokenOut.symbol}`}
                       color="#FFB000"
                     />

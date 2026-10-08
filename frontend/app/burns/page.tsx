@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useWallet } from "../components/WalletProvider";
+import { Navbar } from "../components/Navbar";
 
 export default function BurnsPage() {
   const { connected, address } = useWallet();
@@ -77,8 +78,9 @@ export default function BurnsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
-      <div className="p-6 md:p-8">
+    <div className="min-h-screen bg-[#070A0F] text-[var(--color-foreground)]">
+      <Navbar />
+      <div className="p-6 md:p-8 pt-24 max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Elastic Contraction</h1>
@@ -88,7 +90,7 @@ export default function BurnsPage() {
             <button
               onClick={handleBurn}
               disabled={loading}
-              className="py-2 px-4 text-sm font-bold transition-all disabled:bg-[#00FF5820] disabled:text-[#00F58C40] cursor-not-allowed hover:bg-[#00CC33]">
+              className="rounded-xl px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(0,245,140,0.3)] active:scale-[0.98] transition-all disabled:bg-slate-800/50 disabled:text-slate-500 disabled:shadow-none cursor-not-allowed">
               {loading ? "BURNING..." : "Initiate Burn"}
             </button>
           </div>
@@ -103,10 +105,10 @@ export default function BurnsPage() {
             <div className="text-3xl font-semibold text-[var(--color-accent-emerald)]">
               {onChainBurned !== null ? `${onChainBurned} $IMD` : "— $IMD"}
             </div>
-            <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
+            <div className="text-xs text-[var(--color-muted)] mt-2 font-mono leading-relaxed">
               {onChainBurned !== null
                 ? "OptimizerHookV2 · totalIMDBurnedByOptimizer"
-                : "hook not configured (OPTIMIZER_HOOK_ADDRESS)"}
+                : "Hook counter unavailable. Set OPTIMIZER_HOOK_ADDRESS to read the on-chain burn total."}
             </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
@@ -135,7 +137,7 @@ export default function BurnsPage() {
             <div className="progress-bar h-2 rounded-full">
               <div
                 className="progress-bar-fill"
-                style={{ width: progress }}
+                style={{ width: `${progress}%` }}
                 role="progressbar"
                 aria-valuenow={progress}
                 aria-valuemin={0}
@@ -143,21 +145,21 @@ export default function BurnsPage() {
               />
             </div>
             <div className="flex justify-between text-xs mt-2">
-              <span className="text-[#00ff4160]">{burned} $IMD burned</span>
-              <span className="text-[#00ff4160]">{progress.toFixed(1)}%</span>
+              <span className="text-[#00F58C60]">{burned} $IMD burned</span>
+              <span className="text-[#00F58C60]">{progress.toFixed(1)}%</span>
             </div>
           </div>
         )}
 
         {/* Transaction Result */}
         {txHash && (
-          <div className="terminal-panel p-3 border border-[#00ff41]">
-            <div className="text-xs text-[#00ff41] mb-1">Transaction submitted</div>
+          <div className="terminal-panel p-3 border border-[#00F58C]">
+            <div className="text-xs text-[#00F58C] mb-1">Transaction submitted</div>
             <a
               href={`https://etherscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#00ff4160] hover:text-[#00ff41] break-all"
+              className="text-xs text-[#00F58C60] hover:text-[#00F58C] break-all"
             >
               {txHash}
             </a>
@@ -166,15 +168,15 @@ export default function BurnsPage() {
 
         {/* Error */}
         {error && (
-          <div className="terminal-panel p-3 border border-[#ff0040]">
-            <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
+          <div className="terminal-panel p-3 border border-[#FB7185]">
+            <div className="text-xs text-[#FB7185]">ERROR: {error}</div>
           </div>
         )}
 
         {/* Burn History / Stats */}
         <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
-          <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Burn Mechanics</h2>
-          <div className="space-y-3 text-sm text-[#00ff4160]">
+          <h2 className="text-sm text-[var(--color-accent-emerald)] font-bold mb-4 tracking-widest">Burn Mechanics</h2>
+          <div className="space-y-3 text-sm text-[#00F58C60]">
             <div>• Burn tax: 0% Tier 1 / 0.1% Tier 2 / 10% Tier 3 / 20% Tier 4</div>
             <div>• Burn proceeds permanently removed from circulation</div>
             <div>

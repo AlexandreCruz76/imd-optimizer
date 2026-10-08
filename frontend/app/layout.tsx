@@ -1,10 +1,16 @@
 import "./globals.css";
 import { WalletProvider } from "./components/WalletProvider";
-import { JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Inter } from "next/font/google";
 
 const monoFont = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-terminal-mono",
+  weight: ["400", "500", "600", "700"],
+});
+
+const sansFont = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   weight: ["400", "500", "600"],
 });
 
@@ -18,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body
-        className={`${monoFont.variable} min-h-screen flex flex-col bg-[#0B0E14] antialiased`}
+        className={`${monoFont.variable} ${sansFont.variable} min-h-screen flex flex-col bg-[#070A0F] antialiased`}
         suppressHydrationWarning
       >
         <WalletProvider>

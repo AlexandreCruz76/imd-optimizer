@@ -30,7 +30,7 @@ const TIERS: Tier[] = [
       "24h volume tracking",
       "Burn events",
     ],
-    color: "#00ff4160",
+    color: "#00F58C60",
   },
   {
     id: "BASIC",
@@ -46,7 +46,7 @@ const TIERS: Tier[] = [
       "Risk analysis",
       "Priority alerts",
     ],
-    color: "#00ff41",
+    color: "#00F58C",
   },
   {
     id: "PRO",
@@ -200,16 +200,16 @@ export default function Subscribe() {
         <div className="terminal-panel p-4 border-glow">
           <div className="flex justify-between items-center">
             <div>
-              <div className="text-xs text-[#00ff4160] tracking-widest">WALLET</div>
-              <div className="text-sm text-[#00ff41]">{address?.slice(0, 10)}...{address?.slice(-8)}</div>
+              <div className="text-xs text-[#00F58C60] tracking-widest">WALLET</div>
+              <div className="text-sm text-[#00F58C]">{address?.slice(0, 10)}...{address?.slice(-8)}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-[#00ff4160]">BALANCE</div>
-              <div className="text-sm text-[#00ff41]">{parseFloat(balance).toFixed(4)} ETH</div>
+              <div className="text-xs text-[#00F58C60]">BALANCE</div>
+              <div className="text-sm text-[#00F58C]">{parseFloat(balance).toFixed(4)} ETH</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-[#00ff4160]">NETWORK</div>
-              <div className={`text-sm ${chainId === 1 ? "#00ff41" : chainId === 11155111 ? "#ffb000" : "#ff0040"}`}>
+              <div className="text-xs text-[#00F58C60]">NETWORK</div>
+              <div className={`text-sm ${chainId === 1 ? "#00F58C" : chainId === 11155111 ? "#ffb000" : "#FB7185"}`}>
                 {chainId === 1 ? "Mainnet" : chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`}
               </div>
             </div>
@@ -227,42 +227,42 @@ export default function Subscribe() {
       )}
 
       <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-2 tracking-widest">
+        <div className="text-xs text-[#00F58C60] mb-2 tracking-widest">
           ▸ HOW IT WORKS
         </div>
-        <div className="text-sm text-[#00ff4170] space-y-1">
+        <div className="text-sm text-[#00F58C70] space-y-1">
           <p>1. Connect your wallet (MetaMask, etc.)</p>
           <p>2. Choose a subscription tier</p>
           <p>3. Deposit ETH into the Optimizer Vault</p>
           <p>4. Vault positions in $IMD Hook Pool automatically</p>
           <p>5. Earn yield from swap fees + burn rewards</p>
-          <p>6. Protocol charges <span className="text-[#00ff41]">performance fee</span> on your profit only</p>
+          <p>6. Protocol charges <span className="text-[#00F58C]">performance fee</span> on your profit only</p>
         </div>
       </div>
 
       {/* Projection Calculator */}
       <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+        <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
           ▸ YIELD PROJECTION CALCULATOR
         </div>
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-xs text-[#00ff4150]">DEPOSIT AMOUNT:</span>
+          <span className="text-xs text-[#00F58C50]">DEPOSIT AMOUNT:</span>
           <input
             type="number"
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
-            className="bg-[#0a0a0a] border border-[#00ff4130] text-[#00ff41] px-3 py-1 text-xs w-32 focus:outline-none focus:border-[#00ff41] glow"
+            className="bg-[#0a0a0a] border border-[#00F58C30] text-[#00F58C] px-3 py-1 text-xs w-32 focus:outline-none focus:border-[#00F58C] glow"
             min="0.01"
             step="0.1"
           />
-          <span className="text-xs text-[#00ff4150]">ETH</span>
+          <span className="text-xs text-[#00F58C50]">ETH</span>
         </div>
 
         {projection && (
           <div className="overflow-x-auto">
             <table className="terminal-table w-full">
               <thead>
-                <tr className="text-[#00ff4150] text-xs">
+                <tr className="text-[#00F58C50] text-xs">
                   <th>TIER</th>
                   <th>FEE</th>
                   <th>YEARLY YIELD</th>
@@ -274,12 +274,12 @@ export default function Subscribe() {
               <tbody>
                 {projection.map((p: any) => (
                   <tr key={p.tier}>
-                    <td className="text-[#00ff41]">{p.tier}</td>
+                    <td className="text-[#00F58C]">{p.tier}</td>
                     <td>{p.fee}%</td>
-                    <td className="text-[#00ff41]">{p.yearlyYield} ETH</td>
-                    <td className="text-[#ff0040]">-{p.feeAmount} ETH</td>
-                    <td className="text-[#00ff41]">{p.netYield} ETH</td>
-                    <td className="text-[#00ff41]">{p.netApy}%</td>
+                    <td className="text-[#00F58C]">{p.yearlyYield} ETH</td>
+                    <td className="text-[#FB7185]">-{p.feeAmount} ETH</td>
+                    <td className="text-[#00F58C]">{p.netYield} ETH</td>
+                    <td className="text-[#00F58C]">{p.netApy}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -293,8 +293,8 @@ export default function Subscribe() {
         {TIERS.map((tier) => (
           <div
             key={tier.id}
-            className={`terminal-panel p-4 border-glow transition-all hover:border-[#00ff41] ${
-              selectedTier === tier.id ? "border-[#00ff41] glow" : ""
+            className={`terminal-panel p-4 border-glow transition-all hover:border-[#00F58C] ${
+              selectedTier === tier.id ? "border-[#00F58C] glow" : ""
             }`}
             style={{ borderColor: tier.color + "40" }}
           >
@@ -305,31 +305,31 @@ export default function Subscribe() {
             <div className="space-y-3">
               {/* Wallet Balance */}
               {connected && (
-                <div className="bg-[#0a0a0a] border border-[#00ff4120] p-2">
-                  <div className="text-xs text-[#00ff4140]">YOUR BALANCE</div>
-                  <div className="text-sm text-[#00ff41]">{parseFloat(balance).toFixed(4)} ETH</div>
+                <div className="bg-[#0a0a0a] border border-[#00F58C20] p-2">
+                  <div className="text-xs text-[#00F58C40]">YOUR BALANCE</div>
+                  <div className="text-sm text-[#00F58C]">{parseFloat(balance).toFixed(4)} ETH</div>
                 </div>
               )}
 
               {/* Performance fee */}
               <div>
-                <div className="text-xs text-[#00ff4140]">PERFORMANCE FEE</div>
+                <div className="text-xs text-[#00F58C40]">PERFORMANCE FEE</div>
                 <div className="text-2xl font-bold" style={{ color: tier.color }}>
                   {tier.fee}%
                 </div>
-                <div className="text-xs text-[#00ff4140]">on yield only</div>
+                <div className="text-xs text-[#00F58C40]">on yield only</div>
               </div>
 
               {/* Min deposit */}
               <div>
-                <div className="text-xs text-[#00ff4140]">MIN DEPOSIT</div>
-                <div className="text-sm text-[#00ff41]">{tier.minDeposit}</div>
+                <div className="text-xs text-[#00F58C40]">MIN DEPOSIT</div>
+                <div className="text-sm text-[#00F58C]">{tier.minDeposit}</div>
               </div>
 
               {/* Subscription cost */}
               <div>
-                <div className="text-xs text-[#00ff4140]">SUBSCRIPTION</div>
-                <div className="text-sm text-[#00ff41]">
+                <div className="text-xs text-[#00F58C40]">SUBSCRIPTION</div>
+                <div className="text-sm text-[#00F58C]">
                   {tier.cost === "0" ? "FREE" : `${tier.cost} one-time`}
                 </div>
               </div>
@@ -337,7 +337,7 @@ export default function Subscribe() {
               {/* Features */}
               <div className="space-y-1">
                 {tier.features.map((f, i) => (
-                  <div key={i} className="flex items-center gap-1 text-xs text-[#00ff4160]">
+                  <div key={i} className="flex items-center gap-1 text-xs text-[#00F58C60]">
                     <span style={{ color: tier.color }}>+</span> {f}
                   </div>
                 ))}
@@ -369,12 +369,12 @@ export default function Subscribe() {
 
       {/* Fee comparison */}
       <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+        <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
           ▸ FEE COMPARISON
         </div>
         <table className="terminal-table">
           <thead>
-            <tr className="text-[#00ff4150] text-xs">
+            <tr className="text-[#00F58C50] text-xs">
               <th>TIER</th>
               <th>FEE</th>
               <th>ON 10 ETH (37% APY)</th>
@@ -383,34 +383,34 @@ export default function Subscribe() {
           </thead>
           <tbody>
             <tr>
-              <td className="text-[#00ff4160]">FREE</td>
+              <td className="text-[#00F58C60]">FREE</td>
               <td>20%</td>
-              <td className="text-[#00ff41]">$2,900/year</td>
-              <td className="text-[#ff0040]">$2,900</td>
+              <td className="text-[#00F58C]">$2,900/year</td>
+              <td className="text-[#FB7185]">$2,900</td>
             </tr>
             <tr>
-              <td className="text-[#00ff41]">BASIC</td>
+              <td className="text-[#00F58C]">BASIC</td>
               <td>15%</td>
-              <td className="text-[#00ff41]">$2,175/year</td>
+              <td className="text-[#00F58C]">$2,175/year</td>
               <td className="text-[#ffb000]">$2,175 + $125 sub</td>
             </tr>
             <tr>
               <td className="text-[#00ffff]">PRO</td>
               <td>10%</td>
-              <td className="text-[#00ff41]">$1,450/year</td>
-              <td className="text-[#00ff41]">$1,450 + $500 sub</td>
+              <td className="text-[#00F58C]">$1,450/year</td>
+              <td className="text-[#00F58C]">$1,450 + $500 sub</td>
             </tr>
             <tr>
               <td className="text-[#ffb000]">WHALE</td>
               <td>5%</td>
-              <td className="text-[#00ff41]">$725/year</td>
-              <td className="text-[#00ff41]">$725 + $1,250 sub</td>
+              <td className="text-[#00F58C]">$725/year</td>
+              <td className="text-[#00F58C]">$725 + $1,250 sub</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="text-xs text-[#00ff4140] tracking-wider">
+      <div className="text-xs text-[#00F58C40] tracking-wider">
         └────────────────────────────────────────────────────────────────────────┘
       </div>
     </div>

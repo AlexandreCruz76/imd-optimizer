@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
+import { Navbar } from "../components/Navbar";
 
 interface PoolState {
   hookTVL: string;
@@ -305,22 +306,7 @@ export default function MetaHookPoolPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-emerald-500/50 bg-[#0D121A]"><img src="/images/avatar.jpg" alt="IMD" className="w-full h-full object-cover"/></div>
-            <span className="hidden sm:block text-xl font-bold text-white">IMD Optimizer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-slate-400 hover:text-emerald-400 flex items-center gap-1.5"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg><span className="hidden sm:inline">Home</span></Link>
-            <Link href="/swap" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Swap</Link>
-            <Link href="/pool" className="text-sm text-emerald-400 font-bold hidden sm:inline">Meta Hook Pool</Link>
-            <Link href="/arbitrage" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Arbitrage</Link>
-            <Link href="/staking" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Staking</Link>
-            <Link href="/docs" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Docs</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="pt-20 space-y-6 max-w-7xl mx-auto px-4 md:px-8">
         {/* Terminal Header */}
@@ -341,7 +327,7 @@ export default function MetaHookPoolPage() {
           </div>
         </div>
 
-        {error && <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm font-mono">{error}</div>}
+        {error && <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-400 text-sm font-mono">{error}</div>}
 
         {/* Top Row: Quote/Chart + Quick Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -371,12 +357,23 @@ export default function MetaHookPoolPage() {
           {/* RIGHT: Quick Metrics */}
           <Card title="QUICK METRICS [SYS.02]">
             <div className="space-y-3">
-              <StatRow label="ORDERS ALLOCATED" value={fmt(totalTxs, 0)} color="#00F58C" sub="orders processed in the last 24h"/>
-              <StatRow label="VOLUME 24H" value={fmtUsd(totalVol)} color="#00F58C" sub={`hook: ${fmtUsd(hookVol)} · native: ${fmtUsd(nativeVol)}`}/>
-              <StatRow label="FEES 24H" value={fmtUsd(totalFees)} color="#00F58C" sub={`hook: ${fmtUsd(hookFees)} · native: ${fmtUsd(nativeFees)}`}/>
-              <StatRow label="SPREAD" value={`${spread >= 0 ? "+" : ""}${spread.toFixed(2)}%`} color={spread >= 0 ? "#00F58C" : "#FF567E"} sub={spread >= 0 ? "hook premium" : "native premium"}/>
-              <StatRow label="TOTAL TVL" value={fmtUsd(totalTVL)} color="#00F58C" sub={`hook: ${fmtUsd(hookTVL)} · native: ${fmtUsd(nativeTVL)}`}/>
-              <StatRow label="HOOK APY" value={`${hookAPY.toFixed(2)}%`} color="#00F58C" sub={`native: ${nativeAPY.toFixed(2)}%`}/>
+              {!pool ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-t border-slate-800/50">
+                    <div className="skeleton h-3 w-28" aria-hidden="true" />
+                    <div className="skeleton h-3 w-16" aria-hidden="true" />
+                  </div>
+                ))
+              ) : (
+                <>
+                  <StatRow label="ORDERS ALLOCATED" value={fmt(totalTxs, 0)} color="#00F58C" sub="orders processed in the last 24h"/>
+                  <StatRow label="VOLUME 24H" value={fmtUsd(totalVol)} color="#00F58C" sub={`hook: ${fmtUsd(hookVol)} · native: ${fmtUsd(nativeVol)}`}/>
+                  <StatRow label="FEES 24H" value={fmtUsd(totalFees)} color="#00F58C" sub={`hook: ${fmtUsd(hookFees)} · native: ${fmtUsd(nativeFees)}`}/>
+                  <StatRow label="SPREAD" value={`${spread >= 0 ? "+" : ""}${spread.toFixed(2)}%`} color={spread >= 0 ? "#00F58C" : "#FF567E"} sub={spread >= 0 ? "hook premium" : "native premium"}/>
+                  <StatRow label="TOTAL TVL" value={fmtUsd(totalTVL)} color="#00F58C" sub={`hook: ${fmtUsd(hookTVL)} · native: ${fmtUsd(nativeTVL)}`}/>
+                  <StatRow label="APY (BASE · REAL FEES)" value={`${hookAPY.toFixed(2)}%`} color="#00F58C" sub={`native pool: ${nativeAPY.toFixed(2)}% · rewards: none (no external incentives)`}/>
+                </>
+              )}
             </div>
           </Card>
         </div>
@@ -408,6 +405,20 @@ export default function MetaHookPoolPage() {
                     color="#00F5FF"
                     sub="identityTier() on OptimizerRouter"
                   />
+                  {tier !== null && (
+                    <div className="flex justify-end">
+                      <span
+                        className="inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold px-2 py-1 rounded-full border uppercase tracking-wider"
+                        style={{
+                          color: ["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88",
+                          borderColor: `${["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88"}55`,
+                          background: `${["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88"}15`,
+                        }}
+                      >
+                        ● T{tier + 1}
+                      </span>
+                    </div>
+                  )}
                   <StatRow
                     label="MEV INTERCEPTED"
                     value={mevIntercepted !== null ? fmt(mevIntercepted, 4) + " ETH" : "—"}
@@ -450,9 +461,10 @@ export default function MetaHookPoolPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 text-slate-400 font-mono text-sm">
-                  Connect the wallet to identify your Tier (NFT) and view the
-                  protocol metrics
+                <div className="text-center py-4 text-slate-400 font-mono text-sm leading-relaxed">
+                  Connect the wallet to identify your Tier (NFT) and view protocol metrics.
+                  <br />
+                  <span className="text-slate-500">Connection is read-only — the deposit form lives in Staking.</span>
                 </div>
               )}
 
@@ -467,7 +479,7 @@ export default function MetaHookPoolPage() {
               <button
                 onClick={() => connect()}
                 disabled={connected || connecting}
-                className="w-full bg-emerald-500 text-black font-black py-3 rounded-xl shadow-[0_0_20px_rgba(0,245,140,0.3)] transition-all hover:shadow-[0_0_30px_rgba(0,245,140,0.5)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all disabled:bg-slate-800/50 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -532,7 +544,11 @@ export default function MetaHookPoolPage() {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8 text-slate-400 font-mono text-sm">Connect wallet to view yield & P&L</div>
+                <div className="text-center py-8 text-slate-400 font-mono text-sm leading-relaxed">
+                  Connect your wallet to see your LP position, fees earned and projections.
+                  <br />
+                  <span className="text-slate-500">Values come from real pool telemetry on Sepolia — no estimates.</span>
+                </div>
               )}
             </div>
           </Card>

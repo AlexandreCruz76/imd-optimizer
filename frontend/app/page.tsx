@@ -312,7 +312,10 @@ function TierCard({ tier, name, fee, boost, color, glow, desc, bgImage }: {
       
       <div className="relative z-10 flex flex-col flex-1">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-black font-bold text-sm bg-gradient-to-br from-[${color}] to-[${color}80]">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-black font-bold text-sm"
+            style={{ background: `linear-gradient(135deg, ${color}, ${color}80)` }}
+          >
             {tier}
           </div>
           <div>

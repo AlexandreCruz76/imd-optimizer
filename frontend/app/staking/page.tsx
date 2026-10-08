@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useWallet } from "../components/WalletProvider";
+import { Navbar } from "../components/Navbar";
 
 export default function StakingPage() {
   const { connected, walletName, connect } = useWallet();
@@ -17,27 +17,7 @@ export default function StakingPage() {
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono p-4 md:p-6">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-white/[0.08] px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-emerald-500/50 bg-[#0D121A]">
-              <img src="/images/avatar.jpg" alt="IMD" className="w-full h-full object-cover"/>
-            </div>
-            <span className="hidden sm:block text-xl font-bold text-white">IMD Optimizer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-slate-400 hover:text-emerald-400 flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-              </svg>
-              <span className="hidden sm:inline">Home</span>
-            </Link>
-            <Link href="/swap" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Swap</Link>
-            <Link href="/arbitrage" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Arbitrage</Link>
-            <Link href="/docs" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Docs</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="pt-20 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4 mb-6">
@@ -92,6 +72,11 @@ export default function StakingPage() {
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6">
           <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">CURRENT POSITIONS</div>
+          <div className="font-mono text-[11px] text-slate-500 mb-4 leading-relaxed">
+            No stake registered yet — positions appear after the BuilderStakingVault deploy.
+            <br />
+            Yield scales with your Identity Tier (Alpha 4x → Retail 0x) and comes from real protocol fees.
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
               <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">$BLD STAKED</div>
@@ -106,7 +91,7 @@ export default function StakingPage() {
                     "Real $BLD staking arrives after the BuilderStakingVault deploy."
                   )
                 }
-                className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
+                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
               >
                 STAKE $BLD
               </button>
@@ -124,7 +109,7 @@ export default function StakingPage() {
                     "claimYield() with a 0% fee arrives after the BuilderStakingVault deploy."
                   )
                 }
-                className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
+                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
               >
                 CLAIM YIELD
               </button>
@@ -140,13 +125,31 @@ export default function StakingPage() {
                 )
               : connect()
           }
-          className="w-full py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
+          className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
         >
           {connected ? "STAKE NOW" : `CONNECT ${walletName.toUpperCase()} FOR STAKING`}
         </button>
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
           <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">RULES (DEC-020)</div>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              { t: "T1 · ALPHA", c: "#00F58C", m: "4x yield · 0% fee" },
+              { t: "T2 · PARTNER", c: "#00F5FF", m: "3x · 0.10% fee" },
+              { t: "T3 · HOLDER", c: "#FFB000", m: "1x · 0.30% fee" },
+              { t: "T4 · RETAIL", c: "#6B7A88", m: "0x · 0.50% fee" },
+            ].map((tier) => (
+              <span
+                key={tier.t}
+                className="inline-flex items-center gap-2 text-[10px] font-mono px-2.5 py-1.5 rounded-full border uppercase tracking-wider"
+                style={{ color: tier.c, borderColor: `${tier.c}55`, background: `${tier.c}12` }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: tier.c }} />
+                {tier.t}
+                <span className="opacity-70 normal-case tracking-normal">{tier.m}</span>
+              </span>
+            ))}
+          </div>
           <div className="space-y-2 font-mono text-xs text-slate-400">
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>

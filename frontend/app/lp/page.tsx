@@ -203,8 +203,8 @@ export default function LPSim() {
 
   if (!data) {
     return (
-      <div className="terminal-panel p-4 border border-red-500/30">
-        <div className="text-red-400">ERROR: No pool data available</div>
+      <div className="terminal-panel p-4 border border-rose-500/30">
+        <div className="text-rose-400">ERROR: No pool data available</div>
       </div>
     );
   }
@@ -266,9 +266,9 @@ export default function LPSim() {
                 <div className="text-xl font-mono text-emerald-400">{data.hookAPY.toFixed(1)}%</div>
                 <div className="text-xs text-slate-500">TVL: ${data.hookTVL.toLocaleString()}</div>
               </div>
-              <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/10">
+              <div className="bg-rose-500/5 rounded-xl p-3 border border-rose-500/10">
                 <div className="text-xs text-slate-500">NATIVE APY</div>
-                <div className="text-xl font-mono text-red-400">{data.nativeAPY.toFixed(1)}%</div>
+                <div className="text-xl font-mono text-rose-400">{data.nativeAPY.toFixed(1)}%</div>
                 <div className="text-xs text-slate-500">TVL: ${data.nativeTVL.toLocaleString()}</div>
               </div>
               <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
@@ -453,7 +453,7 @@ export default function LPSim() {
                       <td className="py-2 text-emerald-400">{p.weeklyFees.toFixed(4)}</td>
                       <td className="py-2 text-emerald-400">{p.monthlyFees.toFixed(4)}</td>
                       <td className="py-2 text-emerald-400 font-bold">{p.annualFees.toFixed(2)}</td>
-                      <td className="py-2 text-red-400">{p.impermanentLoss.toFixed(1)}%</td>
+                      <td className="py-2 text-rose-400">{p.impermanentLoss.toFixed(1)}%</td>
                       <td className="py-2 font-bold" style={{ color: p.netReturn > 0 ? '#00F58C' : '#ff4444' }}>
                         {p.netReturn > 0 ? '+' : ''}{p.netReturn.toFixed(1)}%
                       </td>
@@ -509,11 +509,11 @@ export default function LPSim() {
 
               {/* Best/Worst/Current Summary */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-                  <div className="text-xs text-red-400/60 tracking-widest font-mono mb-2">WORST CASE — BEAR</div>
-                  <div className="text-2xl font-mono text-red-400">{projections[0].annualFees.toFixed(4)} ETH</div>
+                <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4">
+                  <div className="text-xs text-rose-400/60 tracking-widest font-mono mb-2">WORST CASE — BEAR</div>
+                  <div className="text-2xl font-mono text-rose-400">{projections[0].annualFees.toFixed(4)} ETH</div>
                   <div className="text-xs text-slate-400">{projections[0].apy.toFixed(1)}% APY</div>
-                  <div className="text-xs text-red-400/60 mt-1 font-mono">IL: {projections[0].impermanentLoss.toFixed(1)}%</div>
+                  <div className="text-xs text-rose-400/60 mt-1 font-mono">IL: {projections[0].impermanentLoss.toFixed(1)}%</div>
                 </div>
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
                   <div className="text-xs text-emerald-400/60 tracking-widest font-mono mb-2">CURRENT — NORMAL</div>
@@ -534,7 +534,7 @@ export default function LPSim() {
             <div className="mt-6 pt-4 border-t border-slate-700/50">
               <div className="text-xs text-slate-400 mb-3 font-mono tracking-wider">VOLATILITY THREAT ASSESSMENT</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-400 font-mono">
-                <p>▸ <span className="text-red-400">BEAR</span>: VOL -70% — CRITICAL THREAT</p>
+                <p>▸ <span className="text-rose-400">BEAR</span>: VOL -70% — CRITICAL THREAT</p>
                 <p>▸ <span className="text-slate-400">CALM</span>: VOL -30% — ELEVATED RISK</p>
                 <p>▸ <span className="text-emerald-400">NORMAL</span>: BASELINE — {data.hookTxs + data.nativeTxs} TXS/24H</p>
                 <p>▸ <span className="text-emerald-400">HOT</span>: VOL +80% — OPPORTUNITY</p>

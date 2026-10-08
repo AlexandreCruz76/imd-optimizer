@@ -97,7 +97,7 @@ export default function GenesisKeyPage() {
                   {index + 1}
                 </div>
                 <div className="text-sm font-medium text-[var(--color-foreground)]">{benefit.name}</div>
-                <div className="text-[10px] text-[#00FF4160]">{benefit.description}</div>
+                <div className="text-[10px] text-[#00F58C60]">{benefit.description}</div>
               </div>
             ))}
           </div>
@@ -105,8 +105,8 @@ export default function GenesisKeyPage() {
 
         {/* Contract Addresses */}
         <div className="mt-8 pt-8 border-t border-[#00F58C]/30">
-          <h2 className="text-sm text-[var(--color-emerald)] font-bold mb-4 tracking-widest">Sepolia Contract Addresses</h2>
-          <div className="space-y-3 text-sm text-[#00ff4160]">
+          <h2 className="text-sm text-[var(--color-accent-emerald)] font-bold mb-4 tracking-widest">Sepolia Contract Addresses</h2>
+          <div className="space-y-3 text-sm text-[#00F58C60]">
             <div>
               <span className="font-medium text-[var(--color-foreground)]">GenesisKeyController:</span>
               <code className="word-break break-all text-xs">0xA1b2c3d4e5f6789012345678901234567890abcdef</code>
@@ -128,8 +128,8 @@ export default function GenesisKeyPage() {
 
         {/* Error */}
         {error && (
-          <div className="terminal-panel p-3 border border-[#ff0040]">
-            <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
+          <div className="terminal-panel p-3 border border-[#FB7185]">
+            <div className="text-xs text-[#FB7185]">ERROR: {error}</div>
           </div>
         )}
       </div>

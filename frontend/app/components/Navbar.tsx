@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useWallet } from "./WalletProvider";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 const navLinks = [
   { href: "/swap", label: "Swap" },
@@ -16,6 +17,7 @@ const navLinks = [
 export function Navbar() {
   const { connected, address, chainId, connecting, walletError, walletName, connect, disconnect } = useWallet();
   const [hasMetaMask, setHasMetaMask] = useState<boolean | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const t = setTimeout(
@@ -46,15 +48,18 @@ export function Navbar() {
 
           {/* Center: Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-[#6B7A88] hover:text-[#00F58C] transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#00F58C] after:scale-x-0 after:origin-center after:transition-transform hover:after:scale-x-100"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#00F58C] after:origin-center after:transition-transform ${active ? "text-[#00F58C] after:scale-x-100" : "text-[#6B7A88] hover:text-[#00F58C] after:scale-x-0 hover:after:scale-x-100"}`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right: Network Badge + $BLD Brand + Connect Wallet */}

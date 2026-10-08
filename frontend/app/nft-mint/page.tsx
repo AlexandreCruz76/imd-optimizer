@@ -169,8 +169,8 @@ export default function NFTMintPage() {
 
   if (loading || !status) {
     return (
-      <div className="flex items-center gap-2 text-emerald-500/40 h-64 justify-center" suppressHydrationWarning>
-        <span className="animate-pulse">█</span> Loading…
+      <div className="min-h-screen bg-[#070A0F] flex items-center justify-center text-emerald-500/40" suppressHydrationWarning>
+        <span className="animate-pulse">█</span>&nbsp;Loading…
       </div>
     );
   }
@@ -224,7 +224,7 @@ export default function NFTMintPage() {
             onClick={() => switchChain(11155111)}
             className="font-bold underline hover:text-amber-300"
           >
-            MUDAR PARA SEPOLIA
+            SWITCH TO SEPOLIA
           </button>
         </div>
       )}
@@ -234,7 +234,7 @@ export default function NFTMintPage() {
         <div className="grid grid-cols-4 gap-4 text-center mb-4">
           <div>
             <div className="text-emerald-500/50 text-xs">STATUS</div>
-            <div className={status.mintOpen ? "text-emerald-400" : "text-red-400"}>
+            <div className={status.mintOpen ? "text-emerald-400" : "text-rose-400"}>
               {status.mintOpen ? "OPEN" : "CLOSED"}
             </div>
           </div>
@@ -278,18 +278,18 @@ export default function NFTMintPage() {
             !status.mintOpen ||
             (chainId !== null && chainId !== 11155111)
           }
-          className={`w-full py-2.5 text-xs font-bold tracking-wider rounded-xl ${
+          className={`w-full rounded-xl py-2.5 font-mono text-xs font-semibold uppercase tracking-widest transition-all active:scale-[0.98] ${
             status.mintOpen &&
             !minting &&
             (chainId === null || chainId === 11155111)
-              ? "bg-emerald-500 text-black hover:bg-emerald-400"
+              ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)]"
               : "bg-emerald-500/10 text-emerald-500/40 cursor-not-allowed"
           }`}
         >
           {minting
             ? "MINTING…"
             : chainId !== null && chainId !== 11155111
-            ? "WRONG NETWORK — MUDAR PARA SEPOLIA"
+            ? "WRONG NETWORK — SWITCH TO SEPOLIA"
             : `MINT — ${status.mintPrice} ETH`}
         </button>
       </div>
@@ -329,7 +329,7 @@ export default function NFTMintPage() {
       )}
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-400 text-sm">
           ERROR: {error}
         </div>
       )}

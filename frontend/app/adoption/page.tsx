@@ -36,7 +36,7 @@ const TIERS: TierConfig[] = [
     earlyAccess: false,
     governance: false,
     description: "Plant a seed - 3% fee discount, 0.5% revenue share",
-    color: "#00ff41",
+    color: "#00F58C",
     icon: "🌱",
   },
   {
@@ -173,18 +173,18 @@ export default function Adoption() {
       </h1>
 
       {/* Goal Progress */}
-      <div className="terminal-panel p-4 border-glow border-[#00ff41]">
+      <div className="terminal-panel p-4 border-glow border-[#00F58C]">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-xs text-[#00ff4160] tracking-widest">FUNDRAISING GOAL</div>
-          <div className="text-xs text-[#00ff41]">5.0 ETH</div>
+          <div className="text-xs text-[#00F58C60] tracking-widest">FUNDRAISING GOAL</div>
+          <div className="text-xs text-[#00F58C]">5.0 ETH</div>
         </div>
-        <div className="w-full bg-[#0a0a0a] h-4 border border-[#00ff4130]">
+        <div className="w-full bg-[#0a0a0a] h-4 border border-[#00F58C30]">
           <div
-            className="h-full bg-[#00ff41]"
+            className="h-full bg-[#00F58C]"
             style={{ width: "0%" }} // Update with actual progress
           />
         </div>
-        <div className="flex justify-between mt-2 text-xs text-[#00ff4160]">
+        <div className="flex justify-between mt-2 text-xs text-[#00F58C60]">
           <span>0.0 ETH raised</span>
           <span>0% complete</span>
         </div>
@@ -197,20 +197,20 @@ export default function Adoption() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div className="text-center">
-            <div className="text-[#00ff41] text-lg">5-50%</div>
-            <div className="text-[#00ff4160]">Fee Discounts</div>
+            <div className="text-[#00F58C] text-lg">5-50%</div>
+            <div className="text-[#00F58C60]">Fee Discounts</div>
           </div>
           <div className="text-center">
-            <div className="text-[#00ff41] text-lg">1-20%</div>
-            <div className="text-[#00ff4160]">Revenue Share</div>
+            <div className="text-[#00F58C] text-lg">1-20%</div>
+            <div className="text-[#00F58C60]">Revenue Share</div>
           </div>
           <div className="text-center">
-            <div className="text-[#00ff41] text-lg">Early</div>
-            <div className="text-[#00ff4160]">Access Features</div>
+            <div className="text-[#00F58C] text-lg">Early</div>
+            <div className="text-[#00F58C60]">Access Features</div>
           </div>
           <div className="text-center">
-            <div className="text-[#00ff41] text-lg">Governance</div>
-            <div className="text-[#00ff4160]">Voting Rights</div>
+            <div className="text-[#00F58C] text-lg">Governance</div>
+            <div className="text-[#00F58C60]">Voting Rights</div>
           </div>
         </div>
       </div>
@@ -222,8 +222,8 @@ export default function Adoption() {
             key={tier.name}
             className={`terminal-panel p-4 border-glow cursor-pointer transition-all ${
               selectedTier === index
-                ? "border-[#00ff41] bg-[#00ff4110]"
-                : "border-[#00ff4130] hover:border-[#00ff4160]"
+                ? "border-[#00F58C] bg-[#00F58C10]"
+                : "border-[#00F58C30] hover:border-[#00F58C60]"
             }`}
             onClick={() => setSelectedTier(index)}
           >
@@ -239,37 +239,37 @@ export default function Adoption() {
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Minimum</span>
-                <span className="text-[#00ff41]">{tier.minContribution} ETH</span>
+                <span className="text-[#00F58C60]">Minimum</span>
+                <span className="text-[#00F58C]">{tier.minContribution} ETH</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Fee Discount</span>
-                <span className="text-[#00ff41]">{tier.feeDiscount}%</span>
+                <span className="text-[#00F58C60]">Fee Discount</span>
+                <span className="text-[#00F58C]">{tier.feeDiscount}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Revenue Share</span>
-                <span className="text-[#00ff41]">{tier.revenueShare}%</span>
+                <span className="text-[#00F58C60]">Revenue Share</span>
+                <span className="text-[#00F58C]">{tier.revenueShare}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Max Positions</span>
-                <span className="text-[#00ff41]">{tier.maxPositions}</span>
+                <span className="text-[#00F58C60]">Max Positions</span>
+                <span className="text-[#00F58C]">{tier.maxPositions}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Early Access</span>
-                <span className={tier.earlyAccess ? "text-[#00ff41]" : "text-[#00ff4140]"}>
+                <span className="text-[#00F58C60]">Early Access</span>
+                <span className={tier.earlyAccess ? "text-[#00F58C]" : "text-[#00F58C40]"}>
                   {tier.earlyAccess ? "✓" : "✗"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#00ff4160]">Governance</span>
-                <span className={tier.governance ? "text-[#00ff41]" : "text-[#00ff4140]"}>
+                <span className="text-[#00F58C60]">Governance</span>
+                <span className={tier.governance ? "text-[#00F58C]" : "text-[#00F58C40]"}>
                   {tier.governance ? "✓" : "✗"}
                 </span>
               </div>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-[#00ff4115]">
-              <div className="text-xs text-[#00ff4160]">{tier.description}</div>
+            <div className="mt-3 pt-3 border-t border-[#00F58C15]">
+              <div className="text-xs text-[#00F58C60]">{tier.description}</div>
             </div>
           </div>
         ))}
@@ -277,45 +277,45 @@ export default function Adoption() {
 
       {/* Join Form */}
       {selectedTier !== null && (
-        <div className="terminal-panel p-4 border-glow border-[#00ff41]">
-          <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+        <div className="terminal-panel p-4 border-glow border-[#00F58C]">
+          <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
             ▸ JOIN {TIERS[selectedTier].name} TIER
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-[#00ff4160] block mb-1">Amount (ETH)</label>
+              <label className="text-xs text-[#00F58C60] block mb-1">Amount (ETH)</label>
               <input
                 type="number"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 placeholder={`Minimum: ${TIERS[selectedTier].minContribution} ETH`}
-                className="bg-[#0a0a0a] border border-[#00ff4130] text-[#00ff41] px-3 py-2 text-xs w-full focus:outline-none focus:border-[#00ff41] glow"
+                className="bg-[#0a0a0a] border border-[#00F58C30] text-[#00F58C] px-3 py-2 text-xs w-full focus:outline-none focus:border-[#00F58C] glow"
                 min={TIERS[selectedTier].minContribution}
                 step="0.01"
               />
             </div>
 
             <div>
-              <label className="text-xs text-[#00ff4160] block mb-1">Message (optional)</label>
+              <label className="text-xs text-[#00F58C60] block mb-1">Message (optional)</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Why are you supporting IMD?"
-                className="bg-[#0a0a0a] border border-[#00ff4130] text-[#00ff41] px-3 py-2 text-xs w-full focus:outline-none focus:border-[#00ff41] glow h-20 resize-none"
+                className="bg-[#0a0a0a] border border-[#00F58C30] text-[#00F58C] px-3 py-2 text-xs w-full focus:outline-none focus:border-[#00F58C] glow h-20 resize-none"
               />
             </div>
 
             {/* Error/Success messages */}
             {error && (
-              <div className="terminal-panel p-3 border border-[#ff0040]">
-                <div className="text-xs text-[#ff0040] text-center">{error}</div>
+              <div className="terminal-panel p-3 border border-[#FB7185]">
+                <div className="text-xs text-[#FB7185] text-center">{error}</div>
               </div>
             )}
 
             {success && (
-              <div className="terminal-panel p-3 border border-[#00ff41]">
-                <div className="text-xs text-[#00ff41] text-center">{success}</div>
+              <div className="terminal-panel p-3 border border-[#00F58C]">
+                <div className="text-xs text-[#00F58C] text-center">{success}</div>
               </div>
             )}
 
@@ -347,20 +347,20 @@ export default function Adoption() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
             <div>
-              <div className="text-[#00ff4160]">TIER</div>
-              <div className="text-[#00ff41]">{TIERS[supporterInfo.tier].name}</div>
+              <div className="text-[#00F58C60]">TIER</div>
+              <div className="text-[#00F58C]">{TIERS[supporterInfo.tier].name}</div>
             </div>
             <div>
-              <div className="text-[#00ff4160]">CONTRIBUTED</div>
-              <div className="text-[#00ff41]">{supporterInfo.contributed} ETH</div>
+              <div className="text-[#00F58C60]">CONTRIBUTED</div>
+              <div className="text-[#00F58C]">{supporterInfo.contributed} ETH</div>
             </div>
             <div>
-              <div className="text-[#00ff4160]">PENDING BENEFITS</div>
-              <div className="text-[#00ff41]">{supporterInfo.pendingBenefits} ETH</div>
+              <div className="text-[#00F58C60]">PENDING BENEFITS</div>
+              <div className="text-[#00F58C]">{supporterInfo.pendingBenefits} ETH</div>
             </div>
             <div>
-              <div className="text-[#00ff4160]">JOINED</div>
-              <div className="text-[#00ff41]">
+              <div className="text-[#00F58C60]">JOINED</div>
+              <div className="text-[#00F58C]">
                 {new Date(supporterInfo.joinedAt).toLocaleDateString()}
               </div>
             </div>
@@ -379,31 +379,31 @@ export default function Adoption() {
       )}
 
       {/* How It Works */}
-      <div className="terminal-panel p-4 border-glow border-[#00ff41]">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+      <div className="terminal-panel p-4 border-glow border-[#00F58C]">
+        <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
           ▸ HOW IT WORKS
         </div>
-        <div className="space-y-3 text-xs text-[#00ff4180]">
+        <div className="space-y-3 text-xs text-[#00F58C80]">
           <div className="flex items-start gap-3">
-            <span className="text-[#00ff41]">1.</span>
+            <span className="text-[#00F58C]">1.</span>
             <span>Choose a support tier based on your contribution level</span>
           </div>
           <div className="flex items-start gap-3">
-            <span className="text-[#00ff41]">2.</span>
+            <span className="text-[#00F58C]">2.</span>
             <span>Contribute ETH to support the mainnet deployment</span>
           </div>
           <div className="flex items-start gap-3">
-            <span className="text-[#00ff41]">3.</span>
+            <span className="text-[#00F58C]">3.</span>
             <span>Receive fee discounts and revenue share based on your tier</span>
           </div>
           <div className="flex items-start gap-3">
-            <span className="text-[#00ff41]">4.</span>
+            <span className="text-[#00F58C]">4.</span>
             <span>Higher tiers get early access and governance rights</span>
           </div>
         </div>
       </div>
 
-      <div className="text-xs text-[#00ff4140] tracking-wider">
+      <div className="text-xs text-[#00F58C40] tracking-wider">
         └────────────────────────────────────────────────────────────────────────┘
       </div>
     </div>

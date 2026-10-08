@@ -256,7 +256,7 @@ export default function Migration() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-[#00ff4160]">
+      <div className="flex items-center gap-2 text-[#00F58C60]">
         <span className="cursor">█</span> Loading migration engine...
       </div>
     );
@@ -278,10 +278,10 @@ export default function Migration() {
           ┌─ MIGRATION ENGINE ────────────────────────────────────────────────┐
         </h1>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-[#00ff4140]">LIVE</span>
+          <span className="text-xs text-[#00F58C40]">LIVE</span>
           <button
             onClick={fetchData}
-            className="text-xs text-[#00ff4160] hover:text-[#00ff41]"
+            className="text-xs text-[#00F58C60] hover:text-[#00F58C]"
           >
             REFRESH
           </button>
@@ -298,21 +298,21 @@ export default function Migration() {
             {walletAddress ? (
               <div className="text-sm text-[#00ffff]">
                 {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                <span className={`ml-2 text-xs ${isSepolia ? 'text-[#00ff41]' : 'text-[#ff0040]'}`}>
+                <span className={`ml-2 text-xs ${isSepolia ? 'text-[#00F58C]' : 'text-[#FB7185]'}`}>
                   ({isSepolia ? 'Sepolia' : chainId === 1 ? 'Mainnet' : `Chain ${chainId}`})
                 </span>
               </div>
             ) : (
-              <div className="text-sm text-[#00ff4160]">Not connected</div>
+              <div className="text-sm text-[#00F58C60]">Not connected</div>
             )}
           </div>
           <div className="flex items-center gap-2">
             {migrationStatus?.contractAddress ? (
-              <span className="text-xs bg-[#00ff41] text-[#0a0a0a] px-2 py-0.5">
+              <span className="text-xs bg-[#00F58C] text-[#0a0a0a] px-2 py-0.5">
                 DEPLOYED
               </span>
             ) : (
-              <span className="text-xs bg-[#ff004020] text-[#ff0040] px-2 py-0.5 border border-[#ff004030]">
+              <span className="text-xs bg-[#FB718520] text-[#FB7185] px-2 py-0.5 border border-[#FB718530]">
                 NOT DEPLOYED
               </span>
             )}
@@ -330,17 +330,17 @@ export default function Migration() {
 
       {/* CURRENT STATE */}
       {poolData && (
-        <div className={`terminal-panel p-4 border glow ${shouldMigrate ? 'border-[#ffb000]' : 'border-[#00ff4130]'}`}>
+        <div className={`terminal-panel p-4 border glow ${shouldMigrate ? 'border-[#ffb000]' : 'border-[#00F58C30]'}`}>
           <div className="text-center">
-            <div className="text-xs text-[#00ff4160] tracking-widest mb-2">
+            <div className="text-xs text-[#00F58C60] tracking-widest mb-2">
               ▸ MIGRATION STATUS
             </div>
-            <div className={`text-2xl glow-strong font-bold ${shouldMigrate ? 'text-[#ffb000]' : 'text-[#00ff41]'}`}>
+            <div className={`text-2xl glow-strong font-bold ${shouldMigrate ? 'text-[#ffb000]' : 'text-[#00F58C]'}`}>
               {shouldMigrate
                 ? `MIGRATE → ${hookWins ? 'HOOK' : 'NATIVE'}`
                 : 'HOLD POSITION'}
             </div>
-            <div className="text-sm text-[#00ff4160] mt-1">
+            <div className="text-sm text-[#00F58C60] mt-1">
               Spread: {spread >= 0 ? '+' : ''}{spread.toFixed(1)}%
               {shouldMigrate && (
                 <span className="text-[#ffb000] ml-2">
@@ -356,35 +356,35 @@ export default function Migration() {
       {poolData && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Hook Pool */}
-          <div className={`terminal-panel p-4 border-glow ${hookWins ? 'border-[#00ff41]' : 'border-[#00ff4130]'}`}>
+          <div className={`terminal-panel p-4 border-glow ${hookWins ? 'border-[#00F58C]' : 'border-[#00F58C30]'}`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs text-[#00ff41] tracking-widest">
+              <div className="text-xs text-[#00F58C] tracking-widest">
                 ▸ HOOK POOL
               </div>
               {hookWins && (
-                <div className="text-xs bg-[#00ff41] text-[#0a0a0a] px-2 py-0.5">
+                <div className="text-xs bg-[#00F58C] text-[#0a0a0a] px-2 py-0.5">
                   WINNING
                 </div>
               )}
             </div>
             <div className="space-y-2 mb-4">
-              <Row label="APY" value={`${hookAPY.toFixed(1)}%`} color="#00ff41" />
+              <Row label="APY" value={`${hookAPY.toFixed(1)}%`} color="#00F58C" />
               <Row label="TVL" value={`$${Number(poolData.hookTVL).toLocaleString()}`} />
             </div>
             <div className="space-y-2">
-              <div className="text-xs text-[#00ff4160]">DEPOSIT AMOUNT (ETH)</div>
+              <div className="text-xs text-[#00F58C60]">DEPOSIT AMOUNT (ETH)</div>
               <input
                 type="number"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 step="0.01"
                 min="0.01"
-                className="w-full bg-[#0a0a0a] border border-[#00ff4130] text-[#00ff41] px-3 py-2 text-sm"
+                className="w-full bg-[#0a0a0a] border border-[#00F58C30] text-[#00F58C] px-3 py-2 text-sm"
               />
               <button
                 onClick={() => depositToPool("hook")}
                 disabled={txPending || !walletAddress}
-                className="w-full px-4 py-2 text-xs bg-[#00ff41] text-[#0a0a0a] hover:bg-[#00ff41cc] disabled:opacity-50"
+                className="w-full px-4 py-2 text-xs bg-[#00F58C] text-[#0a0a0a] hover:bg-[#00F58Ccc] disabled:opacity-50"
               >
                 {txPending ? "PROCESSING..." : `DEPOSIT ${depositAmount} ETH → HOOK`}
               </button>
@@ -392,7 +392,7 @@ export default function Migration() {
                 <button
                   onClick={() => executeMigration("toHook")}
                   disabled={txPending || !walletAddress}
-                  className="w-full px-4 py-2 text-xs bg-[#00ff4120] text-[#00ff41] border border-[#00ff4130] hover:bg-[#00ff4130] disabled:opacity-50"
+                  className="w-full px-4 py-2 text-xs bg-[#00F58C20] text-[#00F58C] border border-[#00F58C30] hover:bg-[#00F58C30] disabled:opacity-50"
                 >
                   {txPending ? "MIGRATING..." : "MIGRATE ALL → HOOK"}
                 </button>
@@ -401,35 +401,35 @@ export default function Migration() {
           </div>
 
           {/* Native Pool */}
-          <div className={`terminal-panel p-4 border-glow ${!hookWins ? 'border-[#ff0040]' : 'border-[#ff004030]'}`}>
+          <div className={`terminal-panel p-4 border-glow ${!hookWins ? 'border-[#FB7185]' : 'border-[#FB718530]'}`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs text-[#ff0040] tracking-widest">
+              <div className="text-xs text-[#FB7185] tracking-widest">
                 ▸ NATIVE POOL
               </div>
               {!hookWins && (
-                <div className="text-xs bg-[#ff0040] text-[#fff] px-2 py-0.5">
+                <div className="text-xs bg-[#FB7185] text-[#fff] px-2 py-0.5">
                   WINNING
                 </div>
               )}
             </div>
             <div className="space-y-2 mb-4">
-              <Row label="APY" value={`${nativeAPY.toFixed(1)}%`} color="#ff0040" />
+              <Row label="APY" value={`${nativeAPY.toFixed(1)}%`} color="#FB7185" />
               <Row label="TVL" value={`$${Number(poolData.nativeTVL).toLocaleString()}`} />
             </div>
             <div className="space-y-2">
-              <div className="text-xs text-[#ff004060]">DEPOSIT AMOUNT (ETH)</div>
+              <div className="text-xs text-[#FB718560]">DEPOSIT AMOUNT (ETH)</div>
               <input
                 type="number"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 step="0.01"
                 min="0.01"
-                className="w-full bg-[#0a0a0a] border border-[#ff004030] text-[#ff0040] px-3 py-2 text-sm"
+                className="w-full bg-[#0a0a0a] border border-[#FB718530] text-[#FB7185] px-3 py-2 text-sm"
               />
               <button
                 onClick={() => depositToPool("native")}
                 disabled={txPending || !walletAddress}
-                className="w-full px-4 py-2 text-xs bg-[#ff0040] text-[#fff] hover:bg-[#ff0040cc] disabled:opacity-50"
+                className="w-full px-4 py-2 text-xs bg-[#FB7185] text-[#fff] hover:bg-[#FB7185cc] disabled:opacity-50"
               >
                 {txPending ? "PROCESSING..." : `DEPOSIT ${depositAmount} ETH → NATIVE`}
               </button>
@@ -437,7 +437,7 @@ export default function Migration() {
                 <button
                   onClick={() => executeMigration("toNative")}
                   disabled={txPending || !walletAddress}
-                  className="w-full px-4 py-2 text-xs bg-[#ff004020] text-[#ff0040] border border-[#ff004030] hover:bg-[#ff004030] disabled:opacity-50"
+                  className="w-full px-4 py-2 text-xs bg-[#FB718520] text-[#FB7185] border border-[#FB718530] hover:bg-[#FB718530] disabled:opacity-50"
                 >
                   {txPending ? "MIGRATING..." : "MIGRATE ALL → NATIVE"}
                 </button>
@@ -454,7 +454,7 @@ export default function Migration() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-xs text-[#00ff4160] mb-1">SPREAD THRESHOLD (%)</div>
+            <div className="text-xs text-[#00F58C60] mb-1">SPREAD THRESHOLD (%)</div>
             <input
               type="number"
               value={spreadThreshold}
@@ -463,12 +463,12 @@ export default function Migration() {
               min="0.5"
               className="w-full bg-[#0a0a0a] border border-[#ffb00030] text-[#ffb000] px-3 py-2 text-sm"
             />
-            <div className="text-xs text-[#00ff4140] mt-1">
+            <div className="text-xs text-[#00F58C40] mt-1">
               Migrate only when spread &gt; {threshold}%
             </div>
           </div>
           <div>
-            <div className="text-xs text-[#00ff4160] mb-1">AUTO-MIGRATE</div>
+            <div className="text-xs text-[#00F58C60] mb-1">AUTO-MIGRATE</div>
             <button
               onClick={() => setAutoMigrate(!autoMigrate)}
               className={`w-full px-4 py-2 text-xs ${
@@ -479,7 +479,7 @@ export default function Migration() {
             >
               {autoMigrate ? 'AUTO-MIGRATE: ON' : 'AUTO-MIGRATE: OFF'}
             </button>
-            <div className="text-xs text-[#00ff4140] mt-1">
+            <div className="text-xs text-[#00F58C40] mt-1">
               {autoMigrate ? 'Will migrate when threshold reached' : 'Manual migration only'}
             </div>
           </div>
@@ -495,7 +495,7 @@ export default function Migration() {
           <div className="text-sm text-[#00ffff] break-all">
             {txPending ? '⏳ Pending...' : '✅ Confirmed'}
           </div>
-          <div className="text-xs text-[#00ff4140] mt-1 break-all">
+          <div className="text-xs text-[#00F58C40] mt-1 break-all">
             Hash: {txHash}
           </div>
           {chainId === 11155111 && (
@@ -513,28 +513,28 @@ export default function Migration() {
 
       {/* ERROR */}
       {error && (
-        <div className="terminal-panel p-4 border-glow border-[#ff0040]">
-          <div className="text-xs text-[#ff0040]">ERROR: {error}</div>
+        <div className="terminal-panel p-4 border-glow border-[#FB7185]">
+          <div className="text-xs text-[#FB7185]">ERROR: {error}</div>
         </div>
       )}
 
       {/* HOW IT WORKS */}
       <div className="terminal-panel p-4 border-glow">
-        <div className="text-xs text-[#00ff4160] mb-3 tracking-widest">
+        <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
           ▸ HOW MIGRATION WORKS
         </div>
-        <div className="space-y-2 text-xs text-[#00ff4170]">
+        <div className="space-y-2 text-xs text-[#00F58C70]">
           <p>1. <span className="text-[#00ffff]">Deposit</span> ETH to Hook Pool or Native Pool</p>
           <p>2. <span className="text-[#00ffff]">Monitor</span> APY spread in real-time via The Graph</p>
           <p>3. <span className="text-[#00ffff]">Migrate</span> when spread exceeds threshold (atomic tx)</p>
           <p>4. <span className="text-[#00ffff]">Earn</span> highest available APY automatically</p>
-          <p className="text-[#00ff4140]">• Migration is atomic: withdraw + deposit in one tx</p>
-          <p className="text-[#00ff4140]">• Gas cost: ~200k gas (~$2-5 on Sepolia)</p>
-          <p className="text-[#00ff4140]">• Profitable when spread savings &gt; gas cost</p>
+          <p className="text-[#00F58C40]">• Migration is atomic: withdraw + deposit in one tx</p>
+          <p className="text-[#00F58C40]">• Gas cost: ~200k gas (~$2-5 on Sepolia)</p>
+          <p className="text-[#00F58C40]">• Profitable when spread savings &gt; gas cost</p>
         </div>
       </div>
 
-      <div className="text-xs text-[#00ff4140] tracking-wider">
+      <div className="text-xs text-[#00F58C40] tracking-wider">
         └────────────────────────────────────────────────────────────────────────┘
       </div>
     </div>
@@ -552,8 +552,8 @@ function Row({
 }) {
   return (
     <div className="flex justify-between text-xs">
-      <span className="text-[#00ff4150]">{label}</span>
-      <span style={{ color: color || "#00ff41" }}>{value}</span>
+      <span className="text-[#00F58C50]">{label}</span>
+      <span style={{ color: color || "#00F58C" }}>{value}</span>
     </div>
   );
 }

@@ -57,6 +57,7 @@ export default function ArbitragePage() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [config, setConfig] = useState<ArbConfig>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [statusIsError, setStatusIsError] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [identity, setIdentity] = useState<{
     addr: string | null;
@@ -142,12 +143,14 @@ export default function ArbitragePage() {
 
   async function handleArmExecute() {
     if (capitalToken !== "ETH") {
+      setStatusIsError(true);
       setStatus("Execute requires capital in ETH (venues are paid in ETH).");
       return;
     }
     const amt = parseFloat(capitalAmount || "0");
     if (!armed) {
       if (amt <= 0) {
+        setStatusIsError(true);
         setStatus("Enter the capital in ETH for arbitrage.");
         return;
       }
@@ -156,6 +159,7 @@ export default function ArbitragePage() {
         !config.arbVenueSell ||
         !config.standardToken
       ) {
+        setStatusIsError(true);
         setStatus(
           "Missing venues: ARB_VENUE_BUY / ARB_VENUE_SELL / STANDARD_TOKEN in .env"
         );
@@ -163,6 +167,7 @@ export default function ArbitragePage() {
       }
       if (!connected) await connect();
       setArmed(true);
+      setStatusIsError(false);
       setStatus("Engine ARMED — click again to execute on-chain.");
       return;
     }
@@ -171,11 +176,13 @@ export default function ArbitragePage() {
       return;
     }
     if (!signer || !config.optimizerRouter) {
+      setStatusIsError(true);
       setStatus("Connect the wallet to sign the transaction.");
       return;
     }
     setExecuting(true);
     setStatus(null);
+    setStatusIsError(false);
     try {
       const router = new ethers.Contract(
         config.optimizerRouter,
@@ -198,8 +205,9 @@ export default function ArbitragePage() {
       setStatus(`confirmed on-chain: ${tx.hash.slice(0, 22)}…`);
       setArmed(false);
     } catch (err) {
+      setStatusIsError(true);
       setStatus(
-        `falha: ${
+        `failed: ${
           err instanceof Error
             ? err.message.slice(0, 130)
             : "execution reverted (NFT lock / cooldown / venue)"
@@ -209,6 +217,17 @@ export default function ArbitragePage() {
       setExecuting(false);
     }
   }
+
+  const PIPELINE = ["DETECT", "ARMED", "EXECUTE", "SETTLED"] as const;
+  const pipelineStep = statusIsError
+    ? -1
+    : status?.startsWith("confirmed")
+    ? 4
+    : status?.startsWith("tx:") || executing
+    ? 3
+    : armed
+    ? 2
+    : 1;
 
   return (
     <div className="min-h-screen bg-[#070A0F] font-mono">
@@ -360,14 +379,54 @@ export default function ArbitragePage() {
                   </div>
                 </div>
 
+                {/* Execution pipeline */}
+                <div className="flex items-center gap-1.5" aria-label="Execution pipeline">
+                  {PIPELINE.map((label, i) => {
+                    const n = i + 1;
+                    const done = pipelineStep > n || pipelineStep === 4;
+                    const active = pipelineStep === n;
+                    return (
+                      <div key={label} className="flex items-center gap-1.5 flex-1">
+                        <div
+                          className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-mono font-bold border transition-colors ${
+                            statusIsError && active
+                              ? "border-rose-500/60 bg-rose-500/15 text-rose-400"
+                              : done
+                              ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400"
+                              : active
+                              ? "border-emerald-500 bg-emerald-500/20 text-emerald-400 animate-pulse"
+                              : "border-slate-700/50 bg-slate-900/40 text-slate-600"
+                          }`}
+                        >
+                          {n}
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono tracking-widest uppercase ${
+                            statusIsError && active
+                              ? "text-rose-400"
+                              : done || active
+                              ? "text-emerald-400"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                        {i < PIPELINE.length - 1 && (
+                          <div className={`flex-1 h-px ${done ? "bg-emerald-500/40" : "bg-slate-800/60"}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Arm Button */}
                 <button
                   onClick={handleArmExecute}
                   disabled={executing}
-                  className={`w-full font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-60 ${
+                  className={`w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-60 ${
                     armed
-                      ? "bg-emerald-500 text-black hover:bg-emerald-400"
-                      : "bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700"
+                      ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)]"
+                      : "bg-slate-800/40 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700/50"
                   }`}
                 >
                   {executing
@@ -377,7 +436,16 @@ export default function ArbitragePage() {
                     : "ARM ARBITRAGE ENGINE"}
                 </button>
                 {status && (
-                  <div className="text-[11px] font-mono text-slate-400 break-all border border-slate-700/50 bg-slate-900/40 rounded-xl px-3 py-2">
+                  <div
+                    className={`text-[11px] font-mono break-all rounded-xl px-3 py-2 border ${
+                      statusIsError
+                        ? "text-rose-400 border-rose-500/40 bg-rose-500/10"
+                        : status.startsWith("confirmed")
+                        ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                        : "text-slate-400 border-slate-700/50 bg-slate-900/40"
+                    }`}
+                  >
+                    {statusIsError && "⚠ "}
                     {status}
                   </div>
                 )}
@@ -472,8 +540,10 @@ export default function ArbitragePage() {
                           })
                         ) : (
                           <tr className="border-t border-slate-800/50">
-                            <td colSpan={4} className="py-4 px-3 text-center text-slate-500">
-                              aguardando feed /api/arbitrage…
+                            <td colSpan={4} className="py-4 px-3 text-center text-slate-500 leading-relaxed">
+                              Waiting for the /api/arbitrage feed…
+                              <br />
+                              <span className="text-slate-600">Rows appear when live spreads refresh (30s poll).</span>
                             </td>
                           </tr>
                         )}

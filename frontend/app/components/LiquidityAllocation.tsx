@@ -153,7 +153,7 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
             className={`flex-1 p-3 text-xs border transition-all ${
               mode === m.type
                 ? "border-[#00ffff] bg-[#00ffff10] text-[#00ffff]"
-                : "border-[#00ff4120] text-[#00ff4160] hover:border-[#00ff4140]"
+                : "border-[#00F58C20] text-[#00F58C60] hover:border-[#00F58C40]"
             }`}
           >
             <div className="font-bold mb-1">{m.label}</div>
@@ -164,14 +164,14 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
 
       {/* Target Pool Selection */}
       <div className="mb-4">
-        <div className="text-xs text-[#00ff4160] mb-2">TARGET POOL</div>
+        <div className="text-xs text-[#00F58C60] mb-2">TARGET POOL</div>
         <div className="flex gap-2">
           <button
             onClick={() => setTargetPool("hook")}
             className={`flex-1 py-2 text-xs border transition-all ${
               targetPool === "hook"
-                ? "border-[#00ff41] bg-[#00ff4110] text-[#00ff41]"
-                : "border-[#00ff4120] text-[#00ff4160] hover:border-[#00ff4140]"
+                ? "border-[#00F58C] bg-[#00F58C10] text-[#00F58C]"
+                : "border-[#00F58C20] text-[#00F58C60] hover:border-[#00F58C40]"
             }`}
           >
             HOOK POOL (V4)
@@ -180,8 +180,8 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
             onClick={() => setTargetPool("native")}
             className={`flex-1 py-2 text-xs border transition-all ${
               targetPool === "native"
-                ? "border-[#ff0040] bg-[#ff004010] text-[#ff0040]"
-                : "border-[#ff004020] text-[#ff004060] hover:border-[#ff004040]"
+                ? "border-[#FB7185] bg-[#FB718510] text-[#FB7185]"
+                : "border-[#FB718520] text-[#FB718560] hover:border-[#FB718540]"
             }`}
           >
             NATIVE POOL (V4)
@@ -194,9 +194,9 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
         {/* ETH Input */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-[#00ff4160]">ETH AMOUNT</span>
+            <span className="text-[#00F58C60]">ETH AMOUNT</span>
             {poolState?.price && (
-              <span className="text-[#00ff4140]">
+              <span className="text-[#00F58C40]">
                 ≈ {estimatedImd} IMD
               </span>
             )}
@@ -208,10 +208,10 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
             placeholder="0.0"
             step="0.001"
             min="0"
-            className="w-full bg-[#0a0a0a] border border-[#00ff4130] p-3 text-[#00ff41] text-sm focus:border-[#00ff41] focus:outline-none"
+            className="w-full bg-[#0a0a0a] border border-[#00F58C30] p-3 text-[#00F58C] text-sm focus:border-[#00F58C] focus:outline-none"
           />
           {poolState?.price && (
-            <div className="text-[10px] text-[#00ff4140] mt-1">
+            <div className="text-[10px] text-[#00F58C40] mt-1">
               Pool Price: {poolState.price} IMD/ETH
             </div>
           )}
@@ -221,7 +221,7 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
         {mode === "pair" && (
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-[#00ff4160]">IMD AMOUNT</span>
+              <span className="text-[#00F58C60]">IMD AMOUNT</span>
             </div>
             <input
               type="number"
@@ -230,21 +230,21 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
               placeholder="0"
               step="1"
               min="0"
-              className="w-full bg-[#0a0a0a] border border-[#ff004030] p-3 text-[#ff0040] text-sm focus:border-[#ff0040] focus:outline-none"
+              className="w-full bg-[#0a0a0a] border border-[#FB718530] p-3 text-[#FB7185] text-sm focus:border-[#FB7185] focus:outline-none"
             />
           </div>
         )}
 
         {/* Auto-calculated IMD (ETH-only Mode) */}
         {mode === "eth-only" && ethAmount && (
-          <div className="p-3 bg-[#00ff4105] border border-[#00ff4120]">
-            <div className="text-xs text-[#00ff4160] mb-1">
+          <div className="p-3 bg-[#00F58C05] border border-[#00F58C20]">
+            <div className="text-xs text-[#00F58C60] mb-1">
               OPTIMIZER WILL AUTO-PAIR
             </div>
-            <div className="text-sm text-[#00ff41]">
+            <div className="text-sm text-[#00F58C]">
               {estimatedImd} IMD will be sourced from pool reserves
             </div>
-            <div className="text-[10px] text-[#00ff4140] mt-1">
+            <div className="text-[10px] text-[#00F58C40] mt-1">
               No need to hold IMD tokens — Optimizer handles the pairing
             </div>
           </div>
@@ -253,16 +253,16 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
 
       {/* Pool Info */}
       {poolState && (
-        <div className="p-3 bg-[#00ff4105] border border-[#00ff4120] mb-4">
-          <div className="text-xs text-[#00ff4160] mb-2">POOL RESERVES</div>
+        <div className="p-3 bg-[#00F58C05] border border-[#00F58C20] mb-4">
+          <div className="text-xs text-[#00F58C60] mb-2">POOL RESERVES</div>
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
-              <div className="text-[#00ff4140]">ETH</div>
-              <div className="text-[#00ff41]">{poolState.ethInPool} ETH</div>
+              <div className="text-[#00F58C40]">ETH</div>
+              <div className="text-[#00F58C]">{poolState.ethInPool} ETH</div>
             </div>
             <div>
-              <div className="text-[#ff004060]">IMD</div>
-              <div className="text-[#ff0040]">{poolState.imdInPool} IMD</div>
+              <div className="text-[#FB718560]">IMD</div>
+              <div className="text-[#FB7185]">{poolState.imdInPool} IMD</div>
             </div>
           </div>
         </div>
@@ -270,12 +270,12 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="p-3 bg-[#ff004010] border border-[#ff004030] text-[#ff0040] text-xs mb-4">
+        <div className="p-3 bg-[#FB718510] border border-[#FB718530] text-[#FB7185] text-xs mb-4">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-3 bg-[#00ff4110] border border-[#00ff4130] text-[#00ff41] text-xs mb-4">
+        <div className="p-3 bg-[#00F58C10] border border-[#00F58C30] text-[#00F58C] text-xs mb-4">
           {success}
         </div>
       )}
@@ -286,8 +286,8 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
         disabled={!connected || loading || !ethAmount || parseFloat(ethAmount) <= 0}
         className={`w-full py-3 text-sm font-bold tracking-wider transition-all ${
           !connected || loading || !ethAmount || parseFloat(ethAmount) <= 0
-            ? "bg-[#00ff4120] text-[#00ff4140] cursor-not-allowed"
-            : "bg-[#00ff41] text-[#0a0a0a] hover:bg-[#00ff41cc]"
+            ? "bg-[#00F58C20] text-[#00F58C40] cursor-not-allowed"
+            : "bg-[#00F58C] text-[#0a0a0a] hover:bg-[#00F58Ccc]"
         }`}
       >
         {!connected
@@ -298,11 +298,11 @@ export function LiquidityAllocation({ poolState, onAllocationComplete }: Props) 
       </button>
 
       {/* Instructions */}
-      <div className="mt-4 text-[10px] text-[#00ff4140] space-y-1">
-        <p>• <span className="text-[#00ff4160]">ETH Only:</span> Deposit ETH, Optimizer pairs with IMD automatically</p>
-        <p>• <span className="text-[#00ff4160]">ETH + IMD:</span> Provide both tokens for full range liquidity</p>
-        <p>• <span className="text-[#00ff4160]">Hook Pool:</span> Earns burn mechanics + MEV capture rewards</p>
-        <p>• <span className="text-[#00ff4160]">Native Pool:</span> Standard Uniswap V4 LP (no hook benefits)</p>
+      <div className="mt-4 text-[10px] text-[#00F58C40] space-y-1">
+        <p>• <span className="text-[#00F58C60]">ETH Only:</span> Deposit ETH, Optimizer pairs with IMD automatically</p>
+        <p>• <span className="text-[#00F58C60]">ETH + IMD:</span> Provide both tokens for full range liquidity</p>
+        <p>• <span className="text-[#00F58C60]">Hook Pool:</span> Earns burn mechanics + MEV capture rewards</p>
+        <p>• <span className="text-[#00F58C60]">Native Pool:</span> Standard Uniswap V4 LP (no hook benefits)</p>
       </div>
     </div>
   );

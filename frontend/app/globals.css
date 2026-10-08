@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #0B0E14;
+  --color-background: #070A0F;
   --color-foreground: #E8E8E8;
   --color-muted: #6B7A88;
   --color-accent-emerald: #00F58C;
@@ -9,9 +9,13 @@
   --color-accent-amber: #FFB000;
   --color-border-subtle: #FFFFFF15;
   --color-panel: #131823;
-  --color-card: #1A222D;
-  --font-mono: "JetBrains Mono", "Fira Code", "Courier New", monospace;
-  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --color-card: #0B111A;
+  --color-danger: #FB7185;
+  /* Unificação do verde da marca: uma única família (hover = sutilmente mais claro) */
+  --color-emerald-400: #00FF9E;
+  --color-emerald-500: #00F58C;
+  --font-mono: var(--font-terminal-mono), "Fira Code", "Courier New", monospace;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
 }
 
 /* Reset & Base */
@@ -28,8 +32,9 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #0B0E14;
+  background: #070A0F;
   color: #E8E8E8;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Selection */
@@ -57,13 +62,17 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 
 .fade-in {
   animation: fadeIn 0.6s ease-out forwards;
 }
 
 .animate-float {
-  animation: float 6s ease-in-out infinite;
+  animation: float 6s ease-out infinite;
 }
 
 /* Glassmorphism utilities */
@@ -76,12 +85,49 @@ body {
 
 .glass-card {
   border: 1px solid #FFFFFF1A;
-  background: rgba(14, 19, 30, 0.8);
+  background: rgba(11, 17, 26, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Glow effects */
+/* Terminal aesthetic — assinatura IMD (usado em vault/subscribe/migration/adoption/burns) */
+.terminal-panel {
+  border: 1px solid #FFFFFF14;
+  background: rgba(11, 17, 26, 0.8);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.terminal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.terminal-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: #6B7A88;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-bottom: 1px solid #FFFFFF14;
+}
+
+.terminal-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #FFFFFF0A;
+}
+
+/* Glow effects (restrained: só em texto/CTA ativo) */
+.glow {
+  text-shadow: 0 0 12px rgba(0, 245, 140, 0.55), 0 0 28px rgba(0, 245, 140, 0.25);
+}
+
+.border-glow {
+  box-shadow: 0 0 20px rgba(0, 245, 140, 0.15), inset 0 0 20px rgba(0, 245, 140, 0.05);
+}
+
 .glow-emerald {
   text-shadow: 0 0 10px #00F58C80, 0 0 20px #00F58C40, 0 0 40px #00F58C20;
 }
@@ -124,30 +170,54 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0E14;
+  background: #070A0F;
 }
 
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #00F58C, #00F5FF);
   border-radius: 4px;
-  border: 2px solid #0B0E14;
+  border: 2px solid #070A0F;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #00F5FF, #00F58C);
 }
 
-/* Button base styles */
+/* Progress bar (usado em burns e telas de status) */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #00F58C, #00F5FF);
+  transition: width 0.4s ease-out;
+}
+
+/* Skeleton shimmer (delay implícito: só mostre após ~150ms de loading) */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+/* Button system canônico (padrão-ouro: máquina de estados do swap) */
 .btn-primary {
-  @apply bg-[#00F58C] text-[#05080A] font-semibold px-6 py-3 rounded-full transition-all hover:brightness-110 hover:shadow-[0_0_30px_rgba(0,245,140,0.4)] disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply w-full rounded-xl py-3.5 font-mono text-sm font-semibold uppercase tracking-widest transition-all duration-150 bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none;
 }
 
 .btn-secondary {
-  @apply bg-white/[0.06] text-white font-semibold px-6 py-3 rounded-full border border-white/[0.08] transition-all hover:bg-white/[0.12] hover:border-white/[0.16];
+  @apply w-full rounded-xl py-3.5 font-mono text-sm font-semibold uppercase tracking-widest transition-all duration-150 bg-slate-800/40 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700/50 active:scale-[0.98];
 }
 
 .btn-ghost {
-  @apply text-[#6B7A88] font-medium px-4 py-2 rounded-full transition-all hover:text-white hover:bg-white/[0.06];
+  @apply rounded-xl px-4 py-2 font-mono text-xs font-medium uppercase tracking-wider text-slate-400 transition-colors hover:text-white hover:bg-white/[0.06];
 }
 
 /* Link underline animation */
