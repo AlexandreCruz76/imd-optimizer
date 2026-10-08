@@ -249,7 +249,7 @@ export default function Vault() {
       <div className="space-y-4 fade-in">
         <div className="terminal-panel p-8 border-glow border-[#ffb000] text-center">
           <div className="text-[#ffb000] mb-4">WRONG NETWORK</div>
-          <div className="text-sm text-[#00F58C60] mb-4">Switch to Sepolia Testnet in MetaMask</div>
+          <div className="text-sm text-white/55 mb-4">Switch to Sepolia Testnet in MetaMask</div>
           <button onClick={() => switchChain(SEPOLIA_CONFIG.chainId)} className="bg-[#ffb000] text-[#0a0a0a] px-6 py-2 text-xs font-bold tracking-wider">SWITCH TO SEPOLIA</button>
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function Vault() {
     return (
       <div className="space-y-4 fade-in">
         <div className="terminal-panel p-8 border-glow text-center">
-          <div className="text-xs text-[#00F58C60] mb-2 tracking-widest">VAULT // CONNECT WALLET</div>
+          <div className="text-xs text-white/55 mb-2 tracking-widest">VAULT // CONNECT WALLET</div>
           <div className="text-sm text-[#00F58C] mb-4">Connect your wallet to manage your vault position</div>
           <button onClick={connect} className="bg-[#00F58C] text-[#0a0a0a] px-6 py-2 text-xs font-bold tracking-wider hover:bg-[#00cc33]">
             CONNECT WALLET
@@ -287,11 +287,11 @@ export default function Vault() {
       <div className="terminal-panel p-3 border-glow">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-[#00F58C60] tracking-widest">VAULT // $IMD HOOK POOL</div>
+            <div className="text-xs text-white/55 tracking-widest">VAULT // $IMD HOOK POOL</div>
             <div className="text-sm text-[#00F58C]">OptimizerVaultTest</div>
           </div>
           <div className="text-right text-xs">
-            <div className="text-[#00F58C60]">CONTRACT</div>
+            <div className="text-white/55">CONTRACT</div>
             <a
               href={`https://sepolia.etherscan.io/address/${SEPOLIA_CONFIG.contractAddress}`}
               target="_blank"
@@ -306,19 +306,19 @@ export default function Vault() {
 
       {/* ── Diamond Hand Rules (DEC-020 / front_final §3 VAULT) ── */}
       <div className="terminal-panel p-4 border border-[#00F58C]/40">
-        <div className="text-xs text-[#00F58C60] mb-3 tracking-widest">
+        <div className="text-xs text-white/55 mb-3 tracking-widest">
           ▸ DIAMOND HAND RULES (DEC-020)
         </div>
         <div className="space-y-1.5 text-xs">
           <div className="text-[#00F58C]">
-            ✓ claimYield() sem taxa — <span className="text-[#00F58C60]">claim fee: 0%</span>
+            ✓ claimYield() sem taxa — <span className="text-white/55">claim fee: 0%</span>
           </div>
           <div className="text-[#00F58C]">
             ✓ Normal principal withdrawal with no fee
           </div>
           <div className="text-[#00F58C]">
             ✓ Unstake with lock-up (beginUnbond → 7 days) no fee —{" "}
-            <span className="text-[#00F58C60]">Diamond Hands pay nothing</span>
+            <span className="text-white/55">Diamond Hands pay nothing</span>
           </div>
           <div className="text-[#ffb000]">
             ⚠ Instant unstake (emergencyInstantWithdraw): penalty 2–5% →
@@ -340,7 +340,7 @@ export default function Vault() {
               className={`flex-1 px-4 py-2.5 text-xs tracking-wider transition-all ${
                 activeTab === tab.id
                   ? "bg-[#00F58C] text-[#0a0a0a] font-bold"
-                  : "text-[#00F58C60] hover:text-[#00F58C] hover:bg-[#00F58C08]"
+                  : "text-white/55 hover:text-[#00F58C] hover:bg-[#00F58C08]"
               }`}
             >
               [{tab.key}] {tab.label}
@@ -358,7 +358,7 @@ export default function Vault() {
         {/* ── TX Hash Bar ── */}
         {txHash && (
           <div className="px-4 py-2 bg-[#00F58C10] border-b border-[#00F58C20]">
-            <div className="text-xs text-[#00F58C60]">
+            <div className="text-xs text-white/55">
               TX: <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-[#00F58C] hover:underline">{txHash.slice(0, 18)}...</a>
             </div>
           </div>
@@ -380,12 +380,12 @@ export default function Vault() {
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${subscription.active ? "bg-[#00F58C]" : "bg-[#FB7185]"}`} />
                   <span className="text-xs text-[#00F58C] font-bold">{subscription.tier} TIER</span>
-                  <span className="text-xs text-[#00F58C60]">|</span>
-                  <span className="text-xs text-[#00F58C60]">{subscription.fee}% fee</span>
-                  <span className="text-xs text-[#00F58C60]">|</span>
-                  <span className="text-xs text-[#00F58C60]">min {subscription.minDeposit} ETH</span>
+                  <span className="text-xs text-white/55">|</span>
+                  <span className="text-xs text-white/55">{subscription.fee}% fee</span>
+                  <span className="text-xs text-white/55">|</span>
+                  <span className="text-xs text-white/55">min {subscription.minDeposit} ETH</span>
                 </div>
-                <div className="text-xs text-[#00F58C60]">EXPIRES {subscription.expiresAt}</div>
+                <div className="text-xs text-white/55">EXPIRES {subscription.expiresAt}</div>
               </div>
             )}
 
@@ -400,8 +400,8 @@ export default function Vault() {
               </div>
             ) : (
               <div className="text-center py-6">
-                <div className="text-xs text-[#00F58C60] mb-3">NO POSITION</div>
-                <div className="text-sm text-[#00F58C60] leading-relaxed">
+                <div className="text-xs text-white/55 mb-3">NO POSITION</div>
+                <div className="text-sm text-white/55 leading-relaxed">
                   {subscription?.active
                     ? `Active subscription: deposit at least ${subscription.minDeposit} ETH (${subscription.tier}) to open a position.`
                     : "No active deposit yet. Subscribe to a tier, then deposit — yield accrues from real protocol fees."}
@@ -433,7 +433,7 @@ export default function Vault() {
 
             {/* APY Comparison */}
             <div className="terminal-panel p-3 border border-[#00F58C20] mt-2">
-              <div className="text-xs text-[#00F58C60] mb-2 tracking-widest">YIELD COMPARISON · ILLUSTRATIVE SCENARIO</div>
+              <div className="text-xs text-white/55 mb-2 tracking-widest">YIELD COMPARISON · ILLUSTRATIVE SCENARIO</div>
               <div className="grid grid-cols-3 gap-4 text-xs">
                 <div>
                   <div className="text-[#00F58C40]">HOOK POOL (vault)</div>
@@ -455,7 +455,7 @@ export default function Vault() {
 
             {/* Uniswap link */}
             <div className="text-center pt-2">
-              <a href={HOOK_UNISWAP_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00F58C60] hover:text-[#00F58C] transition-colors">
+              <a href={HOOK_UNISWAP_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-white/55 hover:text-[#00F58C] transition-colors">
                 VIEW POOL ON UNISWAP ↗
               </a>
             </div>
@@ -467,7 +467,7 @@ export default function Vault() {
           <div className="p-4 space-y-4">
             {subscription?.active ? (
               <>
-                <div className="text-xs text-[#00F58C60] tracking-widest mb-2">
+                <div className="text-xs text-white/55 tracking-widest mb-2">
                   DEPOSIT ETH → {subscription.tier} TIER ({subscription.fee}% fee, min {subscription.minDeposit} ETH)
                 </div>
 
@@ -480,7 +480,7 @@ export default function Vault() {
                       className={`px-3 py-1.5 text-xs border transition-all ${
                         depositAmount === amt
                           ? "border-[#00F58C] text-[#00F58C] bg-[#00F58C10]"
-                          : "border-[#00F58C30] text-[#00F58C60] hover:border-[#00F58C] hover:text-[#00F58C]"
+                          : "border-[#00F58C30] text-white/55 hover:border-[#00F58C] hover:text-[#00F58C]"
                       }`}
                     >
                       {amt} ETH
@@ -500,7 +500,7 @@ export default function Vault() {
                       min="0.001"
                       step="0.01"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#00F58C60]">ETH</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/55">ETH</span>
                   </div>
                   <button
                     onClick={handleDeposit}
@@ -514,7 +514,7 @@ export default function Vault() {
                 {/* Preview */}
                 {depositAmount && parseFloat(depositAmount) > 0 && (
                   <div className="terminal-panel p-3 border border-[#00F58C20]">
-                    <div className="text-xs text-[#00F58C60] mb-2">DEPOSIT PREVIEW</div>
+                    <div className="text-xs text-white/55 mb-2">DEPOSIT PREVIEW</div>
                     <div className="grid grid-cols-3 gap-4 text-xs">
                       <div>
                         <div className="text-[#00F58C40]">YOU DEPOSIT</div>
@@ -541,7 +541,7 @@ export default function Vault() {
                 {/* Current position summary */}
                 {position && (
                   <div className="pt-2 border-t border-[#00F58C15]">
-                    <div className="text-xs text-[#00F58C60] mb-1">CURRENT POSITION</div>
+                    <div className="text-xs text-white/55 mb-1">CURRENT POSITION</div>
                     <div className="text-xs text-[#00F58C]">
                       {position.deposited.toFixed(4)} ETH deposited — {position.yield.toFixed(4)} ETH yield — {position.shareOfPool.toFixed(3)}% pool share
                     </div>
@@ -551,7 +551,7 @@ export default function Vault() {
             ) : (
               <div className="text-center py-8">
                 <div className="text-xs text-[#ffb000] mb-3">SUBSCRIBE FIRST</div>
-                <div className="text-sm text-[#00F58C60] mb-4 leading-relaxed">
+                <div className="text-sm text-white/55 mb-4 leading-relaxed">
                   A subscription tier gates vault deposits.
                   <br />
                   Pick Alpha/Partner/Holder — each tier sets its fee and minimum.
@@ -569,7 +569,7 @@ export default function Vault() {
           <div className="p-4 space-y-4">
             {position && position.deposited > 0 ? (
               <>
-                <div className="text-xs text-[#00F58C60] tracking-widest mb-2">
+                <div className="text-xs text-white/55 tracking-widest mb-2">
                   WITHDRAW ETH — FEE ON YIELD ONLY ({subscription?.fee}%)
                 </div>
 
@@ -617,7 +617,7 @@ export default function Vault() {
                 {/* Withdraw preview */}
                 {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                   <div className="terminal-panel p-3 border border-[#FB718520]">
-                    <div className="text-xs text-[#00F58C60] mb-2">WITHDRAW PREVIEW</div>
+                    <div className="text-xs text-white/55 mb-2">WITHDRAW PREVIEW</div>
                     <div className="grid grid-cols-3 gap-4 text-xs">
                       <div>
                         <div className="text-[#00F58C40]">YOU WITHDRAW</div>
@@ -644,7 +644,7 @@ export default function Vault() {
                   <div className="terminal-panel p-3 border border-[#ffb00030]">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-xs text-[#00F58C60]">PENDING YIELD</div>
+                        <div className="text-xs text-white/55">PENDING YIELD</div>
                         <div className="text-lg text-[#ffb000] font-bold">{position.yield.toFixed(4)} ETH</div>
                         <div className="text-xs text-[#00F58C40]">After {subscription?.fee}% fee: {(position.yield * (1 - (subscription?.fee || 0) / 100)).toFixed(4)} ETH</div>
                       </div>
@@ -661,8 +661,8 @@ export default function Vault() {
               </>
             ) : (
               <div className="text-center py-8">
-                <div className="text-xs text-[#00F58C60] mb-3">NO DEPOSIT TO WITHDRAW</div>
-                <div className="text-sm text-[#00F58C60] mb-4 leading-relaxed">
+                <div className="text-xs text-white/55 mb-3">NO DEPOSIT TO WITHDRAW</div>
+                <div className="text-sm text-white/55 mb-4 leading-relaxed">
                   Your vault balance is zero. Deposit at least the tier minimum to open a position.
                 </div>
                 <button onClick={() => setActiveTab("deposit")} className="rounded-xl bg-[#00F58C] text-[#0a0a0a] px-6 py-2 font-mono text-xs font-semibold uppercase tracking-widest hover:bg-emerald-400 active:scale-[0.98] transition-all">
@@ -676,7 +676,7 @@ export default function Vault() {
         {/* ═══════════ TAB: CALCULATOR ═══════════ */}
         {activeTab === "calculator" && (
           <div className="p-4 space-y-4">
-            <div className="text-xs text-[#00F58C60] tracking-widest mb-2">
+            <div className="text-xs text-white/55 tracking-widest mb-2">
               YIELD PROJECTION — {HOOK_APY}% APY (HOOK) vs {NATIVE_APY}% (NATIVE)
             </div>
 
@@ -706,7 +706,7 @@ export default function Vault() {
                       className={`flex-1 py-2 text-xs font-bold transition-all ${
                         calcTier === i
                           ? "bg-[#00F58C] text-[#0a0a0a]"
-                          : "border border-[#00F58C30] text-[#00F58C60] hover:border-[#00F58C] hover:text-[#00F58C]"
+                          : "border border-[#00F58C30] text-white/55 hover:border-[#00F58C] hover:text-[#00F58C]"
                       }`}
                     >
                       {name}
@@ -776,15 +776,15 @@ export default function Vault() {
 
                   {/* All tiers comparison */}
                   <div className="terminal-panel p-3 border border-[#00F58C20]">
-                    <div className="text-xs text-[#00F58C60] mb-2 tracking-widest">ALL TIERS COMPARISON ({calcDeposit} ETH)</div>
+                    <div className="text-xs text-white/55 mb-2 tracking-widest">ALL TIERS COMPARISON ({calcDeposit} ETH)</div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {TIER_NAMES.map((name, i) => {
                         const p = calcProjection(parseFloat(calcDeposit), i);
                         return (
                           <div key={name} className={`p-2 border ${calcTier === i ? "border-[#00F58C]" : "border-[#00F58C20]"}`}>
-                            <div className={`text-xs font-bold mb-1 ${calcTier === i ? "text-[#00F58C]" : "text-[#00F58C60]"}`}>{name} ({TIER_FEES[i] / 100}%)</div>
+                            <div className={`text-xs font-bold mb-1 ${calcTier === i ? "text-[#00F58C]" : "text-white/55"}`}>{name} ({TIER_FEES[i] / 100}%)</div>
                             <div className="text-sm text-[#00F58C]">{p.netApy}% APY</div>
-                            <div className="text-xs text-[#00F58C60]">{p.netYield} ETH/yr</div>
+                            <div className="text-xs text-white/55">{p.netYield} ETH/yr</div>
                           </div>
                         );
                       })}
@@ -801,20 +801,20 @@ export default function Vault() {
           <div className="p-4 space-y-4">
             {subscription?.active ? (
               <div className="terminal-panel p-4 border border-[#00F58C30]">
-                <div className="text-xs text-[#00F58C60] mb-2">ACTIVE SUBSCRIPTION</div>
+                <div className="text-xs text-white/55 mb-2">ACTIVE SUBSCRIPTION</div>
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-lg text-[#00F58C] font-bold">{subscription.tier}</div>
-                    <div className="text-xs text-[#00F58C60]">{subscription.fee}% fee — min deposit {subscription.minDeposit} ETH</div>
+                    <div className="text-xs text-white/55">{subscription.fee}% fee — min deposit {subscription.minDeposit} ETH</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-[#00F58C60]">EXPIRES</div>
+                    <div className="text-xs text-white/55">EXPIRES</div>
                     <div className="text-sm text-[#00F58C]">{subscription.expiresAt}</div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-[#00F58C60] tracking-widest mb-2">
+              <div className="text-xs text-white/55 tracking-widest mb-2">
                 SELECT TIER — One-time subscription payment
               </div>
             )}

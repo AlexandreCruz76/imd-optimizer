@@ -234,8 +234,15 @@ export default function ArbitragePage() {
       <Navbar />
 
       <main className="pt-20 pb-8 px-4 md:px-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
-        {/* Ambient scanlines */}
-        <div className="fixed inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_3px] opacity-20" />
+        {/* Subtle grid overlay (was scanlines) */}
+        <div
+          className="fixed inset-0 pointer-events-none z-0 opacity-[0.035]"
+          aria-hidden="true"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.9) 0 1px, transparent 1px 3px)",
+          }}
+        />
         {/* Corner brackets */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-emerald-500/30" />

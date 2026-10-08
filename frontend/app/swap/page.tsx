@@ -972,18 +972,19 @@ export default function SwapPage() {
 
       <main className="pt-20 pb-8 px-4 md:px-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 max-w-5xl mx-auto">
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/agente.png"
-              alt="Agent"
-              className="w-8 h-8 rounded-full border border-emerald-500 object-cover"
-            />
-            <h1 className="text-base md:text-lg font-medium text-white tracking-widest font-mono uppercase">
-              ┌─ PROTECTED SWAP ── EXECUTION ROUTE ────────────────────────┐
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="mb-6 max-w-5xl mx-auto">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src="/images/agente.png"
+                alt="Agent"
+                className="w-8 h-8 rounded-full border border-emerald-500 object-cover"
+              />
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white/92 truncate">
+                Protected Swap
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
             {realMode ? (
               <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400">
                 SEPOLIA · LIVE EXECUTION
@@ -1003,6 +1004,17 @@ export default function SwapPage() {
                 ▸ SWITCH TO SEPOLIA
               </button>
             )}
+            </div>
+          </div>
+          <div
+            className="mt-3 flex items-center gap-3"
+            aria-hidden="true"
+          >
+            <span className="h-px flex-1 bg-gradient-to-r from-emerald-500/45 via-emerald-500/10 to-transparent" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-white/45">
+              Execution Route · OptimizerRouter
+            </span>
+            <span className="h-px flex-1 bg-gradient-to-l from-emerald-500/45 via-emerald-500/10 to-transparent" />
           </div>
         </div>
 
@@ -1023,14 +1035,21 @@ export default function SwapPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,#070A0F/40_70%,#070A0F/90_100%)]" />
         </div>
 
-        {/* Tactical Scanlines */}
-        <div className="fixed inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_3px] opacity-20" />
+        {/* Subtle grid overlay (was scanlines) */}
+        <div
+          className="fixed inset-0 pointer-events-none z-0 opacity-[0.035]"
+          aria-hidden="true"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.9) 0 1px, transparent 1px 3px)",
+          }}
+        />
 
         {/* State Banners */}
         {realMode && sep && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400 font-mono">
             DEC-020 Identity-Fi · Your Swap Fee:{" "}
-            <span className="text-white">
+            <span className="text-white/92">
               {sep.feeBps !== null && sep.tier !== null
                 ? `${(sep.feeBps / 100).toFixed(2)}% (Tier ${
                     sep.tier + 1
@@ -1042,7 +1061,7 @@ export default function SwapPage() {
         )}
         {isSepolia && !routerAddr && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
-            ⚠ Contracts not deployed on Sepolia — run <span className="text-white">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
+            ⚠ Contracts not deployed on Sepolia — run <span className="text-white/92">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
           </div>
         )}
         {poolsMissing && (
@@ -1063,7 +1082,7 @@ export default function SwapPage() {
 
         {/* Swap Card */}
         <div className="relative z-10 max-w-5xl mx-auto">
-          <div className="glass-card rounded-3xl p-5 border border-emerald-500/25 shadow-2xl bg-[#0B111A]/90">
+          <div className="glass-card rounded-3xl p-5 border border-emerald-500/25 shadow-[var(--elevation-1)] hover:shadow-[var(--elevation-2)] transition-shadow duration-150 bg-[#0B111A]/90">
             {/* Card header: title + MEV badge + settings */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -1083,7 +1102,7 @@ export default function SwapPage() {
               <button
                 onClick={() => setShowSettings((v) => !v)}
                 title="Transaction settings"
-                className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all ${
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-colors duration-150 ${
                   showSettings
                     ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
                     : "border-slate-700/50 text-slate-400 hover:text-white hover:border-emerald-500/30"
@@ -1095,7 +1114,7 @@ export default function SwapPage() {
 
             {/* Settings panel */}
             {showSettings && (
-              <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-3 mb-4 space-y-3">
+              <div className="rounded bg-[#131823] border border-white/[0.07] p-3 mb-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400 font-mono uppercase">Slippage Tolerance</span>
                   <div className="flex items-center gap-1.5">
@@ -1103,7 +1122,7 @@ export default function SwapPage() {
                       <button
                         key={v}
                         onClick={() => setSlippagePreset(v)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors duration-150 ${
                           !isCustom && slippage === v
                             ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
                             : "border-slate-700/50 text-slate-400 hover:border-emerald-500/30"
@@ -1144,7 +1163,7 @@ export default function SwapPage() {
             )}
 
             {/* You Pay */}
-            <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4">
+            <div className="rounded bg-[#131823] border border-white/[0.07] p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-slate-400 font-mono uppercase">YOU PAY</span>
                 <span className="text-[10px] font-mono text-slate-400">
@@ -1174,7 +1193,7 @@ export default function SwapPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-white placeholder-slate-500/50 outline-none"
+                  className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-white/92 placeholder-slate-500/50 outline-none"
                 />
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-slate-400">
@@ -1194,14 +1213,14 @@ export default function SwapPage() {
               <button
                 onClick={handleReverse}
                 title="Switch tokens"
-                className="w-10 h-10 rounded-xl bg-[#0B111A]/80 border border-slate-700/50 flex items-center justify-center text-emerald-400 text-lg hover:border-emerald-500/60 hover:rotate-180 transition-all duration-300"
+                className="w-10 h-10 rounded-xl bg-[#0B111A]/80 border border-slate-700/50 flex items-center justify-center text-emerald-400 text-lg hover:border-emerald-500/60 hover:rotate-180 transition-[border-color,transform] duration-300"
               >
                 ⇅
               </button>
             </div>
 
             {/* You Receive */}
-            <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4">
+            <div className="rounded bg-[#131823] border border-white/[0.07] p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-slate-400 font-mono uppercase">YOU RECEIVE</span>
                 <span className="text-[10px] font-mono text-slate-400">
@@ -1209,7 +1228,7 @@ export default function SwapPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0 text-2xl font-mono text-white">
+                <div className="flex-1 min-w-0 text-2xl font-mono text-white/92">
                   {realQuote ? (
                     fmt(
                       parseFloat(
@@ -1363,7 +1382,7 @@ export default function SwapPage() {
                   isEth(tokenOut) &&
                   realQuote.out > sep.routerEth)
               }
-              className={`w-full mt-4 py-3.5 rounded-xl text-sm font-semibold tracking-widest font-mono uppercase transition-all active:scale-[0.98] ${
+              className={`w-full mt-4 py-3.5 rounded-xl text-sm font-semibold tracking-widest font-mono uppercase transition-[background-color,box-shadow,transform,color] duration-150 active:scale-[0.98] ${
                 btnState === "swap"
                   ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)]"
                   : btnState === "connect" || btnState === "switch"

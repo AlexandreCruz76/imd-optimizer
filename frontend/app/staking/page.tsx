@@ -31,10 +31,20 @@ export default function StakingPage() {
               }}
             />
           </div>
-          <div>
-            <div className="font-mono text-sm tracking-[0.25em] text-white font-bold uppercase">
-              ┌─ BUILDER STAKING ── DIAMOND HANDS VAULT ────────────────────────┐
+          <div className="min-w-0">
+            <div
+              className="flex items-center gap-3"
+              aria-hidden="true"
+            >
+              <span className="h-px w-8 bg-emerald-500/45" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-white/45 whitespace-nowrap">
+                Diamond Hands Vault
+              </span>
+              <span className="h-px flex-1 bg-emerald-500/20" />
             </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white/92 mt-2">
+              Builder Staking
+            </h1>
             <p className="font-mono text-xs text-slate-400 tracking-widest uppercase mt-1">
               Yield weighted by Identity Tier (DEC-020) — yield = stake × multiplier (4x / 3x / 1x / 0x)
             </p>
@@ -50,19 +60,19 @@ export default function StakingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12]">
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">CLAIM YIELD</div>
             <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">0% TAX</div>
             <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">NO FEE TO CLAIM</div>
             <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">claimYield() — DEC-020</div>
           </div>
-          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
+          <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12]">
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">UNSTAKE WITH LOCK-UP</div>
             <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">0% TAX</div>
             <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">7-DAY LOCK-UP</div>
             <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">beginUnbond → completeUnbond</div>
           </div>
-          <div className="bg-[#0B111A]/80 border border-rose-500/30 rounded-2xl p-5">
+          <div className="bg-[#0B111A]/80 border border-rose-500/30 rounded-2xl p-5 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12]">
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">INSTANT UNSTAKE</div>
             <div className="font-mono font-bold text-rose-400 text-2xl mb-1">PENALTY 2–5%</div>
             <div className="font-mono font-bold text-rose-400 text-[11px] tracking-widest uppercase">50% BURN · 25% TREASURY · 25% YIELD</div>
@@ -70,7 +80,7 @@ export default function StakingPage() {
           </div>
         </div>
 
-        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6">
+        <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12]">
           <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">CURRENT POSITIONS</div>
           <div className="font-mono text-[11px] text-slate-500 mb-4 leading-relaxed">
             No stake registered yet — positions appear after the BuilderStakingVault deploy.
@@ -78,9 +88,9 @@ export default function StakingPage() {
             Yield scales with your Identity Tier (Alpha 4x → Retail 0x) and comes from real protocol fees.
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
+            <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
               <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">$BLD STAKED</div>
-              <div className="font-mono font-bold tracking-tight text-white text-2xl">— $BLD</div>
+              <div className="font-mono font-bold tracking-tight text-white/92 text-2xl">— $BLD</div>
               <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">
                 YIELD: <span className="text-emerald-400 font-bold">stake × tier mult.</span>
               </div>
@@ -91,14 +101,14 @@ export default function StakingPage() {
                     "Real $BLD staking arrives after the BuilderStakingVault deploy."
                   )
                 }
-                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
+                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-[background-color,box-shadow,transform]"
               >
                 STAKE $BLD
               </button>
             </div>
-            <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
+            <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
               <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">YIELD POSITION</div>
-              <div className="font-mono font-bold tracking-tight text-white text-2xl">— ETH</div>
+              <div className="font-mono font-bold tracking-tight text-white/92 text-2xl">— ETH</div>
               <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">
                 CLAIM: <span className="text-emerald-400 font-bold">0% fee</span>
               </div>
@@ -109,7 +119,7 @@ export default function StakingPage() {
                     "claimYield() with a 0% fee arrives after the BuilderStakingVault deploy."
                   )
                 }
-                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
+                className="w-full mt-4 rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-[background-color,box-shadow,transform]"
               >
                 CLAIM YIELD
               </button>
@@ -125,7 +135,7 @@ export default function StakingPage() {
                 )
               : connect()
           }
-          className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all"
+          className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-[background-color,box-shadow,transform]"
         >
           {connected ? "STAKE NOW" : `CONNECT ${walletName.toUpperCase()} FOR STAKING`}
         </button>

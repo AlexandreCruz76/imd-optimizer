@@ -1,0 +1,61 @@
+{"query": "review this CSS for a modal animation", "should_load": true, "reason": "design-engineering covers animation review (review-format + duration-table + easing-curves)"}
+{"query": "what easing curve should I use for a dropdown opening?", "should_load": true, "reason": "easing-curves node + responsive-feedback"}
+{"query": "should this button bounce on click?", "should_load": true, "reason": "animation-decision-framework + delight-impact-curve + responsive-feedback"}
+{"query": "why does this UI feel flat?", "should_load": true, "reason": "feeling-right + unseen-details-compound — flagship trigger query"}
+{"query": "audit my landing page for AI tells", "should_load": true, "reason": "ai-default-tells + content-authenticity + typography-humanity"}
+{"query": "pick an avatar style for our directory", "should_load": true, "reason": "avatar-systems node — DiceBear catalog"}
+{"query": "design a card grid for our product list", "should_load": true, "reason": "cards-design + visual-imperfection + viewport-custom-design"}
+{"query": "what's a good dark mode background color?", "should_load": true, "reason": "dark-mode node — concrete spec"}
+{"query": "validate this form on input vs on submit?", "should_load": true, "reason": "forms-validation node"}
+{"query": "tray height should change between steps?", "should_load": true, "reason": "tray-rules node (Benji)"}
+{"query": "morph the play / pause icon properly", "should_load": true, "reason": "morphing-icons + fly-not-teleport"}
+{"query": "make this real-time chart breathe", "should_load": true, "reason": "lerp-breathing node (Benji Liveline)"}
+{"query": "set up a CSS file for a Next.js project", "should_load": false, "reason": "general framework setup, model knows from training data"}
+{"query": "explain how flexbox works", "should_load": false, "reason": "model knows from training; this skill is opinion, not docs"}
+{"query": "write a SQL query to join users and orders", "should_load": false, "reason": "backend / data task — adjacent to nothing here"}
+{"query": "what's the latest version of React?", "should_load": false, "reason": "factual lookup; not design engineering"}
+{"query": "create a Stripe checkout component", "should_load": false, "reason": "integration task; design-eng might inform the polish layer but shouldn't auto-load"}
+{"query": "convert this code to TypeScript", "should_load": false, "reason": "language conversion; off-domain"}
+{"query": "set up authentication with NextAuth", "should_load": false, "reason": "auth task; off-domain"}
+{"query": "explain CSS specificity rules", "should_load": false, "reason": "fundamentals; model knows"}
+{"query": "should the send button in my chat app make a sound?", "should_load": true, "reason": "sound-decision-framework in the sound cluster"}
+{"query": "generate a set of UI sound effects for our app — we have an ElevenLabs key", "should_load": true, "reason": "sound-palette + sound-generation-elevenlabs"}
+{"query": "the click sound feels late compared to the animation", "should_load": true, "reason": "sound-motion-sync"}
+{"query": "how do I do sound design for our product launch video like the OpenAI ones?", "should_load": true, "reason": "launch-video-sound"}
+{"query": "we can't use ElevenLabs, what's the open-source way to make UI sounds?", "should_load": true, "reason": "sound-generation-open-source"}
+{"query": "transcribe this podcast episode to text", "should_load": false, "reason": "speech-to-text — not interface sound design"}
+{"query": "compose a 3-minute background music track for my game", "should_load": false, "reason": "music generation — not UI or launch-video sound design"}
+{"query": "my Web Audio oscillator is producing clipping artifacts in a synth app", "should_load": false, "reason": "DSP debugging in an audio product, not interface sound"}
+{"query": "turn this mp4 of our mascot into an animated svg", "should_load": true, "reason": "video-to-vector-pipeline / svg-animator"}
+{"query": "make this logo draw itself on page load", "should_load": true, "reason": "svg-animation stroke drawing"}
+{"query": "this landing page looks AI generated, fix it", "should_load": true, "reason": "unslop-pass"}
+{"query": "build an oklch palette from #4f46e5 with dark mode", "should_load": true, "reason": "color-scales-oklch"}
+{"query": "show me three directions for the pricing card", "should_load": true, "reason": "prototype-picker"}
+{"query": "which design skill should handle this — impeccable or yours?", "should_load": true, "reason": "skill-router"}
+{"query": "write a DESIGN.md our agents will actually follow", "should_load": true, "reason": "design-system-docs"}
+{"query": "convert this SVG to PNG at 3 sizes", "should_load": false, "reason": "asset conversion; no craft decision"}
+{"query": "set up a postgres schema for user settings", "should_load": false, "reason": "backend"}
+{"query": "storyboard our 60-second product launch video — when does the name land and how long is the endcard?", "should_load": true, "reason": "launch-video-structure"}
+{"query": "review the pacing of our launch film render — does it feel like a slideshow?", "should_load": true, "reason": "launch-video-review"}
+{"query": "render my HyperFrames composition to mp4 at 4K", "should_load": false, "reason": "hyperframes-cli owns rendering — no craft decision"}
+{"query": "transcribe the voiceover in this launch video", "should_load": false, "reason": "speech-to-text — transcription, not launch-film craft"}
+{"query": "make our settings modal animation feel less janky", "should_load": true, "reason": "motion review: animation-decision-framework + duration-table + easing-curves"}
+{"query": "what would Emil Kowalski change about this toast animation?", "should_load": true, "reason": "named source: Emil Kowalski (sonner-principles, easing-curves)"}
+{"query": "how would Benji Taylor design this bottom tray?", "should_load": true, "reason": "named source: Benji Taylor (tray-rules)"}
+{"query": "score our launch video with sound derived from the animation", "should_load": true, "reason": "launch-video-sound + sound-from-motion"}
+{"query": "give me an OKLCH palette for dark mode with accessible contrast", "should_load": true, "reason": "color-scales-oklch + contrast-and-color-scheme"}
+{"query": "turn this MP4 logo animation into an editable animated SVG", "should_load": true, "reason": "video-to-vector-pipeline"}
+{"query": "trim the silence at the start of this podcast episode", "should_load": false, "reason": "audio editing, not UI sound design"}
+{"query": "write a SQL migration that adds a column to the users table", "should_load": false, "reason": "backend data work — no design decision"}
+{"query": "set up Clerk authentication in a Next.js app", "should_load": false, "reason": "auth integration — no design decision"}
+{"query": "our launch film feels like a slideshow — how many cuts per minute should it have?", "should_load": true, "reason": "launch-video-registers + launch-video-cuts"}
+{"query": "draw an architecture diagram of our services for the README", "should_load": true, "reason": "diagram-decision → diagram-design"}
+{"query": "turn this Mermaid flowchart into something presentable for the blog post", "should_load": true, "reason": "diagram-craft; diagram-design redraws Mermaid"}
+{"query": "should our onboarding flow be a diagram or a table in the docs?", "should_load": true, "reason": "diagram-decision"}
+{"query": "make a sequence diagram of the OAuth handshake for the security review doc", "should_load": true, "reason": "diagram-decision → diagram-design"}
+{"query": "lay out our sprint plan on my open tldraw board and connect the dependencies", "should_load": true, "reason": "tldraw-canvas → tldraw-offline"}
+{"query": "animate this SVG logo drawing itself on with GSAP DrawSVG", "should_load": true, "reason": "svg-animation → gsap-plugins"}
+{"query": "find a settings icon in our Phosphor set and add it to the toolbar", "should_load": false, "reason": "better-icons lookup in a pack already chosen — no design decision; icon-systems applies when choosing the pack"}
+{"query": "fix the TypeScript errors after upgrading the tldraw SDK to the latest version", "should_load": false, "reason": "tldraw-migrate owns SDK upgrades — no design decision"}
+{"query": "count how many shapes are on each page of this .tldraw file", "should_load": false, "reason": "tldraw-offline inspection — no design decision"}
+{"query": "set up CI to export the PlantUML files in docs/ to PNG on every push", "should_load": false, "reason": "build tooling — no design decision"}

@@ -61,7 +61,7 @@ function Sparkline({ data, color = "#00F58C" }: { data: number[]; color?: string
 
 function Card({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-[#0B111A]/90 border border-emerald-500/25 rounded-2xl p-5 ${className}`}>
+    <div className={`bg-[#0B111A]/90 border border-emerald-500/25 rounded-2xl p-5 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12] ${className}`}>
       <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">{title}</div>
       {children}
     </div>
@@ -73,7 +73,7 @@ function StatRow({ label, value, color = "#00F58C", sub }: { label: string; valu
     <div className="flex justify-between py-2 border-t border-slate-800/50">
       <span className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">{label}</span>
       <div className="text-right">
-        <div className="font-mono font-bold tracking-tight text-white" style={{ color }}>{value}</div>
+        <div className="font-mono font-bold tracking-tight text-white/92" style={{ color }}>{value}</div>
         {sub && <div className="font-mono text-[10px] tracking-widest text-slate-500 uppercase mt-0.5">{sub}</div>}
       </div>
     </div>
@@ -313,7 +313,7 @@ export default function MetaHookPoolPage() {
         <div className="flex items-center justify-between font-mono text-sm tracking-[0.25em] text-slate-300 uppercase mb-6">
           <div className="flex items-center gap-3">
             <span className="text-emerald-400 font-bold">┌─</span>
-            <span className="text-white font-bold tracking-widest">META HOOK POOL</span>
+            <span className="text-white/92 font-bold tracking-widest">META HOOK POOL</span>
             <span className="text-slate-600">──</span>
             <span className="text-slate-300 font-medium">ANTI-MEV TELEMETRY</span>
             <span className="text-slate-700 hidden md:inline">────────────────────────────────────┐</span>
@@ -335,11 +335,11 @@ export default function MetaHookPoolPage() {
           <Card title="QUOTE & CHART [SYS.01]">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-4">
+                <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
                   <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">ETH / USD</div>
-                  <div className="font-mono font-bold tracking-tight text-white text-3xl">{ethUsd > 0 ? fmtUsd(ethUsd) : "—"}</div>
+                  <div className="font-mono font-bold tracking-tight text-white/92 text-3xl">{ethUsd > 0 ? fmtUsd(ethUsd) : "—"}</div>
                 </div>
-                <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-4">
+                <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
                   <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">POOL PRICE</div>
                   <div className="font-mono font-bold tracking-tight text-emerald-400 text-3xl">{price > 0 ? fmt(price, 2) : "—"} <span className="text-sm font-normal text-slate-400">IMD/ETH</span></div>
                 </div>
@@ -440,7 +440,7 @@ export default function MetaHookPoolPage() {
                         {attackLog.map((e, i) => (
                           <div
                             key={i}
-                            className="flex items-center justify-between bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs font-mono"
+                            className="flex items-center justify-between bg-[#131823] border border-white/[0.07] rounded px-3 py-1.5 text-xs font-mono"
                           >
                             <span className="text-slate-400">{e.time}</span>
                             <span className="text-emerald-400">
@@ -453,7 +453,7 @@ export default function MetaHookPoolPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-xs font-mono text-slate-500 bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-3 py-2">
+                      <div className="text-xs font-mono text-slate-500 bg-[#131823] border border-white/[0.07] rounded px-3 py-2">
                         no new interception observed in this session
                         (counter read every 30s)
                       </div>
@@ -470,7 +470,7 @@ export default function MetaHookPoolPage() {
 
               <div className="flex items-center gap-3 pt-2">
                 <div className="text-xs font-mono text-slate-400">
-                  HOOK: <span className="text-white">passive contract</span> ·
+                  HOOK: <span className="text-white/92">passive contract</span> ·
                   no direct deposits · TVL:{" "}
                   <span className="text-emerald-400">{fmtUsd(totalTVL)}</span>
                 </div>
@@ -479,7 +479,7 @@ export default function MetaHookPoolPage() {
               <button
                 onClick={() => connect()}
                 disabled={connected || connecting}
-                className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-all disabled:bg-slate-800/50 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-[background-color,box-shadow,transform,color] duration-150 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -523,15 +523,15 @@ export default function MetaHookPoolPage() {
                   <div className="border-t border-slate-700/50 pt-2">
                     <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">YIELD PROJECTIONS</div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-3">
+                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
                         <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">DAILY</div>
                         <div className="font-mono font-bold text-emerald-400 text-lg">{dailyYield > 0 ? "+" + fmt(dailyYield, 4) : "—"} ETH</div>
                       </div>
-                      <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-3">
+                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
                         <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">MONTHLY</div>
                         <div className="font-mono font-bold text-emerald-400 text-lg">{monthlyYield > 0 ? "+" + fmt(monthlyYield, 2) : "—"} ETH</div>
                       </div>
-                      <div className="bg-[#070A0F]/80 border border-slate-700/50 rounded-xl p-3">
+                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
                         <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">ANNUAL</div>
                         <div className="font-mono font-bold text-emerald-400 text-lg">{annualYield > 0 ? "+" + fmt(annualYield, 2) : "—"} ETH</div>
                       </div>
