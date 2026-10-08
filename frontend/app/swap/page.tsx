@@ -72,8 +72,6 @@ const PRICES_USD: Record<string, number> = {
   WETH: 2400,
 };
 
-const LIQUIDITY_USD = 5_000_000;
-
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function allowance(address,address) view returns (uint256)",
@@ -88,8 +86,8 @@ const ROUTER_ABI = [
   "function successFeeBps(address) view returns (uint16)",
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
-  "function executeProtectedSellAndBurn(uint256 standardAmount, uint256 minAmountOut) external",
   "function executeMultiHop(address[] venues, address[] tokens, uint256 amountIn, uint256 minAmountOut) external payable returns (uint256)",
+  "event MultiHopExecuted(address indexed user, address[] tokens, uint256 amountIn, uint256 finalOut, uint256 feeTotal, uint256 userOut, uint256 timestamp)",
 ];
 
 const POOL_ABI = [
@@ -130,8 +128,6 @@ const TIER_LABELS: Record<number, string> = {
   2: "T3 $IMD/$BLD",
   3: "T4 Retail",
 };
-
-const FEE_TIER = { pct: "0.00%–0.50%", label: "Identity-Fi Tier" };
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
@@ -183,6 +179,8 @@ function mapSwapError(err: unknown): string {
     return "Liquidez/slippage da venue — tente um valor menor ou aumente a tolerância.";
   if (msg.includes("insufficient allowance") || msg.includes("ERC20InsufficientAllowance"))
     return "Approve do token necessario — tente novamente.";
+  if (msg.includes("could not coalesce"))
+    return "Estimativa de gas falhou na Sepolia (revert sem mensagem) — confira se a carteira tem ETH para gas/value e se o valor cabe na liquidez da pool, e tente de novo.";
   return e.shortMessage || e.message || "Falha no swap.";
 }
 
@@ -367,12 +365,16 @@ export default function SwapPage() {
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [customSlippage, setCustomSlippage] = useState("");
-  const [deadline, setDeadline] = useState("20");
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<{
+    block?: number;
+    finalOut?: string;
+    feeTotal?: string;
+    userOut?: string;
+  } | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
 
   const [cfg, setCfg] = useState<{
@@ -410,12 +412,10 @@ export default function SwapPage() {
     if (typeof window === "undefined") return;
     const id = setTimeout(() => {
       const s = localStorage.getItem("imd_slippage");
-      const d = localStorage.getItem("imd_deadline");
       if (s) {
         if (SLIPPAGE_PRESETS.includes(s)) setSlippage(s);
         else setCustomSlippage(s);
       }
-      if (d) setDeadline(d);
     }, 0);
     return () => clearTimeout(id);
   }, []);
@@ -423,9 +423,8 @@ export default function SwapPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("imd_slippage", effectiveSlippage);
-      localStorage.setItem("imd_deadline", deadline);
     }
-  }, [effectiveSlippage, deadline]);
+  }, [effectiveSlippage]);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -434,7 +433,7 @@ export default function SwapPage() {
         const j = await r.json();
         setCfg(j);
       } catch {
-        // offline — keep demo mode
+        // sem /api/config — banner de configuracao ausente no UI
       }
     }, 0);
     return () => clearTimeout(t);
@@ -583,16 +582,7 @@ export default function SwapPage() {
   }, [connected, provider, address, tokenIn, tokenOut, balances]);
 
   const amountNum = parseFloat(amount) || 0;
-  const rate = useMemo(() => {
-    const pIn = PRICES_USD[tokenIn.symbol] ?? 0;
-    const pOut = PRICES_USD[tokenOut.symbol] ?? 0;
-    return pOut > 0 ? pIn / pOut : 0;
-  }, [tokenIn, tokenOut]);
-
-  const outAmount = amountNum * rate;
-  const minReceived = outAmount * (1 - slipNum / 100);
   const usdValue = amountNum * (PRICES_USD[tokenIn.symbol] ?? 0);
-  const priceImpact = Math.min((usdValue / LIQUIDITY_USD) * 100, 50);
 
   const realQuote = useMemo(() => {
     if (!realMode || !amount || amountNum <= 0) return null;
@@ -647,7 +637,10 @@ export default function SwapPage() {
   ]);
 
   async function handleFaucet() {
-    if (!signer || !standardAddr || !address) return;
+    if (!signer || !standardAddr || !address) {
+      setError("Faucet: conecte a carteira na Sepolia primeiro.");
+      return;
+    }
     setFaucetBusy(true);
     setError(null);
     try {
@@ -678,7 +671,6 @@ export default function SwapPage() {
   function handleReverse() {
     setTokenIn(tokenOut);
     setTokenOut(tokenIn);
-    setAmount(outAmount > 0 ? String(parseFloat(outAmount.toPrecision(6))) : "");
   }
 
   function setSlippagePreset(v: string) {
@@ -687,110 +679,137 @@ export default function SwapPage() {
   }
 
   async function handleSwap() {
-    if (!amountNum || !connected) return;
-
-    if (realMode) {
-      if (!signer || !realQuote || cooldownBlocks > 0) return;
-      setLoading(true);
-      setError(null);
-      setTxHash(null);
-      setRealStats(null);
-      try {
-        const pIn = poolFor(tokenIn);
-        const pOut = poolFor(tokenOut);
-        if ((!isEth(tokenIn) && !pIn) || (!isEth(tokenOut) && !pOut)) {
-          setError("Pool indisponível para este par — selecione outro token.");
-          return;
-        }
-        if (!isEth(tokenIn) && address) {
-          const erc = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
-          try {
-            const allow: bigint = await erc.allowance(address, routerAddr);
-            if (allow < realQuote.amt) {
-              const atx = await erc.approve(routerAddr, realQuote.amt);
-              await atx.wait();
-            }
-          } catch {
-            setError("Approve do token falhou — tente novamente.");
-            return;
-          }
-        }
-        let venues: string[];
-        let path: string[];
-        if (isEth(tokenIn)) {
-          venues = [pOut as string];
-          path = [ETH_ADDR, tokenOut.address];
-        } else if (isEth(tokenOut)) {
-          venues = [pIn as string];
-          path = [tokenIn.address, ETH_ADDR];
-        } else {
-          venues = [pIn as string, pOut as string];
-          path = [tokenIn.address, ETH_ADDR, tokenOut.address];
-        }
-        const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
-        const tx = await router.executeMultiHop(
-          venues,
-          path,
-          realQuote.amt,
-          realQuote.minOut,
-          { value: isEth(tokenIn) ? realQuote.amt : 0n }
-        );
-        setTxHash(tx.hash as string);
-        const receipt = await tx.wait();
-        const readRouter = new ethers.Contract(
-          routerAddr,
-          ROUTER_ABI,
-          provider
-        );
-        const stats = await readRouter.getStats();
-        setRealStats({
-          sellVolume: ethers.formatEther(stats[0] as bigint),
-          mevCaptured: ethers.formatEther(stats[1] as bigint),
-          burnsExecuted: (stats[2] as bigint).toString(),
-          yieldDistributed: ethers.formatEther(stats[3] as bigint),
-        });
-        setResult({ block: receipt.blockNumber });
-        loadSepolia();
-      } catch (err: unknown) {
-        setError(mapSwapError(err));
-      } finally {
-        setLoading(false);
-      }
+    if (loading) return;
+    setError(null);
+    if (!connected) {
+      setError("Conecte a carteira para executar o swap.");
+      return;
+    }
+    if (!isSepolia) {
+      setError(
+        "Carteira fora da Sepolia — clique em SWITCH TO SEPOLIA e tente de novo."
+      );
+      return;
+    }
+    if (!routerAddr) {
+      setError(
+        "Config ausente: OPTIMIZER_ROUTER_ADDRESS não definido no .env.local."
+      );
+      return;
+    }
+    if (!signer) {
+      setError(`Sessão da ${walletName} ausente — reconecte a carteira.`);
+      return;
+    }
+    if (!amountNum) {
+      setError("Informe o valor a trocar.");
+      return;
+    }
+    if (cooldownBlocks > 0) {
+      setError(
+        `Anti-sandwich: aguarde ${cooldownBlocks} bloco(s) após a última operação da carteira.`
+      );
+      return;
+    }
+    if (!realQuote) {
+      setError(
+        "Quote indisponível — aguarde os preços das pools carregarem ou ajuste o valor."
+      );
+      return;
+    }
+    const pIn = poolFor(tokenIn);
+    const pOut = poolFor(tokenOut);
+    if ((!isEth(tokenIn) && !pIn) || (!isEth(tokenOut) && !pOut)) {
+      setError("Pool indisponível para este par — selecione outro token.");
       return;
     }
 
     setLoading(true);
-    setError(null);
     setTxHash(null);
+    setRealStats(null);
     setResult(null);
-
     try {
-      const res = await fetch("/api/swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          amount,
-          standardAmount: amount,
-          minAmountOut: minReceived.toFixed(6),
-          feeTier: FEE_TIER.pct,
-          slippage: effectiveSlippage,
-          deadline,
-          address,
-        }),
-      });
-      const data = await res.json();
-
-      if (data.txHash) {
-        setTxHash(data.txHash);
-        setResult(data);
-      } else {
-        setError(data.error || "Swap failed");
+      if (!isEth(tokenIn) && address) {
+        const erc = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
+        const allow: bigint = await erc.allowance(address, routerAddr);
+        if (allow < realQuote.amt) {
+          const atx = await erc.approve(routerAddr, realQuote.amt);
+          await atx.wait();
+        }
       }
+      let venues: string[];
+      let path: string[];
+      if (isEth(tokenIn)) {
+        venues = [pOut as string];
+        path = [ETH_ADDR, tokenOut.address];
+      } else if (isEth(tokenOut)) {
+        venues = [pIn as string];
+        path = [tokenIn.address, ETH_ADDR];
+      } else {
+        venues = [pIn as string, pOut as string];
+        path = [tokenIn.address, ETH_ADDR, tokenOut.address];
+      }
+      const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
+      const tx = await router.executeMultiHop(
+        venues,
+        path,
+        realQuote.amt,
+        realQuote.minOut,
+        { value: isEth(tokenIn) ? realQuote.amt : 0n }
+      );
+      setTxHash(tx.hash as string);
+      const receipt = await tx.wait();
+      if (!receipt) {
+        setError("Transação substituída ou cancelada na carteira.");
+        return;
+      }
+      const readRouter = new ethers.Contract(
+        routerAddr,
+        ROUTER_ABI,
+        provider
+      );
+      // Registro on-chain: decodifica o evento MultiHopExecuted do receipt
+      // para mostrar o que foi efetivamente registrado na Sepolia.
+      let ev: {
+        finalOut?: string;
+        feeTotal?: string;
+        userOut?: string;
+      } = {};
+      for (const l of receipt.logs) {
+        try {
+          const p = readRouter.interface.parseLog(l);
+          if (p?.name === "MultiHopExecuted") {
+            ev = {
+              finalOut: ethers.formatUnits(
+                p.args.finalOut as bigint,
+                tokenOut.decimals
+              ),
+              feeTotal: ethers.formatUnits(
+                p.args.feeTotal as bigint,
+                tokenOut.decimals
+              ),
+              userOut: ethers.formatUnits(
+                p.args.userOut as bigint,
+                tokenOut.decimals
+              ),
+            };
+            break;
+          }
+        } catch {
+          // log de outro contrato — ignora
+        }
+      }
+      const stats = await readRouter.getStats();
+      setRealStats({
+        sellVolume: ethers.formatEther(stats[0] as bigint),
+        mevCaptured: ethers.formatEther(stats[1] as bigint),
+        burnsExecuted: (stats[2] as bigint).toString(),
+        yieldDistributed: ethers.formatEther(stats[3] as bigint),
+      });
+      setResult({ block: receipt.blockNumber, ...ev });
+      loadSepolia();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Swap failed";
-      setError(message);
+      setError(mapSwapError(err));
     } finally {
       setLoading(false);
     }
@@ -798,8 +817,6 @@ export default function SwapPage() {
 
   const highSlip = slipNum > 5;
   const lowSlip = slipNum < 0.1;
-  const impactColor =
-    priceImpact > 3 ? "#FF567E" : priceImpact > 1 ? "#FFB000" : "#00F58C";
 
   const poolsMissing = realMode && Object.keys(pools).length === 0;
   const quotePending =
@@ -813,7 +830,11 @@ export default function SwapPage() {
 
   const btnState = !connected
     ? "connect"
-    : !amountNum || (realMode && !realQuote)
+    : !isSepolia
+    ? "switch"
+    : !routerAddr
+    ? "config"
+    : !amountNum || !realQuote
     ? quotePending
       ? "quote"
       : "enter"
@@ -864,7 +885,9 @@ export default function SwapPage() {
               </span>
             ) : (
               <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400">
-                DEMO · SIMULATION ONLY
+                {!connected
+                  ? "CONECTE A CARTEIRA · EXIGE SEPOLIA"
+                  : "REDE ERRADA · TROQUE P/ SEPOLIA"}
               </span>
             )}
             {connected && !isSepolia && chainId !== null && (
@@ -999,21 +1022,6 @@ export default function SwapPage() {
                 {lowSlip && (
                   <div className="text-[10px] text-rose-400 font-mono">Very low slippage — your transaction is likely to fail.</div>
                 )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-mono uppercase">Transaction Deadline</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min="1"
-                      max="4320"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="w-16 bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-2 py-1 text-xs font-mono text-white outline-none focus:border-emerald-500/50 text-right"
-                    />
-                    <span className="text-xs text-slate-400">min</span>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -1084,23 +1092,26 @@ export default function SwapPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0 text-2xl font-mono text-white">
-                  {realMode && realQuote ? (
+                  {realQuote ? (
                     fmt(
                       parseFloat(
                         ethers.formatUnits(realQuote.out, tokenOut.decimals)
                       ),
                       6
                     )
-                  ) : amountNum > 0 ? (
-                    fmt(outAmount)
                   ) : (
                     <span className="text-slate-500/50">0.00</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-slate-400">
-                    {outAmount > 0
-                      ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
+                    {realQuote
+                      ? `≈ $${fmt(
+                          parseFloat(
+                            ethers.formatUnits(realQuote.out, tokenOut.decimals)
+                          ) * (PRICES_USD[tokenOut.symbol] ?? 0),
+                          2
+                        )}`
                       : ""}
                   </span>
                   <TokenSelector
@@ -1114,8 +1125,7 @@ export default function SwapPage() {
 
             {/* Details */}
             <div className="mt-3 rounded-2xl bg-[#070A0F]/40 border border-slate-800/50 px-4 py-3 space-y-1.5">
-              {realMode ? (
-                <>
+              <>
                   <InfoRow
                     label="Rate (on-chain)"
                     value={
@@ -1202,51 +1212,22 @@ export default function SwapPage() {
                         : "(1 hop)"
                     } · OptimizerRouter`}
                   />
-                </>
-              ) : (
-                <>
-                  <InfoRow
-                    label="Rate"
-                    value={`1 ${tokenIn.symbol} = ${fmt(rate, 6)} ${tokenOut.symbol}`}
-                  />
-                  <InfoRow
-                    label="Price Impact"
-                    value={amountNum > 0 ? `${priceImpact.toFixed(2)}%` : "—"}
-                    color={amountNum > 0 ? impactColor : undefined}
-                  />
-                  <InfoRow
-                    label="Minimum Received"
-                    value={
-                      amountNum > 0
-                        ? `${fmt(minReceived, 6)} ${tokenOut.symbol}`
-                        : "—"
-                    }
-                    color="#00F58C"
-                  />
-                  <InfoRow
-                    label="Slippage Tolerance"
-                    value={`${effectiveSlippage}%`}
-                    color={highSlip ? "#FFB000" : lowSlip ? "#FF567E" : undefined}
-                  />
-                  <InfoRow
-                    label="Pool Fee"
-                    value={`${FEE_TIER.pct} (${FEE_TIER.label})`}
-                  />
-                  <InfoRow
-                    label="Route"
-                    value={`${tokenIn.symbol} → ${tokenOut.symbol} (simulated quote)`}
-                  />
-                  <InfoRow label="Deadline" value={`${deadline} min`} />
-                </>
-              )}
+              </>
             </div>
 
             {/* CTA */}
             <button
-              onClick={btnState === "connect" ? connect : handleSwap}
+              onClick={
+                btnState === "connect"
+                  ? connect
+                  : btnState === "switch"
+                  ? () => void switchChain(11155111)
+                  : handleSwap
+              }
               disabled={
                 btnState === "enter" ||
                 btnState === "quote" ||
+                btnState === "config" ||
                 btnState === "loading" ||
                 (realMode && cooldownBlocks > 0) ||
                 (realMode &&
@@ -1258,7 +1239,7 @@ export default function SwapPage() {
               className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono uppercase transition-all ${
                 btnState === "swap"
                   ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_30px_rgba(0,245,140,0.25)]"
-                  : btnState === "connect"
+                  : btnState === "connect" || btnState === "switch"
                   ? "bg-emerald-500/90 text-black hover:bg-emerald-500"
                   : btnState === "loading"
                   ? "bg-emerald-500/20 text-emerald-400 cursor-wait"
@@ -1269,19 +1250,19 @@ export default function SwapPage() {
                 ? connecting
                   ? `ABRINDO ${walletName.toUpperCase()}…`
                   : `CONNECT ${walletName.toUpperCase()}`
+                : btnState === "switch"
+                ? "SWITCH TO SEPOLIA"
+                : btnState === "config"
+                ? "CONFIGURAÇÃO AUSENTE"
                 : btnState === "enter"
                 ? "ENTER AN AMOUNT"
                 : btnState === "quote"
                 ? "CALCULATING QUOTE…"
                 : btnState === "loading"
-                ? realMode
-                  ? "SENDING TX..."
-                  : "SWAPPING..."
-                : realMode
-                ? cooldownBlocks > 0
-                  ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
-                  : "EXECUTE PROTECTED SWAP"
-                : "EXECUTE SWAP (DEMO)"}
+                ? "SENDING TX…"
+                : cooldownBlocks > 0
+                ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
+                : "EXECUTE PROTECTED SWAP"}
             </button>
 
             {!connected && (
@@ -1298,7 +1279,7 @@ export default function SwapPage() {
           </div>
 
           {/* Transaction result */}
-          {txHash && realMode && (
+          {txHash && (
             <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-emerald-500/30 p-4">
               <div className="text-xs text-emerald-400 mb-1 font-mono uppercase">✓ TX CONFIRMED ON SEPOLIA</div>
               <a
@@ -1309,6 +1290,29 @@ export default function SwapPage() {
               >
                 {txHash}
               </a>
+              {result && (
+                <div className="mt-2 space-y-1 text-xs">
+                  <InfoRow
+                    label="Block (Sepolia)"
+                    value={result.block !== undefined ? String(result.block) : "—"}
+                    color="#00F58C"
+                  />
+                  {result.userOut !== undefined && (
+                    <InfoRow
+                      label="Evento MultiHopExecuted · líquido"
+                      value={`${fmt(parseFloat(result.userOut), 6)} ${tokenOut.symbol}`}
+                      color="#00F58C"
+                    />
+                  )}
+                  {result.feeTotal !== undefined && (
+                    <InfoRow
+                      label="Evento · fee registrada"
+                      value={`${fmt(parseFloat(result.feeTotal), 6)} ${tokenOut.symbol}`}
+                      color="#FFB000"
+                    />
+                  )}
+                </div>
+              )}
               {realStats && (
                 <div className="mt-2 space-y-1 text-xs">
                   <InfoRow
@@ -1329,27 +1333,6 @@ export default function SwapPage() {
                   <InfoRow
                     label="Router · Yield Distributed"
                     value={`${fmt(parseFloat(realStats.yieldDistributed), 4)} ETH`}
-                    color="#00F58C"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {txHash && !realMode && (
-            <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-amber-500/30 p-4">
-              <div className="text-xs text-amber-400 mb-1 font-mono uppercase">DEMO — SIMULATED TX, NOT ON CHAIN</div>
-              <div className="text-xs text-slate-400 break-all font-mono">{txHash}</div>
-              {result && (
-                <div className="mt-2 space-y-1 text-xs">
-                  <InfoRow
-                    label="Received (simulated)"
-                    value={`${String(result.ethReceived ?? "—")} ${tokenOut.symbol}`}
-                    color="#00F58C"
-                  />
-                  <InfoRow
-                    label="MEV Captured (simulated)"
-                    value={`${String(result.mevCaptured ?? "—")} ${tokenIn.symbol}`}
                     color="#00F58C"
                   />
                 </div>

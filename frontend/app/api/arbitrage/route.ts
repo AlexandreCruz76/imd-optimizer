@@ -114,18 +114,6 @@ export async function GET() {
     const hookWins = history.filter((s) => s.winner === "hook").length;
     const nativeWins = history.filter((s) => s.winner === "native").length;
 
-    // Simulation
-    const investmentETH = 10;
-    let hookE = 0, nativeE = 0, arbE = 0;
-    for (let i = 1; i < history.length; i++) {
-      const prev = history[i - 1];
-      const curr = history[i];
-      const hours = (new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3600000;
-      arbE += (investmentETH * Math.max(prev.hookAPY, prev.nativeAPY) / 100 / 365 / 24) * hours;
-      hookE += (investmentETH * prev.hookAPY / 100 / 365 / 24) * hours;
-      nativeE += (investmentETH * prev.nativeAPY / 100 / 365 / 24) * hours;
-    }
-
     const THRESHOLD = 2.0;
     const recommendedPool = d.spread > THRESHOLD ? "hook" : d.spread < -THRESHOLD ? "native" : "hold";
 
@@ -140,14 +128,6 @@ export async function GET() {
         nativeWins,
         hookWinRate: history.length > 0 ? ((hookWins / history.length) * 100).toFixed(1) : "0",
         nativeWinRate: history.length > 0 ? ((nativeWins / history.length) * 100).toFixed(1) : "0",
-      },
-      simulation: {
-        investmentETH,
-        hookEarningsETH: hookE.toFixed(4),
-        nativeEarningsETH: nativeE.toFixed(4),
-        arbitrageEarningsETH: arbE.toFixed(4),
-        arbitrageGainVsHookPct: hookE > 0 ? ((arbE - hookE) / hookE * 100).toFixed(2) : "0",
-        arbitrageGainVsNativePct: nativeE > 0 ? ((arbE - nativeE) / nativeE * 100).toFixed(2) : "0",
       },
       recommendation: {
         migrationNeeded: Math.abs(d.spread) > THRESHOLD,
