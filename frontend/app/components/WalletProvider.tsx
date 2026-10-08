@@ -190,7 +190,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [injected, applySession, walletName]);
 
-  const disconnect = useCallback(() => {
+  const clearSession = useCallback(() => {
     setAddress(null);
     setChainId(null);
     setBalance("0");
@@ -198,6 +198,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setSigner(null);
     setWalletError(null);
   }, []);
+
+  const disconnect = useCallback(() => {
+    const p = injected ?? (window.ethereum as Eip1193 | undefined) ?? null;
+    if (p) {
+      // Revoga a autorizacao da origem: sem isso a reconexao silenciosa
+      // volta com a mesma conta e o proximo Connect nem abre o popup
+      // para escolher outra carteira/conta.
+      void Promise.resolve(
+        p.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] })
+      ).catch(() => {});
+    }
+    clearSession();
+    setWalletError("Carteira desconectada deste site.");
+  }, [injected, clearSession]);
 
   const switchChain = useCallback(
     async (targetChainId: number) => {
@@ -296,7 +310,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const onAcc = (payload: unknown) => {
       const accs = payload as string[];
       if (!Array.isArray(accs) || accs.length === 0) {
-        disconnect();
+        clearSession();
       } else {
         void applySession(accs[0], injected);
       }
@@ -310,7 +324,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       injected.removeListener?.("accountsChanged", onAcc);
       injected.removeListener?.("chainChanged", onChain);
     };
-  }, [injected, disconnect, applySession]);
+  }, [injected, clearSession, applySession]);
 
   return (
     <WalletContext.Provider

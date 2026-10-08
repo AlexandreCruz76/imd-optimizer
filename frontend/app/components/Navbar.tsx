@@ -84,11 +84,18 @@ export function Navbar() {
                 <span className="text-xs text-[#00F58C] px-2 py-1 rounded-full bg-[#00F58C]/10 border border-[#00F58C]/20">
                   {chainId === 11155111 ? "Sepolia" : chainId === 1 ? "Mainnet" : `Chain ${chainId}`}
                 </span>
-                <button
-                  onClick={disconnect}
-                  className="bg-white/[0.06] text-white font-semibold px-4 py-2 rounded-full hover:bg-white/[0.12] transition-all text-sm border border-white/[0.08]"
+                <span
+                  className="bg-white/[0.06] text-white font-semibold px-3 py-2 rounded-full text-sm border border-white/[0.08] font-mono"
+                  title={address}
                 >
                   {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
+                <button
+                  onClick={disconnect}
+                  title="Desconectar carteira deste site"
+                  className="text-xs text-rose-400 font-semibold px-3 py-2 rounded-full border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
+                >
+                  Desconectar
                 </button>
               </div>
             ) : (
