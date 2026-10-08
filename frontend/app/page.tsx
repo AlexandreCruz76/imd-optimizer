@@ -198,10 +198,10 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { tier: "1", name: "ALPHA · Buildercoin NFT", fee: "0.00% Swap · 5% Success", boost: "4x Yield", color: "#FFD700", glow: "rgba(255,215,0,0.4)", desc: "Buildercoin NFT (501 supply, mint 0.05 ETH). Swap isento, Success Fee mínima sobre o lucro de arbitragem e multiplicador de yield máximo.", bgImage: "/images/nft builder.jpeg" },
-                  { tier: "2", name: "PARTNER · Identity md NFT", fee: "0.10% Swap · 10% Success", boost: "3x Yield", color: "#00F5FF", glow: "rgba(0,245,255,0.4)", desc: "Identity md NFT. Taxa de swap quase nula, Success Fee reduzida e 3x de yield ponderado no Builder Staking.", bgImage: "/images/imd%20(2).jpg" },
-                  { tier: "3", name: "HOLDER · IMD / BLD", fee: "0.30% Swap · 20% Success", boost: "1x Yield", color: "#BB86FC", glow: "rgba(187,134,252,0.4)", desc: "Saldo > 0 de IMD ou BLD — qualificação automática por balanceOf. Yield ponderado 1x.", bgImage: "/images/pepe%20clarao.png" },
-                  { tier: "4", name: "RETAIL", fee: "0.50% Swap · 25% Success", boost: "0x Yield", color: "#FF567E", glow: "rgba(255,86,126,0.4)", desc: "Tier padrão para qualquer carteira: proteção V4 completa sem pré-requisitos. Sem multiplicador de yield.", bgImage: "/images/tier.jpeg" },
+                  { tier: "1", name: "ALPHA · Buildercoin NFT", fee: "0.00% Swap · 5% Success", boost: "4x Yield", color: "#FFD700", glow: "rgba(255,215,0,0.4)", desc: "Buildercoin NFT (501 supply, mint 0.05 ETH). Zero swap fee, minimal Success Fee on arbitrage profit and maximum yield multiplier.", bgImage: "/images/nft builder.jpeg" },
+                  { tier: "2", name: "PARTNER · Identity md NFT", fee: "0.10% Swap · 10% Success", boost: "3x Yield", color: "#00F5FF", glow: "rgba(0,245,255,0.4)", desc: "Identity md NFT. Near-zero swap fee, reduced Success Fee and 3x weighted yield in Builder Staking.", bgImage: "/images/imd%20(2).jpg" },
+                  { tier: "3", name: "HOLDER · IMD / BLD", fee: "0.30% Swap · 20% Success", boost: "1x Yield", color: "#BB86FC", glow: "rgba(187,134,252,0.4)", desc: "Balance > 0 of IMD or BLD — automatic qualification via balanceOf. Weighted 1x yield.", bgImage: "/images/pepe%20clarao.png" },
+                  { tier: "4", name: "RETAIL", fee: "0.50% Swap · 25% Success", boost: "0x Yield", color: "#FF567E", glow: "rgba(255,86,126,0.4)", desc: "Default tier for any wallet: full V4 protection with no prerequisites. No yield multiplier.", bgImage: "/images/tier.jpeg" },
                 ].map((t, i) => (
                   <TierCard key={i} {...t} />
                 ))}
@@ -222,23 +222,23 @@ export default function HomePage() {
     <path d="M12 7v4M12 15h.01" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 } description="40% Core · 40% Infra · 20% Growth" accent="#00F58C" badge="Tier 1 · Alpha" backgroundImage="/images/colecao.png" />
-                <StatCard title="Swap Fee por Tier" value="0 – 0.5%" change="Tiers 1 → 4" icon={
+                <StatCard title="Swap Fee per Tier" value="0 – 0.5%" change="Tiers 1 → 4" icon={
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
     <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M12 22V12M22 8.5L12 15.5M2 8.5L12 15.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 } description="0.00% / 0.10% / 0.30% / 0.50% via identityTier()" accent="#00F5FF" badge="identityTier() on-chain" />
-                <StatCard title="Success Fee (arb)" value="5 – 25%" change="só sobre o lucro" icon={
+                <StatCard title="Success Fee (arb)" value="5 – 25%" change="profit only" icon={
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-} description="Cobrada apenas sobre lucro líquido de executeCustomArbitrage" accent="#FFB000" badge="receiveYield() only" />
+} description="Charged only on net profit of executeCustomArbitrage" accent="#FFB000" badge="receiveYield() only" />
                 <StatCard title="Penalty Split (Diamond)" value="50/25/25" change="Burn/Treasury/Yield" icon={
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
     <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M12 7v4M12 15h.01" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-} description="Unstake instantâneo (2–5%): 50% Burn, 25% Tesouro, 25% yield" accent="#FF567E" badge="DEC-020 · BuilderStakingVault" />
+} description="Instant unstake (2–5%): 50% Burn, 25% Treasury, 25% yield" accent="#FF567E" badge="DEC-020 · BuilderStakingVault" />
               </div>
             </div>
 

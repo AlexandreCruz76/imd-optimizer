@@ -63,7 +63,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let done = false;
     let fallback: Eip1193 | null = null;
-    let fallbackName = "Carteira";
+    let fallbackName = "Wallet";
     const w = window.ethereum as
       | (Eip1193 & { isPhantom?: boolean })
       | undefined;
@@ -91,7 +91,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           ? "Coinbase Wallet"
           : rdns.includes("rainbow")
           ? "Rainbow"
-          : d.info?.name || "Carteira";
+          : d.info?.name || "Wallet";
       }
     };
     window.addEventListener("eip6963:announceProvider", onAnnounce);
@@ -107,7 +107,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
               ? "Phantom"
               : w?.isMetaMask
               ? "MetaMask"
-              : "Carteira";
+              : "Wallet";
           pick(w ?? null, name);
         }
       }
@@ -144,7 +144,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const p = injected ?? (window.ethereum as Eip1193 | undefined) ?? null;
     if (!p) {
       setWalletError(
-        "Nenhuma carteira detectada — instale a MetaMask em metamask.io/download e recarregue a página."
+        "No wallet detected — install MetaMask at metamask.io/download and reload the page."
       );
       return;
     }
@@ -156,7 +156,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         method: "eth_requestAccounts",
       })) as string[];
       if (!accounts?.length) {
-        throw Object.assign(new Error("Nenhuma conta autorizada."), {
+        throw Object.assign(new Error("No account authorized."), {
           code: 0,
         });
       }
@@ -167,20 +167,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const rawMsg = (err as Error)?.message ?? "";
       if (code === 4001) {
         setWalletError(
-          `Conexão rejeitada no ${walletName} — clique de novo e aprove no popup da extensão.`
+          `Connection rejected in ${walletName} — click again and approve in the extension popup.`
         );
       } else if (code === -32002) {
         setWalletError(
-          `${walletName} já tem um pedido pendente — abra a extensão e aprove a solicitação.`
+          `${walletName} already has a pending request — open the extension and approve it.`
         );
       } else if (/unexpected|context invalidated|could not establish connection/i.test(rawMsg)) {
         setWalletError(
-          `Erro da extensão ${walletName}: "${rawMsg.slice(0, 80)}" — desbloqueie a carteira, atualize/recarregue a extensão e tente de novo.`
+          `${walletName} extension error: "${rawMsg.slice(0, 80)}" — unlock your wallet, update/reload the extension and try again.`
         );
       } else {
         setWalletError(
-          `Falha ao conectar no ${walletName}: ${
-            rawMsg.slice(0, 120) || "erro desconhecido"
+          `Failed to connect to ${walletName}: ${
+            rawMsg.slice(0, 120) || "unknown error"
           }`
         );
       }
@@ -210,7 +210,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       ).catch(() => {});
     }
     clearSession();
-    setWalletError("Carteira desconectada deste site.");
+    setWalletError("Wallet disconnected from this site.");
   }, [injected, clearSession]);
 
   const switchChain = useCallback(
@@ -219,7 +219,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // window.ethereum — que pode ser outra extensão (Phantom) e falhar.
       const p = injected ?? (window.ethereum as Eip1193 | undefined) ?? null;
       if (!p) {
-        setWalletError("Nenhuma carteira detectada para trocar de rede.");
+        setWalletError("No wallet detected to switch networks.");
         return;
       }
       const hexId = `0x${targetChainId.toString(16)}`;
@@ -254,23 +254,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           } catch (err2) {
             const raw2 = (err2 as Error)?.message ?? "";
             setWalletError(
-              `Falha ao adicionar a Sepolia no ${walletName}: ${raw2.slice(0, 120) || "erro desconhecido"}`
+              `Failed to add Sepolia in ${walletName}: ${raw2.slice(0, 120) || "unknown error"}`
             );
             console.error("Chain add failed:", err2);
             return;
           }
         }
         if (e.code === 4001) {
-          setWalletError(`Troca de rede rejeitada no ${walletName}.`);
+          setWalletError(`Network switch rejected in ${walletName}.`);
         } else if (e.code === -32002) {
-          setWalletError(`${walletName} já tem um pedido pendente — abra a extensão.`);
+          setWalletError(`${walletName} already has a pending request — open the extension.`);
         } else if (/unexpected|context invalidated/i.test(rawMsg)) {
           setWalletError(
-            `Erro da extensão ${walletName} — desbloqueie a carteira, recarregue a página e tente de novo.`
+            `${walletName} extension error — unlock your wallet, reload the page and try again.`
           );
         } else {
           setWalletError(
-            `Falha ao trocar de rede no ${walletName}: ${rawMsg.slice(0, 120) || "erro desconhecido"}`
+            `Failed to switch network in ${walletName}: ${rawMsg.slice(0, 120) || "unknown error"}`
           );
         }
         console.error("Chain switch failed:", err);

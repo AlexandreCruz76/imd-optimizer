@@ -67,8 +67,8 @@ contracts/private/
 MEV-Bot/
 
 # Internal docs & research (PRIVATE)
-docs/
-research/
+/docs/
+/research/
 .optimizer/
 
 # Deploy scripts with sensitive data

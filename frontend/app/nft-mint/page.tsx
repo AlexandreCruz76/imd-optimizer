@@ -41,22 +41,22 @@ function mapMintError(err: unknown): string {
   };
   const code = e.code ?? e.info?.error?.code;
   if (code === 4001 || code === "ACTION_REJECTED")
-    return "Transação rejeitada na carteira.";
-  if (code === -32603) return "Erro interno da carteira — tente novamente.";
+    return "Transaction rejected by the wallet.";
+  if (code === -32603) return "Internal wallet error — try again.";
   const msg = e.message || "";
   if (e.name === "WrongPayment")
-    return `Valor errado: envie exatamente 0.05 ETH.`;
-  if (e.name === "MintNotOpen") return "Mint fechado no contrato (mintOpen = false).";
-  if (e.name === "MaxSupplyReached") return "Esgotado: 501/501 mintados.";
+    return `Wrong amount: send exactly 0.05 ETH.`;
+  if (e.name === "MintNotOpen") return "Mint is closed in the contract (mintOpen = false).";
+  if (e.name === "MaxSupplyReached") return "Sold out: 501/501 minted.";
   if (e.name === "SplitNotConfigured")
-    return "Split 40/40/20 não configurado no contrato.";
+    return "Split 40/40/20 not configured in the contract.";
   if (e.name === "SplitWalletRejected")
-    return "Carteira de split rejeitou o receive() — mint revertido.";
+    return "Split wallet rejected receive() — mint reverted.";
   if (msg.includes("insufficient funds"))
-    return "ETH insuficiente na carteira (precisa de 0.05 ETH + gas na Sepolia).";
+    return "Not enough ETH in the wallet (needs 0.05 ETH + gas on Sepolia).";
   if (msg.includes("network") || msg.includes("chain"))
-    return "Carteira na rede errada — selecione Sepolia.";
-  return e.shortMessage || e.message || "Mint falhou.";
+    return "Wallet is on the wrong network — select Sepolia.";
+  return e.shortMessage || e.message || "Mint failed.";
 }
 
 const DEFAULT_STATUS: MintStatus = {
@@ -114,22 +114,22 @@ export default function NFTMintPage() {
       }
       if (!status?.deployed) {
         setError(
-          "Buildercoin não configurado (GENESIS_KEY_ADDRESS ausente no .env do servidor)."
+          "Buildercoin not configured (GENESIS_KEY_ADDRESS missing from the server .env)."
         );
         return;
       }
       if (chainId !== null && chainId !== 11155111) {
         setError(
-          `Carteira na rede ${chainId} — troque para Sepolia e tente de novo.`
+          `Wallet on chain ${chainId} — switch to Sepolia and try again.`
         );
         return;
       }
       if (!signer || !address) {
-        setError("Carteira não pronta — reconecte.");
+        setError("Wallet not ready — reconnect.");
         return;
       }
       if (!status.mintOpen) {
-        setError("Mint fechado (mintOpen = false no contrato).");
+        setError("Mint is closed (mintOpen = false in the contract).");
         return;
       }
 
@@ -138,7 +138,7 @@ export default function NFTMintPage() {
       const cfg = await configRes.json();
       const keyAddr = cfg.genesisKey || "";
       if (!keyAddr) {
-        setError("GENESIS_KEY_ADDRESS não encontrada no /api/config.");
+        setError("GENESIS_KEY_ADDRESS not found in /api/config.");
         return;
       }
       const price = ethers.parseEther(status.mintPrice);
@@ -147,7 +147,7 @@ export default function NFTMintPage() {
         const bal = await provider.getBalance(address);
         if (bal < price + ethers.parseEther("0.002")) {
           setError(
-            `Saldo insuficiente: precisa de ${status.mintPrice} ETH + gas (tem ${ethers.formatEther(bal)} ETH).`
+            `Insufficient balance: needs ${status.mintPrice} ETH + gas (has ${ethers.formatEther(bal)} ETH).`
           );
           return;
         }
@@ -191,15 +191,15 @@ export default function NFTMintPage() {
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Buildercoin</h1>
           <p className="text-xs text-emerald-500/50">
-            dNFT ERC-721 · pool única de {maxSupply} · evolui de Level no protocolo
+            dNFT ERC-721 · unique supply of {maxSupply} · evolves by Level in the protocol
           </p>
         </div>
       </header>
 
       {!status.deployed && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center text-amber-400 text-sm">
-          Contrato não configurado no servidor (GENESIS_KEY_ADDRESS). Mint real
-          disponível após configurar o .env.
+          Contract not configured on the server (GENESIS_KEY_ADDRESS). Real
+          mint available after configuring the .env.
         </div>
       )}
 
@@ -211,7 +211,7 @@ export default function NFTMintPage() {
           — Sepolia Testnet
           {walletError && (
             <div className="mt-2 text-xs text-amber-300 break-words">
-              CARTERA: {walletError}
+              WALLET: {walletError}
             </div>
           )}
         </div>
@@ -219,7 +219,7 @@ export default function NFTMintPage() {
 
       {connected && chainId !== null && chainId !== 11155111 && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center text-amber-400 text-sm">
-          Rede errada (chain {chainId}) —{" "}
+          Wrong network (chain {chainId}) —{" "}
           <button
             onClick={() => switchChain(11155111)}
             className="font-bold underline hover:text-amber-300"
@@ -262,12 +262,12 @@ export default function NFTMintPage() {
       <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
         <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">BUILDCOIN (dNFT)</div>
         <p className="text-xs text-emerald-500/50 mb-3">
-          {status.mintPrice} ETH · pool única de {maxSupply} · split 40/40/20
+          {status.mintPrice} ETH · unique supply of {maxSupply} · split 40/40/20
           on-chain
         </p>
         <ul className="space-y-2 text-xs text-emerald-400 mb-4">
           <li>✓ Swap 0.00% (Tier Alpha — Identity-Fi)</li>
-          <li>✓ Success fee mínima: 5% só sobre o lucro</li>
+          <li>✓ Minimal success fee: 5% of profit only</li>
           <li>✓ Yield 4x no Builder Staking</li>
           <li>✓ dNFT evolui de Level (Bronze → Neon) via updateTokenLevel</li>
         </ul>
@@ -368,12 +368,12 @@ export default function NFTMintPage() {
       <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
         <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">HOW IT WORKS</div>
         <ol className="space-y-2 text-xs text-emerald-500/60 list-decimal list-inside">
-          <li>Connect wallet — Sepolia Testnet (mainnet após aprovação)</li>
-          <li>Minte por {status.mintPrice} ETH — split 40/40/20 automático na mesma tx</li>
-          <li>Assine a transação (mint on-chain via contrato)</li>
-          <li>Receba o dNFT (pool única de {maxSupply}) com Level 1 (Bronze)</li>
-          <li>Swap 0.00% + success fee mínima + yield 4x (Tier Alpha)</li>
-          <li>Libera a aba ARBITRAGE (The Spear)</li>
+          <li>Connect wallet — Sepolia Testnet (mainnet after approval)</li>
+          <li>Mint for {status.mintPrice} ETH — automatic 40/40/20 split in the same tx</li>
+          <li>Sign the transaction (on-chain mint via contract)</li>
+          <li>Receive the dNFT (unique supply of {maxSupply}) at Level 1 (Bronze)</li>
+          <li>Swap 0.00% + minimal success fee + 4x yield (Tier Alpha)</li>
+          <li>Unlocks the ARBITRAGE tab (The Spear)</li>
         </ol>
       </div>
     </div>

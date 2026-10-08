@@ -14,7 +14,7 @@ export async function GET(
 ) {
   const { tokenId } = await ctx.params;
   if (!/^\d+$/.test(tokenId) || tokenId === "0") {
-    return NextResponse.json({ error: "tokenId inválido" }, { status: 400 });
+    return NextResponse.json({ error: "tokenId invalid" }, { status: 400 });
   }
 
   const level = await readLevel(tokenId);
@@ -24,9 +24,9 @@ export async function GET(
   return NextResponse.json({
     name: `Buildercoin #${tokenId}`,
     description:
-      `Buildercoin dNFT — Tier 1 Alpha do IMD Optimizer. ` +
-      `Nível ${level} (${frame.name}) lido on-chain via tokenLevel(). ` +
-      `Utility: swap 0,00% · Success Fee 5% · yield 4x (Sepolia testnet).`,
+      `Buildercoin dNFT — IMD Optimizer Tier 1 Alpha. ` +
+      `Level ${level} (${frame.name}) read on-chain via tokenLevel(). ` +
+      `Utility: swap 0.00% · 5% Success Fee · 4x yield (Sepolia testnet).`,
     image: `${origin}/api/metadata/${tokenId}/image`,
     external_url: `${origin}/nft-mint`,
     attributes: [

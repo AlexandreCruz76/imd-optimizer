@@ -306,20 +306,20 @@ export default function Vault() {
         </div>
         <div className="space-y-1.5 text-xs">
           <div className="text-[#00ff41]">
-            ✓ claimYield() sem taxa — <span className="text-[#00ff4160]">taxa de claim: 0%</span>
+            ✓ claimYield() sem taxa — <span className="text-[#00ff4160]">claim fee: 0%</span>
           </div>
           <div className="text-[#00ff41]">
-            ✓ Saque normal do principal sem taxa
+            ✓ Normal principal withdrawal with no fee
           </div>
           <div className="text-[#00ff41]">
-            ✓ Unstake com carência (beginUnbond → 7 dias) sem taxa —{" "}
-            <span className="text-[#00ff4160]">Diamond Hands não pagam nada</span>
+            ✓ Unstake with lock-up (beginUnbond → 7 days) no fee —{" "}
+            <span className="text-[#00ff4160]">Diamond Hands pay nothing</span>
           </div>
           <div className="text-[#ffb000]">
-            ⚠ Unstake instantâneo (emergencyInstantWithdraw): penalty 2–5% →
+            ⚠ Instant unstake (emergencyInstantWithdraw): penalty 2–5% →
             <span className="text-[#ff0040]"> 50% Buy-and-Burn</span> ·
             <span className="text-[#00ff41]"> 25% Treasury</span> ·
-            <span className="text-[#00ff41]"> 25% yield ponderado</span> dos
+            <span className="text-[#00ff41]"> 25% weighted yield</span> dos
             Diamond Hands ainda stakados
           </div>
         </div>

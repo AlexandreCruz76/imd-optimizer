@@ -164,7 +164,7 @@ async function fetchOracleData() {
 
     poolResults.push({
       pool: { id: pool.id, name: pool.name, label: pool.label, startBlock: pool.startBlock, nativeSymbol: pool.nativeSymbol },
-      scan: { complete: failedChunks === 0, failed_chunks: failedChunks, note: failedChunks > 0 ? "RPC público bloqueou blocos antigos (archive) — números cobrem apenas a janela servida" : undefined },
+      scan: { complete: failedChunks === 0, failed_chunks: failedChunks, note: failedChunks > 0 ? "Public RPC blocked old (archive) blocks — numbers cover only the served window" : undefined },
       swaps: { total: swaps.length, buys, sells, traders: Object.keys(traders).length },
       mev: {
         attacks_detected: attacks.length,
@@ -195,7 +195,7 @@ async function fetchOracleData() {
     timestamp: new Date().toISOString(),
     scan_from: "configured_start_block",
     scan_blocks: latest - 25800000,
-    scan_honesty: "Detecção/leitura on-chain apenas. Nenhuma interceptação foi executada. Pools: IMD/ETH (hook) e ETH/USDT (standard — par verificado via receipts em 26/09/2026).",
+    scan_honesty: "On-chain detection/reading only. No interception was executed. Pools: IMD/ETH (hook) and ETH/USDT (standard — pair verified via receipts on 26/09/2026).",
     summary: {
       total_swaps: totalSwaps,
       total_attacks: totalAttacks,

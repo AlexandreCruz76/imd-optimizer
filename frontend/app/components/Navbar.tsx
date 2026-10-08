@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/nft-mint", label: "Mint" },
   { href: "/arbitrage", label: "Arbitrage" },
   { href: "/staking", label: "Staking" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Navbar() {
@@ -92,10 +93,10 @@ export function Navbar() {
                 </span>
                 <button
                   onClick={disconnect}
-                  title="Desconectar carteira deste site"
+                  title="Disconnect wallet from this site"
                   className="text-xs text-rose-400 font-semibold px-3 py-2 rounded-full border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                 >
-                  Desconectar
+                  Disconnect
                 </button>
               </div>
             ) : (
@@ -105,7 +106,7 @@ export function Navbar() {
                   disabled={!hasMetaMask || connecting}
                   className="bg-[#00F58C] text-[#05080A] font-semibold px-5 py-2 rounded-full hover:brightness-110 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {connecting ? `Abrindo ${walletName}…` : `Connect ${walletName}`}
+                  {connecting ? `Opening ${walletName}…` : `Connect ${walletName}`}
                 </button>
               </div>
             )}

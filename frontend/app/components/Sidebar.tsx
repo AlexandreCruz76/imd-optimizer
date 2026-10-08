@@ -9,6 +9,7 @@ const shortcuts = [
   { href: "/nft-mint", label: "Mint NFT", icon: "◆" },
   { href: "/arbitrage", label: "Arbitrage", icon: "⚡" },
   { href: "/staking", label: "Staking", icon: "▣" },
+  { href: "/docs", label: "Docs", icon: "☰" },
 ];
 
 export function Sidebar() {
@@ -17,7 +18,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex fixed left-0 top-[72px] bottom-0 w-52 z-40 flex-col gap-1 border-r border-white/[0.06] bg-[#0B0F17]/85 backdrop-blur-xl px-4 py-6">
       <span className="px-3 mb-2 text-[10px] uppercase tracking-[0.2em] text-[#6B7A88]">
-        Atalhos
+        Shortcuts
       </span>
       {shortcuts.map((item) => {
         const active = pathname === item.href;

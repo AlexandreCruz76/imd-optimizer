@@ -317,6 +317,7 @@ export default function MetaHookPoolPage() {
             <Link href="/pool" className="text-sm text-emerald-400 font-bold hidden sm:inline">Meta Hook Pool</Link>
             <Link href="/arbitrage" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Arbitrage</Link>
             <Link href="/staking" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Staking</Link>
+            <Link href="/docs" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Docs</Link>
           </div>
         </div>
       </nav>
@@ -370,7 +371,7 @@ export default function MetaHookPoolPage() {
           {/* RIGHT: Quick Metrics */}
           <Card title="QUICK METRICS [SYS.02]">
             <div className="space-y-3">
-              <StatRow label="ORDERS ALLOCATED" value={fmt(totalTxs, 0)} color="#00F58C" sub="ordens processadas nas últimas 24h"/>
+              <StatRow label="ORDERS ALLOCATED" value={fmt(totalTxs, 0)} color="#00F58C" sub="orders processed in the last 24h"/>
               <StatRow label="VOLUME 24H" value={fmtUsd(totalVol)} color="#00F58C" sub={`hook: ${fmtUsd(hookVol)} · native: ${fmtUsd(nativeVol)}`}/>
               <StatRow label="FEES 24H" value={fmtUsd(totalFees)} color="#00F58C" sub={`hook: ${fmtUsd(hookFees)} · native: ${fmtUsd(nativeFees)}`}/>
               <StatRow label="SPREAD" value={`${spread >= 0 ? "+" : ""}${spread.toFixed(2)}%`} color={spread >= 0 ? "#00F58C" : "#FF567E"} sub={spread >= 0 ? "hook premium" : "native premium"}/>
@@ -391,37 +392,37 @@ export default function MetaHookPoolPage() {
                     label="OPTIMIZER NFT"
                     value={
                       nftHeld === null
-                        ? "consultando…"
+                        ? "querying…"
                         : nftHeld === -1
                         ? "—"
                         : nftHeld > 0
                         ? `${nftHeld} Buildercoin`
-                        : "nenhum"
+                        : "none"
                     }
                     color={nftHeld !== null && nftHeld > 0 ? "#FFD700" : "#00F58C"}
                     sub="Buildercoin.balanceOf() on-chain"
                   />
                   <StatRow
                     label="IDENTITY MD / TIER (NFT)"
-                    value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "consultando…"}
+                    value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "querying…"}
                     color="#00F5FF"
-                    sub="identityTier() no OptimizerRouter"
+                    sub="identityTier() on OptimizerRouter"
                   />
                   <StatRow
-                    label="MEV INTERCEPTADO"
+                    label="MEV INTERCEPTED"
                     value={mevIntercepted !== null ? fmt(mevIntercepted, 4) + " ETH" : "—"}
                     color="#00F58C"
                     sub="OptimizerRouter.getStats() on-chain"
                   />
                   <StatRow
-                    label="VOLUME PROTEGIDO 24H"
+                    label="PROTECTED VOLUME 24H"
                     value={fmtUsd(hookVol)}
                     color="#00F58C"
-                    sub="volume processado no pool com hook"
+                    sub="volume processed in the hooked pool"
                   />
                   <div className="border-t border-slate-800/50 pt-2">
                     <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">
-                      HISTÓRICO DE ATAQUES BLOQUEADOS
+                      BLOCKED ATTACK HISTORY
                     </div>
                     {attackLog.length > 0 ? (
                       <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -432,7 +433,7 @@ export default function MetaHookPoolPage() {
                           >
                             <span className="text-slate-400">{e.time}</span>
                             <span className="text-emerald-400">
-                              +{fmt(e.deltaEth, 4)} ETH interceptado
+                              +{fmt(e.deltaEth, 4)} ETH intercepted
                             </span>
                             <span className="text-slate-500">
                               total {fmt(e.totalEth, 4)}
@@ -442,23 +443,23 @@ export default function MetaHookPoolPage() {
                       </div>
                     ) : (
                       <div className="text-xs font-mono text-slate-500 bg-[#070A0F]/80 border border-slate-700/50 rounded-lg px-3 py-2">
-                        nenhuma nova interceptação observada nesta sessão
-                        (leitura do contador a cada 30s)
+                        no new interception observed in this session
+                        (counter read every 30s)
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-4 text-slate-400 font-mono text-sm">
-                  Conecte a carteira para identificar seu Tier (NFT) e ver as
-                  métricas do protocolo
+                  Connect the wallet to identify your Tier (NFT) and view the
+                  protocol metrics
                 </div>
               )}
 
               <div className="flex items-center gap-3 pt-2">
                 <div className="text-xs font-mono text-slate-400">
-                  HOOK: <span className="text-white">contrato passivo</span> ·
-                  sem depósitos diretos · TVL:{" "}
+                  HOOK: <span className="text-white">passive contract</span> ·
+                  no direct deposits · TVL:{" "}
                   <span className="text-emerald-400">{fmtUsd(totalTVL)}</span>
                 </div>
               </div>
@@ -474,7 +475,7 @@ export default function MetaHookPoolPage() {
                 {connected
                   ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}`
                   : connecting
-                  ? `ABRINDO ${walletName.toUpperCase()}…`
+                  ? `OPENING ${walletName.toUpperCase()}…`
                   : `CONNECT ${walletName.toUpperCase()}`}
               </button>
 
@@ -485,8 +486,8 @@ export default function MetaHookPoolPage() {
               )}
 
               <div className="text-center text-xs text-slate-500 font-mono">
-                Conexão usada apenas para Tier + métricas · formulário de
-                depósito ($BLD) fica em{" "}
+                Connection used only for Tier + metrics · the deposit ($BLD)
+                form lives in{" "}
                 <Link href="/staking" className="text-emerald-400 hover:text-emerald-300 underline">
                   Staking
                 </Link>

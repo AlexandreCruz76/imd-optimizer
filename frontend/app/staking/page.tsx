@@ -10,7 +10,7 @@ export default function StakingPage() {
 
   function handleDemo(message: string) {
     setError(
-      "PAGINA DEMO — nenhuma transação é assinada. " +
+      "DEMO PAGE — no transaction is signed. " +
         message
     );
   }
@@ -34,6 +34,7 @@ export default function StakingPage() {
             </Link>
             <Link href="/swap" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Swap</Link>
             <Link href="/arbitrage" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Arbitrage</Link>
+            <Link href="/docs" className="text-sm text-slate-400 hover:text-emerald-400 hidden sm:inline">Docs</Link>
           </div>
         </div>
       </nav>
@@ -55,16 +56,16 @@ export default function StakingPage() {
               ┌─ BUILDER STAKING ── DIAMOND HANDS VAULT ────────────────────────┐
             </div>
             <p className="font-mono text-xs text-slate-400 tracking-widest uppercase mt-1">
-              Yield ponderado por Identity Tier (DEC-020) — yield = stake × multiplicador (4x / 3x / 1x / 0x)
+              Yield weighted by Identity Tier (DEC-020) — yield = stake × multiplier (4x / 3x / 1x / 0x)
             </p>
           </div>
         </div>
 
         <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-4 mb-6">
           <p className="font-mono text-xs text-amber-400">
-            PAGINA DEMO — o contrato BuilderStakingVault ainda não está deployado
-            (Sepolia/mainnet). Nenhuma transação é assinada aqui; as regras abaixo
-            são as oficiais do protocolo (DEC-020).
+            DEMO PAGE — the BuilderStakingVault contract is not deployed yet
+            (Sepolia/mainnet). No transaction is signed here; the rules below
+            are the official protocol rules (DEC-020).
           </p>
         </div>
 
@@ -72,17 +73,17 @@ export default function StakingPage() {
           <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">CLAIM YIELD</div>
             <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">0% TAX</div>
-            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">SEM TAXA AO REIVINDICAR</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">NO FEE TO CLAIM</div>
             <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">claimYield() — DEC-020</div>
           </div>
           <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
-            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">UNSTAKE COM CARÊNCIA</div>
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">UNSTAKE WITH LOCK-UP</div>
             <div className="font-mono font-bold text-emerald-400 text-2xl mb-1">0% TAX</div>
-            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">CARÊNCIA DE 7 DIAS</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px] tracking-widest uppercase">7-DAY LOCK-UP</div>
             <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">beginUnbond → completeUnbond</div>
           </div>
           <div className="bg-[#0B111A]/80 border border-rose-500/30 rounded-2xl p-5">
-            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">UNSTAKE INSTANTÂNEO</div>
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">INSTANT UNSTAKE</div>
             <div className="font-mono font-bold text-rose-400 text-2xl mb-1">PENALTY 2–5%</div>
             <div className="font-mono font-bold text-rose-400 text-[11px] tracking-widest uppercase">50% BURN · 25% TREASURY · 25% YIELD</div>
             <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-2">emergencyInstantWithdraw</div>
@@ -90,19 +91,19 @@ export default function StakingPage() {
         </div>
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5 mb-6">
-          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">POSIÇÕES ATUAIS</div>
+          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">CURRENT POSITIONS</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
               <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">$BLD STAKED</div>
               <div className="font-mono font-bold tracking-tight text-white text-2xl">— $BLD</div>
               <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">
-                YIELD: <span className="text-emerald-400 font-bold">stake × mult. do Tier</span>
+                YIELD: <span className="text-emerald-400 font-bold">stake × tier mult.</span>
               </div>
-              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">CARÊNCIA: 7 DIAS · 0%</div>
+              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">LOCK-UP: 7 DAYS · 0%</div>
               <button
                 onClick={() =>
                   handleDemo(
-                    "Stake real do $BLD entra após o deploy do BuilderStakingVault."
+                    "Real $BLD staking arrives after the BuilderStakingVault deploy."
                   )
                 }
                 className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
@@ -111,16 +112,16 @@ export default function StakingPage() {
               </button>
             </div>
             <div className="bg-[#070A0F]/80 border border-slate-800/50 rounded-xl p-4">
-              <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">POSIÇÃO DE YIELD</div>
+              <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">YIELD POSITION</div>
               <div className="font-mono font-bold tracking-tight text-white text-2xl">— ETH</div>
               <div className="font-mono text-[11px] tracking-widest text-slate-400 uppercase mt-2">
-                CLAIM: <span className="text-emerald-400 font-bold">0% de taxa</span>
+                CLAIM: <span className="text-emerald-400 font-bold">0% fee</span>
               </div>
-              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">PESO = 0 SE STAKE = 0</div>
+              <div className="font-mono text-[10px] tracking-widest text-slate-500 mt-1">WEIGHT = 0 IF STAKE = 0</div>
               <button
                 onClick={() =>
                   handleDemo(
-                    "claimYield() com 0% de taxa entra após o deploy do BuilderStakingVault."
+                    "claimYield() with a 0% fee arrives after the BuilderStakingVault deploy."
                   )
                 }
                 className="w-full mt-4 py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
@@ -135,41 +136,41 @@ export default function StakingPage() {
           onClick={() =>
             connected
               ? handleDemo(
-                  "O stake real fica disponível com o deploy do BuilderStakingVault."
+                  "Real staking becomes available with the BuilderStakingVault deploy."
                 )
               : connect()
           }
           className="w-full py-3 font-mono font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,140,0.25)] active:scale-95"
         >
-          {connected ? "STAKE NOW" : `CONNECT ${walletName.toUpperCase()} PARA STAKING`}
+          {connected ? "STAKE NOW" : `CONNECT ${walletName.toUpperCase()} FOR STAKING`}
         </button>
 
         <div className="bg-[#0B111A]/80 border border-emerald-500/20 rounded-2xl p-5">
-          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">REGRAS (DEC-020)</div>
+          <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">RULES (DEC-020)</div>
           <div className="space-y-2 font-mono text-xs text-slate-400">
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>
-              <span>Yield = Stake × Multiplicador do Identity Tier (Alpha 4x / Partner 3x / Holder 1x / Retail 0x)</span>
+              <span>Yield = Stake × Identity Tier Multiplier (Alpha 4x / Partner 3x / Holder 1x / Retail 0x)</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>
-              <span>Cofre distribui 60% Stakers · 20% Treasury · 15% Devs · 5% Buy-and-Burn</span>
+              <span>Vault distributes 60% Stakers · 20% Treasury · 15% Devs · 5% Buy-and-Burn</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>
-              <span>claimYield() com 0% de taxa — sem APY prometido, yield vem da receita real</span>
+              <span>claimYield() with 0% fee — no promised APY, yield comes from real revenue</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>
-              <span>Unstake com carência de 7 dias: 0%</span>
+              <span>Unstake with a 7-day lock-up: 0%</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-rose-500 font-bold shrink-0">▸</span>
-              <span className="text-rose-500">Unstake instantâneo: penalty 2–5% → 50% Buy-and-Burn · 25% Treasury · 25% yield ponderado</span>
+              <span className="text-rose-500">Instant unstake: penalty 2–5% → 50% Buy-and-Burn · 25% Treasury · 25% weighted yield</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-emerald-400 font-bold shrink-0">▸</span>
-              <span>Peso do yield só muda com stake (checkpoint público para atualizar após mudança de Tier)</span>
+              <span>Yield weight only changes with stake (public checkpoint to refresh after a Tier change)</span>
             </div>
           </div>
         </div>

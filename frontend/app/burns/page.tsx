@@ -69,7 +69,7 @@ export default function BurnsPage() {
       }
     } catch {
       setError(
-        "Endpoint /api/burn não configurado — Buy-and-Burn assistido entra após o deploy (a auto-burn DEC-017 do hook já funciona on-chain)."
+        "Endpoint /api/burn not configured — assisted Buy-and-Burn arrives after deploy (the hook DEC-017 auto-burn already works on-chain)."
       );
     } finally {
       setLoading(false);
@@ -106,16 +106,16 @@ export default function BurnsPage() {
             <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
               {onChainBurned !== null
                 ? "OptimizerHookV2 · totalIMDBurnedByOptimizer"
-                : "hook não configurado (OPTIMIZER_HOOK_ADDRESS)"}
+                : "hook not configured (OPTIMIZER_HOOK_ADDRESS)"}
             </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
-            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Volume Processado</div>
+            <div className="text-xs text-[var(--color-muted)] mb-2 tracking-widest">Processed Volume</div>
             <div className="text-3xl font-semibold text-[var(--color-accent-cyan)]">
               {txHash && volume !== "0" ? `${volume} ETH` : "— ETH"}
             </div>
             <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
-              volume de burn registrado nesta sessão (getStats após execução)
+              burn volume recorded in this session (getStats after execution)
             </div>
           </div>
           <div className="glass-card p-6 rounded-3xl border border-[var(--color-border-subtle)]">
@@ -124,7 +124,7 @@ export default function BurnsPage() {
               {progress > 0 ? `${progress}%` : "—"}
             </div>
             <div className="text-xs text-[var(--color-muted)] mt-2 font-mono">
-              redução medida após execução — meta por tier (DEC-017)
+              reduction measured after execution — per-tier target (DEC-017)
             </div>
           </div>
         </div>
@@ -178,13 +178,13 @@ export default function BurnsPage() {
             <div>• Burn tax: 0% Tier 1 / 0.1% Tier 2 / 10% Tier 3 / 20% Tier 4</div>
             <div>• Burn proceeds permanently removed from circulation</div>
             <div>
-              • Auto-burn na interceptação (DEC-017): $IMD interceptado é
-              queimado e contabilizado em totalIMDBurnedByOptimizer
+              • Auto-burn on interception (DEC-017): intercepted $IMD is
+              burned and accounted in totalIMDBurnedByOptimizer
             </div>
             <div>
-              • Buy-and-Burn (fatia de 5%): o ETH do Burn Budget compra $IMD a
-              mercado, vai ao BurnExecutor e soma o valor exato a
-              totalIMDBurnedByOptimizer — nunca queima ETH nativo
+              • Buy-and-Burn (5% slice): Burn Budget ETH buys $IMD on the market,
+              goes to BurnExecutor and adds the exact amount to
+              totalIMDBurnedByOptimizer — native ETH is never burned
             </div>
             <div>• Remaining supply: dynamically adjusted per tier</div>
             <div>• Minimum burn threshold: 0.01 $IMD</div>

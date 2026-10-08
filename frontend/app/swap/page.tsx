@@ -33,7 +33,7 @@ const TOKENS: Token[] = [
   },
   {
     symbol: "USD-T",
-    name: "USD Teste (não é USDC)",
+    name: "USD Test (not USDC)",
     address: "0xB6f89BA6BD12A047A2278F5C69cEA0a08E762490",
     decimals: 6,
     color: "#2775CA",
@@ -221,28 +221,28 @@ function mapSwapError(err: unknown): string {
   };
   const code = e.code ?? e.info?.error?.code;
   if (code === 4001 || code === "ACTION_REJECTED")
-    return "Transação rejeitada na carteira.";
-  if (code === -32603) return "Erro interno da carteira — tente novamente.";
+    return "Transaction rejected by the wallet.";
+  if (code === -32603) return "Internal wallet error — try again.";
   const msg = [e.shortMessage, e.reason, e.message].filter(Boolean).join(" ");
   if (msg.includes("insufficient funds"))
-    return "ETH insuficiente para gas na Sepolia.";
+    return "Not enough ETH for gas on Sepolia.";
   if (msg.includes("panic") || msg.includes("underflow"))
-    return "Quote excedeu os limites do contrato — tente outro valor.";
+    return "Quote exceeded the contract limits — try a different amount.";
   if (msg.includes("Block delay not met"))
-    return "Anti-sandwich: aguarde 1-2 blocos após a última operação da carteira.";
+    return "Anti-sandwich: wait 1–2 blocks after your last wallet operation.";
   if (msg.includes("no ETH liquidity"))
-    return "Pool sem liquidez em ETH para este rota — tente outro valor ou par.";
+    return "Pool has no ETH liquidity for this route — try another amount or pair.";
   if (msg.includes("no token liquidity"))
-    return "Pool sem liquidez do token de saída — escolha outro token ou valor menor.";
+    return "No liquidity for the output token — pick another token or a smaller amount.";
   if (msg.includes("slippage"))
-    return "Liquidez/slippage da venue — tente um valor menor ou aumente a tolerância.";
+    return "Venue liquidity/slippage — try a smaller amount or increase your slippage tolerance.";
   if (msg.includes("insufficient allowance") || msg.includes("ERC20InsufficientAllowance"))
-    return "Approve do token necessario — tente novamente.";
+    return "Token approval required — try again.";
   if (msg.includes("could not coalesce"))
-    return "Estimativa de gas falhou na Sepolia (revert sem mensagem) — confira se a carteira tem ETH para gas/value e se o valor cabe na liquidez da pool, e tente de novo.";
+    return "Gas estimation failed on Sepolia (empty revert) — check the wallet has ETH for gas/value and that the amount fits the pool liquidity, then try again.";
   if (msg.includes("missing revert data"))
-    return "Simulação falhou antes de abrir a carteira (revert sem mensagem) — o valor provavelmente não cabe na liquidez da pool; tente um valor menor.";
-  return e.shortMessage || e.reason || e.message || "Falha no swap.";
+    return "Simulation failed before opening the wallet (empty revert) — the amount probably does not fit the pool liquidity; try a smaller amount.";
+  return e.shortMessage || e.reason || e.message || "Swap failed.";
 }
 
 function TokenLogo({ token, size = 32 }: { token: Token; size?: number }) {
@@ -670,7 +670,7 @@ export default function SwapPage() {
 
   async function handleFaucet() {
     if (!signer || !standardAddr || !address) {
-      setError("Faucet: conecte a carteira na Sepolia primeiro.");
+      setError("Faucet: connect the wallet on Sepolia first.");
       return;
     }
     setFaucetBusy(true);
@@ -714,45 +714,45 @@ export default function SwapPage() {
     if (loading) return;
     setError(null);
     if (!connected) {
-      setError("Conecte a carteira para executar o swap.");
+      setError("Connect the wallet to execute the swap.");
       return;
     }
     if (!isSepolia) {
       setError(
-        "Carteira fora da Sepolia — clique em SWITCH TO SEPOLIA e tente de novo."
+        "Wallet is not on Sepolia — click SWITCH TO SEPOLIA and try again."
       );
       return;
     }
     if (!routerAddr) {
       setError(
-        "Config ausente: OPTIMIZER_ROUTER_ADDRESS não definido no .env.local."
+        "Missing config: OPTIMIZER_ROUTER_ADDRESS not set in .env.local."
       );
       return;
     }
     if (!signer) {
-      setError(`Sessão da ${walletName} ausente — reconecte a carteira.`);
+      setError(`${walletName} session missing — reconnect the wallet.`);
       return;
     }
     if (!amountNum) {
-      setError("Informe o valor a trocar.");
+      setError("Enter the amount to swap.");
       return;
     }
     if (cooldownBlocks > 0) {
       setError(
-        `Anti-sandwich: aguarde ${cooldownBlocks} bloco(s) após a última operação da carteira.`
+        `Anti-sandwich: wait ${cooldownBlocks} block(s) after your last wallet operation.`
       );
       return;
     }
     if (!realQuote) {
       setError(
-        "Quote indisponível — aguarde os preços das pools carregarem ou ajuste o valor."
+        "Quote unavailable — wait for the pool prices to load or adjust the amount."
       );
       return;
     }
     const pIn = poolFor(tokenIn);
     const pOut = poolFor(tokenOut);
     if ((!isEth(tokenIn) && !pIn) || (!isEth(tokenOut) && !pOut)) {
-      setError("Pool indisponível para este par — selecione outro token.");
+      setError("Pool unavailable for this pair — select another token.");
       return;
     }
 
@@ -784,15 +784,15 @@ export default function SwapPage() {
         if (fresh) {
           if (fresh.out < realQuote.minOut) {
             setError(
-              `Preço mudou desde a cotação exibida: saída agora ${fmt(
+              `Price changed since the quote shown: output now ${fmt(
                 parseFloat(ethers.formatUnits(fresh.out, tokenOut.decimals)),
                 6
-              )} ${tokenOut.symbol}, mínimo prometido ${fmt(
+              )} ${tokenOut.symbol}, promised minimum ${fmt(
                 parseFloat(
                   ethers.formatUnits(realQuote.minOut, tokenOut.decimals)
                 ),
                 6
-              )} ${tokenOut.symbol} — confira os valores atualizados e clique de novo.`
+              )} ${tokenOut.symbol} — review the updated values and click again.`
             );
             loadSepolia();
             return;
@@ -808,8 +808,8 @@ export default function SwapPage() {
           });
         }
       } catch {
-        // leitura fresca indisponivel — segue com a cotação exibida;
-        // o staticCall abaixo valida tudo antes de abrir a carteira
+        // fresh read unavailable — keep the displayed quote;
+        // the staticCall below validates everything before opening the wallet
       }
 
       if (!isEth(tokenIn) && address) {
@@ -849,7 +849,7 @@ export default function SwapPage() {
       setTxHash(tx.hash as string);
       const receipt = await tx.wait();
       if (!receipt) {
-        setError("Transação substituída ou cancelada na carteira.");
+        setError("Transaction replaced or cancelled in the wallet.");
         return;
       }
       const readRouter = new ethers.Contract(
@@ -951,6 +951,7 @@ export default function SwapPage() {
             <Link href="/pool" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Meta Hook Pool</Link>
             <Link href="/arbitrage" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Arbitrage</Link>
             <Link href="/staking" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Staking</Link>
+            <Link href="/docs" className="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline">Docs</Link>
           </div>
         </div>
       </nav>
@@ -976,8 +977,8 @@ export default function SwapPage() {
             ) : (
               <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400">
                 {!connected
-                  ? "CONECTE A CARTEIRA · EXIGE SEPOLIA"
-                  : "REDE ERRADA · TROQUE P/ SEPOLIA"}
+                  ? "CONNECT WALLET · REQUIRES SEPOLIA"
+                  : "WRONG NETWORK · SWITCH TO SEPOLIA"}
               </span>
             )}
             {connected && !isSepolia && chainId !== null && (
@@ -1032,7 +1033,7 @@ export default function SwapPage() {
         )}
         {poolsMissing && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
-            ⚠ SWAP_POOLS_JSON ausente no .env.local — pools dos pares não configurados (SWAP_POOLS_JSON / WETH_ADDRESS)
+            ⚠ SWAP_POOLS_JSON missing in .env.local — pair pools not configured (SWAP_POOLS_JSON / WETH_ADDRESS)
           </div>
         )}
         {realMode && connected && cooldownBlocks > 0 && (
@@ -1278,7 +1279,7 @@ export default function SwapPage() {
                     }
                   />
                   <InfoRow
-                    label="Success Fee (só sobre o lucro)"
+                    label="Success Fee (profit only)"
                     value={
                       sep && sep.successFeeBps !== null
                         ? `${(sep.successFeeBps / 100).toFixed(2)}%`
@@ -1343,17 +1344,17 @@ export default function SwapPage() {
                 : btnState === "switch"
                 ? "SWITCH TO SEPOLIA"
                 : btnState === "config"
-                ? "CONFIGURAÇÃO AUSENTE"
+                ? "MISSING CONFIG"
                 : btnState === "enter"
                 ? "ENTER AN AMOUNT"
                 : btnState === "quote"
                 ? "CALCULATING QUOTE…"
                 : btnState === "loading"
                 ? phase === "approve"
-                  ? "APPROVANDO TOKEN…"
+                  ? "APPROVING TOKEN…"
                   : phase === "send"
                   ? "SENDING TX…"
-                  : "SIMULANDO…"
+                  : "SIMULATING…"
                 : cooldownBlocks > 0
                 ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
                 : "EXECUTE PROTECTED SWAP"}
@@ -1393,7 +1394,7 @@ export default function SwapPage() {
                   />
                   {result.userOut !== undefined && (
                     <InfoRow
-                      label="Evento MultiHopExecuted · líquido"
+                      label="MultiHopExecuted event · net output"
                       value={`${fmt(parseFloat(result.userOut), 6)} ${tokenOut.symbol}`}
                       color="#00F58C"
                     />
@@ -1445,11 +1446,11 @@ export default function SwapPage() {
           <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-slate-700/50 p-4">
             <div className="text-xs text-slate-400 mb-3 tracking-widest font-mono uppercase">▸ HOW IT WORKS</div>
             <div className="space-y-2 text-xs text-slate-400">
-              <div>1. Você troca {tokenIn.symbol} por {tokenOut.symbol}</div>
-              <div>2. Rota on-chain via OptimizerRouter {(isEth(tokenIn) || isEth(tokenOut)) ? "(1 hop)" : "(2 hops via ETH)"}</div>
-              <div>3. Fee DEC-020 cobrada uma única vez na saída líquida</div>
-              <div>4. Cooldown anti-sandwich ({sep?.minDelay ?? 1} bloco) entre operações da carteira</div>
-              <div>5. Minimum received protege contra slippage/sandwich</div>
+              <div>1. You swap {tokenIn.symbol} for {tokenOut.symbol}</div>
+              <div>2. On-chain route via OptimizerRouter {(isEth(tokenIn) || isEth(tokenOut)) ? "(1 hop)" : "(2 hops via ETH)"}</div>
+              <div>3. DEC-020 fee charged once on the net output</div>
+              <div>4. Anti-sandwich cooldown ({sep?.minDelay ?? 1} block) between wallet operations</div>
+              <div>5. Minimum received protects against slippage/sandwich</div>
             </div>
           </div>
         </div>

@@ -142,13 +142,13 @@ export default function ArbitragePage() {
 
   async function handleArmExecute() {
     if (capitalToken !== "ETH") {
-      setStatus("Execute exige capital em ETH (as venues são pagas em ETH).");
+      setStatus("Execute requires capital in ETH (venues are paid in ETH).");
       return;
     }
     const amt = parseFloat(capitalAmount || "0");
     if (!armed) {
       if (amt <= 0) {
-        setStatus("Informe o capital em ETH para arbitragem.");
+        setStatus("Enter the capital in ETH for arbitrage.");
         return;
       }
       if (
@@ -157,13 +157,13 @@ export default function ArbitragePage() {
         !config.standardToken
       ) {
         setStatus(
-          "Venues ausentes: ARB_VENUE_BUY / ARB_VENUE_SELL / STANDARD_TOKEN no .env"
+          "Missing venues: ARB_VENUE_BUY / ARB_VENUE_SELL / STANDARD_TOKEN in .env"
         );
         return;
       }
       if (!connected) await connect();
       setArmed(true);
-      setStatus("Engine ARMED — clique novamente para executar on-chain.");
+      setStatus("Engine ARMED — click again to execute on-chain.");
       return;
     }
     if (!connected) {
@@ -171,7 +171,7 @@ export default function ArbitragePage() {
       return;
     }
     if (!signer || !config.optimizerRouter) {
-      setStatus("Conecte a carteira para assinar a transação.");
+      setStatus("Connect the wallet to sign the transaction.");
       return;
     }
     setExecuting(true);
@@ -193,16 +193,16 @@ export default function ArbitragePage() {
         minProfit,
         { value: amountIn }
       );
-      setStatus(`tx: ${tx.hash.slice(0, 18)}… — aguardando confirmação`);
+      setStatus(`tx: ${tx.hash.slice(0, 18)}… — awaiting confirmation`);
       await tx.wait();
-      setStatus(`confirmada on-chain: ${tx.hash.slice(0, 22)}…`);
+      setStatus(`confirmed on-chain: ${tx.hash.slice(0, 22)}…`);
       setArmed(false);
     } catch (err) {
       setStatus(
         `falha: ${
           err instanceof Error
             ? err.message.slice(0, 130)
-            : "execução revertida (lock NFT / cooldown / venue)"
+            : "execution reverted (NFT lock / cooldown / venue)"
         }`
       );
     } finally {
@@ -234,7 +234,7 @@ export default function ArbitragePage() {
             <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                FEED: {feed ? "LIVE (30s)" : "CARREGANDO…"}
+                FEED: {feed ? "LIVE (30s)" : "LOADING…"}
               </span>
               <span className="text-emerald-400">UPD: {updatedAt ?? "—"}</span>
             </div>
@@ -265,24 +265,23 @@ export default function ArbitragePage() {
                         onClick={() => connect().catch(() => {})}
                         className="text-[10px] text-emerald-400 font-mono underline hover:text-emerald-300"
                       >
-                        conectar carteira
+                        connect wallet
                       </button>
                     )}
                   </div>
                   <div className="mt-1 text-sm font-mono text-white">
                     {connected && address && identity.addr !== address
-                      ? "consultando on-chain…"
+                      ? "querying on-chain…"
                       : identity.addr === address && identity.tier !== null
                       ? `${TIER_NAMES[identity.tier] ?? `Tier ${identity.tier + 1}`}`
                       : connected
-                      ? "identity não lido — build do router sem DEC-020?"
-                      : "— (conecte para ler o tier)"}
+                      ? "identity not read — router built without DEC-020?"
+                      : "— (connect to read tier)"}
                   </div>
                   {identity.addr === address && identity.feeBps !== null && (
                     <div className="text-[11px] text-slate-400 font-mono">
                       swap fee {(identity.feeBps / 100).toFixed(2)}% · success
-                      fee {((identity.successBps ?? 0) / 100).toFixed(2)}% (só
-                      sobre o lucro)
+                      fee {((identity.successBps ?? 0) / 100).toFixed(2)}% (profit only)
                     </div>
                   )}
                 </div>
@@ -383,9 +382,9 @@ export default function ArbitragePage() {
                   </div>
                 )}
                 <div className="text-[10px] font-mono text-slate-500 leading-relaxed">
-                  Requer Genesis Key NFT (lock por minBlockDelay) — o contrato
-                  valida o lock, o cooldown anti-sandwich e as venues na
-                  execução. minProfit = capital × target spread.
+                  Requires the Genesis Key NFT (lock per minBlockDelay) — the contract
+                  validates the lock, the anti-sandwich cooldown and the venues at
+                  execution. minProfit = capital × target spread.
                 </div>
               </div>
 
@@ -401,7 +400,7 @@ export default function ArbitragePage() {
                   <div className="text-center">
                     <div className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">FEED</div>
                     <div className="text-sm font-mono text-emerald-400 font-bold">
-                      {feed ? "LIVE (30s)" : "CARREGANDO…"}
+                      {feed ? "LIVE (30s)" : "LOADING…"}
                     </div>
                   </div>
                   <div className="text-center">
