@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+function parsePools(raw: string): Record<string, string> {
+  try {
+    const j: unknown = JSON.parse(raw);
+    if (j && typeof j === "object" && !Array.isArray(j)) {
+      return j as Record<string, string>;
+    }
+  } catch {
+    // SWAP_POOLS_JSON invalido — front mostra banner de config
+  }
+  return {};
+}
+
 export async function GET() {
   return NextResponse.json({
     // Contract addresses (Sepolia testnet)
@@ -27,7 +39,10 @@ export async function GET() {
     // Venues de arbitragem intra-par (Regra 2): Pool A sem hook / Pool B com hook
     arbVenueBuy: process.env.ARB_VENUE_BUY_ADDRESS || "",
     arbVenueSell: process.env.ARB_VENUE_SELL_ADDRESS || "",
-    
+
+    // Pools mock dos pares multi-token (label -> endereco do MockUniswapV4Pool)
+    swapPools: parsePools(process.env.SWAP_POOLS_JSON || "{}"),
+
     // Network config
     chainId: 11155111,
     rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",

@@ -14,7 +14,30 @@ type Token = {
   logo?: string;
 };
 
+const ETH_ADDR = "0x0000000000000000000000000000000000000000";
+
 const TOKENS: Token[] = [
+  {
+    symbol: "ETH",
+    name: "Ether (nativo)",
+    address: ETH_ADDR,
+    decimals: 18,
+    color: "#8C9EFF",
+  },
+  {
+    symbol: "STANDARD",
+    name: "Standard Token (faucet)",
+    address: "0x8a095f673d49970641aF3B0fD9e4313DAdC9700C",
+    decimals: 18,
+    color: "#FFB000",
+  },
+  {
+    symbol: "USD-T",
+    name: "USD Teste (não é USDC)",
+    address: "0xB6f89BA6BD12A047A2278F5C69cEA0a08E762490",
+    decimals: 6,
+    color: "#2775CA",
+  },
   {
     symbol: "IMD",
     name: "IMD Token",
@@ -38,20 +61,15 @@ const TOKENS: Token[] = [
     decimals: 18,
     color: "#8C9EFF",
   },
-  {
-    symbol: "USDC",
-    name: "USD Coin",
-    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    decimals: 6,
-    color: "#2775CA",
-  },
 ];
 
 const PRICES_USD: Record<string, number> = {
+  ETH: 2400,
+  STANDARD: 1,
+  "USD-T": 1,
   IMD: 0.1,
   BUILDER: 0.5,
   WETH: 2400,
-  USDC: 1,
 };
 
 const LIQUIDITY_USD = 5_000_000;
@@ -71,6 +89,11 @@ const ROUTER_ABI = [
   "function minBlockDelay() view returns (uint256)",
   "function lastOperationBlock(address) view returns (uint256)",
   "function executeProtectedSellAndBurn(uint256 standardAmount, uint256 minAmountOut) external",
+  "function executeMultiHop(address[] venues, address[] tokens, uint256 amountIn, uint256 minAmountOut) external payable returns (uint256)",
+];
+
+const POOL_ABI = [
+  "function hopSqrtPriceX96() view returns (uint160)",
 ];
 
 const TOKEN_ABI = [
@@ -120,6 +143,20 @@ function fmt(n: number, decimals = 6): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: decimals });
 }
 
+const isEth = (t: Token) => t.address.toLowerCase() === ETH_ADDR;
+
+const Q96 = 2n ** 96n;
+
+function hopFwd(a: bigint, sqrt: bigint): bigint {
+  const s = (a * sqrt) / Q96;
+  return (s * sqrt) / Q96;
+}
+
+function hopInv(a: bigint, sqrt: bigint): bigint {
+  const s = (a * Q96) / sqrt;
+  return (s * Q96) / sqrt;
+}
+
 function mapSwapError(err: unknown): string {
   const e = err as {
     code?: number | string;
@@ -136,7 +173,13 @@ function mapSwapError(err: unknown): string {
     return "ETH insuficiente para gas na Sepolia.";
   if (msg.includes("panic") || msg.includes("underflow"))
     return "Quote excedeu os limites do contrato — tente outro valor.";
-  if (msg.includes("no ETH liquidity") || msg.includes("slippage"))
+  if (msg.includes("Block delay not met"))
+    return "Anti-sandwich: aguarde 1-2 blocos após a última operação da carteira.";
+  if (msg.includes("no ETH liquidity"))
+    return "Pool sem liquidez em ETH para este rota — tente outro valor ou par.";
+  if (msg.includes("no token liquidity"))
+    return "Pool sem liquidez do token de saída — escolha outro token ou valor menor.";
+  if (msg.includes("slippage"))
     return "Liquidez/slippage da venue — tente um valor menor ou aumente a tolerância.";
   if (msg.includes("insufficient allowance") || msg.includes("ERC20InsufficientAllowance"))
     return "Approve do token necessario — tente novamente.";
@@ -266,7 +309,7 @@ function TokenSelector({
                       </span>
                     </span>
                     <span className="ml-auto text-[10px] text-slate-400 font-mono">
-                      {shortAddr(t.address)}
+                      {isEth(t) ? "native" : shortAddr(t.address)}
                     </span>
                   </button>
                 );
@@ -320,7 +363,7 @@ export default function SwapPage() {
     walletError,
   } = useWallet();
   const [tokenIn, setTokenIn] = useState<Token>(TOKENS[0]);
-  const [tokenOut, setTokenOut] = useState<Token>(TOKENS[2]);
+  const [tokenOut, setTokenOut] = useState<Token>(TOKENS[1]);
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [customSlippage, setCustomSlippage] = useState("");
@@ -336,8 +379,11 @@ export default function SwapPage() {
     optimizerRouter?: string;
     standardToken?: string;
     chainId?: number;
+    swapPools?: Record<string, string>;
   } | null>(null);
   const [sep, setSep] = useState<SepoliaInfo | null>(null);
+  const [poolSqrt, setPoolSqrt] = useState<Record<string, bigint>>({});
+  const [poolsReady, setPoolsReady] = useState(false);
   const [faucetBusy, setFaucetBusy] = useState(false);
   const [realStats, setRealStats] = useState<{
     sellVolume: string;
@@ -349,6 +395,8 @@ export default function SwapPage() {
   const isSepolia = chainId === 11155111;
   const routerAddr = cfg?.optimizerRouter || "";
   const standardAddr = cfg?.standardToken || "";
+  const pools = cfg?.swapPools ?? {};
+  const poolFor = (t: Token) => (isEth(t) ? null : pools[t.symbol] ?? null);
   const realMode = isSepolia && !!routerAddr;
   const cooldownBlocks = sep
     ? Math.max(0, sep.lastOpBlock + sep.minDelay + 1 - sep.blockNumber)
@@ -454,10 +502,27 @@ export default function SwapPage() {
         burnsExecuted: (stats[2] as bigint).toString(),
         yieldDistributed: (stats[3] as bigint).toString(),
       });
+      // Preco on-chain de cada pool (label -> hopSqrtPriceX96) para o quote
+      // multi-pair: ETH->X usa o inverso, X->ETH o direto, X->Y 2 legs via ETH.
+      const sqrts = await Promise.all(
+        Object.entries(cfg?.swapPools ?? {}).map(async ([sym, addr]) => {
+          try {
+            const p = new ethers.Contract(addr, POOL_ABI, provider);
+            const v: bigint = await p.hopSqrtPriceX96();
+            return [sym, v] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+      const map: Record<string, bigint> = {};
+      for (const e of sqrts) if (e) map[e[0]] = e[1];
+      setPoolSqrt(map);
+      setPoolsReady(true);
     } catch (err) {
       console.error("sepolia load failed:", err);
     }
-  }, [realMode, provider, address, standardAddr, routerAddr]);
+  }, [realMode, provider, address, standardAddr, routerAddr, cfg]);
 
   useEffect(() => {
     if (!realMode) return;
@@ -482,8 +547,17 @@ export default function SwapPage() {
       );
       for (const t of toFetch) {
         try {
-          const contract = new ethers.Contract(t.address, ERC20_ABI, provider);
-          const raw: bigint = await contract.balanceOf(address);
+          let raw: bigint;
+          if (isEth(t)) {
+            raw = await provider.getBalance(address);
+          } else {
+            const contract = new ethers.Contract(
+              t.address,
+              ERC20_ABI,
+              provider
+            );
+            raw = (await contract.balanceOf(address)) as bigint;
+          }
           if (alive) {
             setBalances((prev) => ({
               ...prev,
@@ -521,19 +595,56 @@ export default function SwapPage() {
   const priceImpact = Math.min((usdValue / LIQUIDITY_USD) * 100, 50);
 
   const realQuote = useMemo(() => {
-    if (!realMode || !sep || !amount || amountNum <= 0) return null;
+    if (!realMode || !amount || amountNum <= 0) return null;
+    if (isEth(tokenIn) && isEth(tokenOut)) return null;
     try {
-      const amt = ethers.parseUnits(amount, sep.tokenDecimals);
-      const price = (sep.sqrtPriceX96 * sep.sqrtPriceX96) / (2n ** 192n);
-      const out = amt * price;
-      if (out === 0n) return null;
+      const amt = ethers.parseUnits(amount, tokenIn.decimals);
+      if (amt <= 0n) return null;
+      const sIn = isEth(tokenIn) ? null : poolSqrt[tokenIn.symbol];
+      const sOut = isEth(tokenOut) ? null : poolSqrt[tokenOut.symbol];
+      if (!isEth(tokenIn) && !sIn) return null;
+      if (!isEth(tokenOut) && !sOut) return null;
+      let gross: bigint;
+      if (isEth(tokenIn)) {
+        gross = hopInv(amt, sOut!);
+      } else if (isEth(tokenOut)) {
+        gross = hopFwd(amt, sIn!);
+      } else {
+        const eth = hopFwd(amt, sIn!);
+        if (eth === 0n) return null;
+        gross = hopInv(eth, sOut!);
+      }
+      if (gross === 0n) return null;
+      const feeBps = BigInt(sep?.feeBps ?? 50);
+      const feeTotal = (gross * feeBps) / 10000n;
+      const net = gross - feeTotal;
+      if (net <= 0n) return null;
       const slipBps = BigInt(Math.min(Math.round(slipNum * 100), 1000));
-      const minOut = (out * (10000n - slipBps)) / 10000n;
-      return { amt, out, minOut, price, slipBps };
+      const minOut = (net * (10000n - slipBps)) / 10000n;
+      const amtF = Number(amt) / 10 ** tokenIn.decimals;
+      const outF = Number(net) / 10 ** tokenOut.decimals;
+      return {
+        amt,
+        gross,
+        out: net,
+        minOut,
+        feeTotal,
+        price: amtF > 0 ? outF / amtF : 0,
+        slipBps,
+      };
     } catch {
       return null;
     }
-  }, [realMode, sep, amount, amountNum, slipNum]);
+  }, [
+    realMode,
+    amount,
+    amountNum,
+    slipNum,
+    tokenIn,
+    tokenOut,
+    poolSqrt,
+    sep,
+  ]);
 
   async function handleFaucet() {
     if (!signer || !standardAddr || !address) return;
@@ -585,10 +696,14 @@ export default function SwapPage() {
       setTxHash(null);
       setRealStats(null);
       try {
-        // Approve defensivo: builds novos do router exigem allowance;
-        // o build antigo da Sepolia nao usa os tokens do utilizador.
-        if (standardAddr && address) {
-          const erc = new ethers.Contract(standardAddr, ERC20_ABI, signer);
+        const pIn = poolFor(tokenIn);
+        const pOut = poolFor(tokenOut);
+        if ((!isEth(tokenIn) && !pIn) || (!isEth(tokenOut) && !pOut)) {
+          setError("Pool indisponível para este par — selecione outro token.");
+          return;
+        }
+        if (!isEth(tokenIn) && address) {
+          const erc = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
           try {
             const allow: bigint = await erc.allowance(address, routerAddr);
             if (allow < realQuote.amt) {
@@ -596,13 +711,29 @@ export default function SwapPage() {
               await atx.wait();
             }
           } catch {
-            // build sem exigencia de approve — segue para o swap
+            setError("Approve do token falhou — tente novamente.");
+            return;
           }
         }
+        let venues: string[];
+        let path: string[];
+        if (isEth(tokenIn)) {
+          venues = [pOut as string];
+          path = [ETH_ADDR, tokenOut.address];
+        } else if (isEth(tokenOut)) {
+          venues = [pIn as string];
+          path = [tokenIn.address, ETH_ADDR];
+        } else {
+          venues = [pIn as string, pOut as string];
+          path = [tokenIn.address, ETH_ADDR, tokenOut.address];
+        }
         const router = new ethers.Contract(routerAddr, ROUTER_ABI, signer);
-        const tx = await router.executeProtectedSellAndBurn(
+        const tx = await router.executeMultiHop(
+          venues,
+          path,
           realQuote.amt,
-          realQuote.minOut
+          realQuote.minOut,
+          { value: isEth(tokenIn) ? realQuote.amt : 0n }
         );
         setTxHash(tx.hash as string);
         const receipt = await tx.wait();
@@ -670,10 +801,22 @@ export default function SwapPage() {
   const impactColor =
     priceImpact > 3 ? "#FF567E" : priceImpact > 1 ? "#FFB000" : "#00F58C";
 
+  const poolsMissing = realMode && Object.keys(pools).length === 0;
+  const quotePending =
+    realMode &&
+    amountNum > 0 &&
+    !realQuote &&
+    !poolsMissing &&
+    (!poolsReady || Object.keys(poolSqrt).length === 0);
+  const payBal = balances[tokenIn.address.toLowerCase()] ?? "—";
+  const payBalNum = parseFloat(payBal);
+
   const btnState = !connected
     ? "connect"
     : !amountNum || (realMode && !realQuote)
-    ? "enter"
+    ? quotePending
+      ? "quote"
+      : "enter"
     : loading
     ? "loading"
     : "swap";
@@ -774,12 +917,17 @@ export default function SwapPage() {
             ⚠ Contracts not deployed on Sepolia — run <span className="text-white">npm run deploy:sepolia</span> and configure OPTIMIZER_ROUTER_ADDRESS / STANDARD_TOKEN_ADDRESS in .env
           </div>
         )}
+        {poolsMissing && (
+          <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 p-3 text-xs text-amber-400 font-mono">
+            ⚠ SWAP_POOLS_JSON ausente no .env.local — pools dos pares não configurados (SWAP_POOLS_JSON / WETH_ADDRESS)
+          </div>
+        )}
         {realMode && connected && cooldownBlocks > 0 && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 font-mono">
             Anti-sandwich: wait {cooldownBlocks} block(s) after last wallet operation
           </div>
         )}
-        {realMode && sep && realQuote && realQuote.out > sep.routerEth && (
+        {realMode && sep && realQuote && isEth(tokenOut) && realQuote.out > sep.routerEth && (
           <div className="relative z-10 max-w-5xl mx-auto mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-400 font-mono">
             Sell exceeds router fund (mock 1:1): available {fmt(parseFloat(ethers.formatUnits(sep.routerEth, 18)), 4)} ETH — reduce amount
           </div>
@@ -874,40 +1022,23 @@ export default function SwapPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-slate-400 font-mono uppercase">YOU PAY</span>
                 <span className="text-[10px] font-mono text-slate-400">
-                  {realMode
-                    ? `Balance: ${sep?.tokenBalance ?? "—"} ${sep?.tokenSymbol ?? "STANDARD"}`
-                    : `Balance: ${balances[tokenIn.address.toLowerCase()] ?? "—"}`}
-                  {realMode ? (
-                    sep && parseFloat(sep.tokenBalance) > 0 ? (
-                      <button
-                        onClick={() => setAmount(sep.tokenBalance)}
-                        className="ml-1.5 text-emerald-400 hover:underline"
-                      >
-                        MAX
-                      </button>
-                    ) : sep?.hasMint ? (
-                      <button
-                        onClick={handleFaucet}
-                        disabled={faucetBusy}
-                        className="ml-1.5 text-cyan-400 hover:underline disabled:opacity-50"
-                      >
-                        {faucetBusy ? "MINTING…" : "MINT 1.000 (FAUCET)"}
-                      </button>
-                    ) : null
-                  ) : (
-                    connected &&
-                    balances[tokenIn.address.toLowerCase()] &&
-                    balances[tokenIn.address.toLowerCase()] !== "—" && (
-                      <button
-                        onClick={() =>
-                          setAmount(balances[tokenIn.address.toLowerCase()] || "")
-                        }
-                        className="ml-1.5 text-emerald-400 hover:underline"
-                      >
-                        MAX
-                      </button>
-                    )
-                  )}
+                  {`Balance: ${payBal}`}
+                  {payBalNum > 0 ? (
+                    <button
+                      onClick={() => setAmount(payBal)}
+                      className="ml-1.5 text-emerald-400 hover:underline"
+                    >
+                      MAX
+                    </button>
+                  ) : realMode && tokenIn.symbol === "STANDARD" && sep?.hasMint ? (
+                    <button
+                      onClick={handleFaucet}
+                      disabled={faucetBusy}
+                      className="ml-1.5 text-cyan-400 hover:underline disabled:opacity-50"
+                    >
+                      {faucetBusy ? "MINTING…" : "MINT 1.000 (FAUCET)"}
+                    </button>
+                  ) : null}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -920,70 +1051,44 @@ export default function SwapPage() {
                   className="flex-1 min-w-0 bg-transparent text-2xl font-mono text-white placeholder-slate-500/50 outline-none"
                 />
                 <div className="flex items-center gap-2">
-                  {!realMode && (
-                    <span className="text-xs font-mono text-slate-400">
-                      {usdValue > 0 ? `≈ $${fmt(usdValue, 2)}` : ""}
-                    </span>
-                  )}
-                  {realMode ? (
-                    <span className="flex items-center gap-2 rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 pl-2 pr-3 py-2">
-                      <span
-                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
-                        style={{
-                          background: "#FFB00022",
-                          border: "1px solid #FFB00055",
-                          color: "#FFB000",
-                        }}
-                      >
-                        S
-                      </span>
-                      <span className="text-sm font-semibold text-white font-mono">
-                        {sep?.tokenSymbol ?? "STANDARD"}
-                      </span>
-                    </span>
-                  ) : (
-                    <TokenSelector
-                      token={tokenIn}
-                      other={tokenOut}
-                      onSelect={handleSelectIn}
-                    />
-                  )}
+                  <span className="text-xs font-mono text-slate-400">
+                    {usdValue > 0 ? `≈ $${fmt(usdValue, 2)}` : ""}
+                  </span>
+                  <TokenSelector
+                    token={tokenIn}
+                    other={tokenOut}
+                    onSelect={handleSelectIn}
+                  />
                 </div>
               </div>
             </div>
 
             {/* Reverse button */}
-            {!realMode && (
-              <div className="flex justify-center -my-2.5 relative z-10">
-                <button
-                  onClick={handleReverse}
-                  title="Switch tokens"
-                  className="w-10 h-10 rounded-xl bg-[#0B111A]/80 border border-slate-700/50 flex items-center justify-center text-emerald-400 text-lg hover:border-emerald-500/60 hover:rotate-180 transition-all duration-300"
-                >
-                  ⇅
-                </button>
-              </div>
-            )}
+            <div className="flex justify-center -my-2.5 relative z-10">
+              <button
+                onClick={handleReverse}
+                title="Switch tokens"
+                className="w-10 h-10 rounded-xl bg-[#0B111A]/80 border border-slate-700/50 flex items-center justify-center text-emerald-400 text-lg hover:border-emerald-500/60 hover:rotate-180 transition-all duration-300"
+              >
+                ⇅
+              </button>
+            </div>
 
             {/* You Receive */}
-            <div
-              className={`rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4 ${
-                realMode ? "mt-2" : ""
-              }`}
-            >
+            <div className="rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-slate-400 font-mono uppercase">YOU RECEIVE</span>
                 <span className="text-[10px] font-mono text-slate-400">
-                  {realMode
-                    ? "ETH (gas token)"
-                    : `Balance: ${balances[tokenOut.address.toLowerCase()] ?? "—"}`}
+                  {`Balance: ${balances[tokenOut.address.toLowerCase()] ?? "—"}`}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0 text-2xl font-mono text-white">
                   {realMode && realQuote ? (
                     fmt(
-                      parseFloat(ethers.formatUnits(realQuote.out, 18)),
+                      parseFloat(
+                        ethers.formatUnits(realQuote.out, tokenOut.decimals)
+                      ),
                       6
                     )
                   ) : amountNum > 0 ? (
@@ -993,36 +1098,16 @@ export default function SwapPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!realMode && (
-                    <span className="text-xs font-mono text-slate-400">
-                      {outAmount > 0
-                        ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
-                        : ""}
-                    </span>
-                  )}
-                  {realMode ? (
-                    <span className="flex items-center gap-2 rounded-2xl bg-[#070A0F]/80 border border-slate-700/50 pl-2 pr-3 py-2">
-                      <span
-                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full font-bold text-xs"
-                        style={{
-                          background: "#8C9EFF22",
-                          border: "1px solid #8C9EFF55",
-                          color: "#8C9EFF",
-                        }}
-                      >
-                        Ξ
-                      </span>
-                      <span className="text-sm font-semibold text-white font-mono">
-                        ETH
-                      </span>
-                    </span>
-                  ) : (
-                    <TokenSelector
-                      token={tokenOut}
-                      other={tokenIn}
-                      onSelect={handleSelectOut}
-                    />
-                  )}
+                  <span className="text-xs font-mono text-slate-400">
+                    {outAmount > 0
+                      ? `≈ $${fmt(outAmount * (PRICES_USD[tokenOut.symbol] ?? 0), 2)}`
+                      : ""}
+                  </span>
+                  <TokenSelector
+                    token={tokenOut}
+                    other={tokenIn}
+                    onSelect={handleSelectOut}
+                  />
                 </div>
               </div>
             </div>
@@ -1035,10 +1120,10 @@ export default function SwapPage() {
                     label="Rate (on-chain)"
                     value={
                       realQuote
-                        ? `1 ${sep?.tokenSymbol ?? "STANDARD"} = ${fmt(
-                            Number(realQuote.price),
+                        ? `1 ${tokenIn.symbol} = ${fmt(
+                            realQuote.price,
                             6
-                          )} ETH`
+                          )} ${tokenOut.symbol}`
                         : "—"
                     }
                   />
@@ -1048,10 +1133,13 @@ export default function SwapPage() {
                       realQuote
                         ? `${fmt(
                             parseFloat(
-                              ethers.formatUnits(realQuote.minOut, 18)
+                              ethers.formatUnits(
+                                realQuote.minOut,
+                                tokenOut.decimals
+                              )
                             ),
                             6
-                          )} ETH`
+                          )} ${tokenOut.symbol}`
                         : "—"
                     }
                     color="#00F58C"
@@ -1073,7 +1161,19 @@ export default function SwapPage() {
                       sep && sep.feeBps !== null && sep.tier !== null
                         ? `${(sep.feeBps / 100).toFixed(2)}% · Tier ${
                             sep.tier + 1
-                          } (${TIER_LABELS[sep.tier] ?? "—"})`
+                          } (${TIER_LABELS[sep.tier] ?? "—"})${
+                            realQuote
+                              ? ` · ${fmt(
+                                  parseFloat(
+                                    ethers.formatUnits(
+                                      realQuote.feeTotal,
+                                      tokenOut.decimals
+                                    )
+                                  ),
+                                  6
+                                )} ${tokenOut.symbol}`
+                              : ""
+                          }`
                         : "—"
                     }
                   />
@@ -1096,7 +1196,11 @@ export default function SwapPage() {
                   />
                   <InfoRow
                     label="Route"
-                    value={`${sep?.tokenSymbol ?? "STANDARD"} → ETH · OptimizerRouter`}
+                    value={`${tokenIn.symbol} → ${tokenOut.symbol} ${
+                      !isEth(tokenIn) && !isEth(tokenOut)
+                        ? "(2 hops via ETH)"
+                        : "(1 hop)"
+                    } · OptimizerRouter`}
                   />
                 </>
               ) : (
@@ -1142,11 +1246,13 @@ export default function SwapPage() {
               onClick={btnState === "connect" ? connect : handleSwap}
               disabled={
                 btnState === "enter" ||
+                btnState === "quote" ||
                 btnState === "loading" ||
                 (realMode && cooldownBlocks > 0) ||
                 (realMode &&
                   !!realQuote &&
                   !!sep &&
+                  isEth(tokenOut) &&
                   realQuote.out > sep.routerEth)
               }
               className={`w-full mt-4 py-3.5 rounded-2xl text-sm font-semibold tracking-widest font-mono uppercase transition-all ${
@@ -1165,6 +1271,8 @@ export default function SwapPage() {
                   : `CONNECT ${walletName.toUpperCase()}`
                 : btnState === "enter"
                 ? "ENTER AN AMOUNT"
+                : btnState === "quote"
+                ? "CALCULATING QUOTE…"
                 : btnState === "loading"
                 ? realMode
                   ? "SENDING TX..."
@@ -1172,7 +1280,7 @@ export default function SwapPage() {
                 : realMode
                 ? cooldownBlocks > 0
                   ? `COOLDOWN · ${cooldownBlocks} BLOCK(S)`
-                  : "EXECUTE PROTECTED SELL"
+                  : "EXECUTE PROTECTED SWAP"
                 : "EXECUTE SWAP (DEMO)"}
             </button>
 
@@ -1260,11 +1368,11 @@ export default function SwapPage() {
           <div className="mt-4 rounded-2xl bg-[#0B111A]/90 border border-slate-700/50 p-4">
             <div className="text-xs text-slate-400 mb-3 tracking-widest font-mono uppercase">▸ HOW IT WORKS</div>
             <div className="space-y-2 text-xs text-slate-400">
-              <div>1. You sell {tokenIn.symbol} for {tokenOut.symbol}</div>
-              <div>2. Router captures price distortion (MEV)</div>
-              <div>3. Back-swap buys {tokenIn.symbol} on the dip</div>
-              <div>4. Tokens burned via CappedBurnHook</div>
-              <div>5. Profit goes to LP vault as yield</div>
+              <div>1. Você troca {tokenIn.symbol} por {tokenOut.symbol}</div>
+              <div>2. Rota on-chain via OptimizerRouter {(isEth(tokenIn) || isEth(tokenOut)) ? "(1 hop)" : "(2 hops via ETH)"}</div>
+              <div>3. Fee DEC-020 cobrada uma única vez na saída líquida</div>
+              <div>4. Cooldown anti-sandwich ({sep?.minDelay ?? 1} bloco) entre operações da carteira</div>
+              <div>5. Minimum received protege contra slippage/sandwich</div>
             </div>
           </div>
         </div>

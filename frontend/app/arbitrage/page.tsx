@@ -11,6 +11,23 @@ const ROUTER_ABI = [
   "function executeCustomArbitrage(address venueBuy, address venueSell, address token, uint256 amountIn, uint256 minProfit) payable",
 ];
 
+const IDENTITY_ABI = [
+  "function identityTier(address) view returns (uint8)",
+  "function swapFeeBps(address) view returns (uint256)",
+  "function successFeeBps(address) view returns (uint256)",
+];
+
+const TIER_NAMES: Record<number, string> = {
+  0: "T1 Buildercoin NFT",
+  1: "T2 Identity (md)",
+  2: "T3 $IMD/$BLD",
+  3: "T4 Retail",
+};
+
+function shortAddr(addr: string) {
+  return addr.slice(0, 6) + "…" + addr.slice(-4);
+}
+
 interface ArbHistory {
   timestamp: string;
   spread: number;
@@ -30,7 +47,7 @@ interface ArbConfig {
 }
 
 export default function ArbitragePage() {
-  const { connected, signer, connect } = useWallet();
+  const { connected, signer, connect, address, provider } = useWallet();
   const [capitalAmount, setCapitalAmount] = useState("");
   const [capitalToken, setCapitalToken] = useState<"ETH" | "IMD">("ETH");
   const [targetSpread, setTargetSpread] = useState(0.5);
@@ -41,6 +58,12 @@ export default function ArbitragePage() {
   const [config, setConfig] = useState<ArbConfig>({});
   const [status, setStatus] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
+  const [identity, setIdentity] = useState<{
+    addr: string | null;
+    tier: number | null;
+    feeBps: number | null;
+    successBps: number | null;
+  }>({ addr: null, tier: null, feeBps: null, successBps: null });
 
   useEffect(() => {
     let alive = true;
@@ -73,6 +96,44 @@ export default function ArbitragePage() {
       .then(setConfig)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const routerAddr = config.optimizerRouter;
+    if (!connected || !address || !provider || !routerAddr) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = new ethers.Contract(routerAddr, IDENTITY_ABI, provider);
+        const [tier, feeBps, successBps] = await Promise.all([
+          r
+            .identityTier(address)
+            .then((v: unknown) => Number(v))
+            .catch(() => null),
+          r
+            .swapFeeBps(address)
+            .then((v: unknown) => Number(v))
+            .catch(() => null),
+          r
+            .successFeeBps(address)
+            .then((v: unknown) => Number(v))
+            .catch(() => null),
+        ]);
+        if (alive)
+          setIdentity({ addr: address, tier, feeBps, successBps });
+      } catch {
+        if (alive)
+          setIdentity({
+            addr: address,
+            tier: null,
+            feeBps: null,
+            successBps: null,
+          });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [connected, address, provider, config.optimizerRouter]);
 
   const grossSpread = feed?.current.spread ?? 0;
   const hookApy = feed?.current.hookAPY ?? 0;
@@ -187,6 +248,43 @@ export default function ArbitragePage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400 font-mono tracking-widest uppercase">EXECUTION CONTROLS</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+
+                {/* Identifier — Identity Tier on-chain */}
+                <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">
+                      IDENTIFIER · IDENTITY TIER (ON-CHAIN)
+                    </span>
+                    {connected && address ? (
+                      <span className="text-[10px] text-emerald-400 font-mono">
+                        {shortAddr(address)}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => connect().catch(() => {})}
+                        className="text-[10px] text-emerald-400 font-mono underline hover:text-emerald-300"
+                      >
+                        conectar carteira
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-1 text-sm font-mono text-white">
+                    {connected && address && identity.addr !== address
+                      ? "consultando on-chain…"
+                      : identity.addr === address && identity.tier !== null
+                      ? `${TIER_NAMES[identity.tier] ?? `Tier ${identity.tier + 1}`}`
+                      : connected
+                      ? "identity não lido — build do router sem DEC-020?"
+                      : "— (conecte para ler o tier)"}
+                  </div>
+                  {identity.addr === address && identity.feeBps !== null && (
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      swap fee {(identity.feeBps / 100).toFixed(2)}% · success
+                      fee {((identity.successBps ?? 0) / 100).toFixed(2)}% (só
+                      sobre o lucro)
+                    </div>
+                  )}
                 </div>
 
                 {/* Capital Input */}
