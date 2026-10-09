@@ -135,3 +135,47 @@ export const MIGRATION_ABI = [
   "event Deposited(address indexed user, address indexed pool, uint256 amount)",
   "event Withdrawn(address indexed user, address indexed pool, uint256 amount)",
 ];
+
+// BuilderStakingVault (Diamond Hands) — Sepolia Testnet (DEC-020)
+// Deploy: scripts/deploy-staking.js + staking-setup.js
+export const STAKING_CONFIG = {
+  network: "sepolia",
+  chainId: 11155111,
+  stakingVault: "0x3A7C178A5467EfB1E4a98C95c6157C13e2E37da9",
+  bldToken: "0xc2296194eD329a1024FE801a374d9f7acF0acC4b",
+  buildercoinNFT: "0x724A0a04f7b5f67992D4cEB3F859B3FbA8c808e4",
+};
+
+// BuilderStakingVault ABI (funções usadas pelo frontend)
+export const STAKING_ABI = [
+  // Views
+  "function builderTokenAddress() view returns (address)",
+  "function totalStaked(address) view returns (uint256)",
+  "function totalDeposited() view returns (uint256)",
+  "function builderScore(address) view returns (uint256)",
+  "function getPositionCount(address) view returns (uint256)",
+  "function getStakingPosition(address, uint256) view returns (tuple(uint256 amount, uint256 lockEnd, uint256 lockTier, uint256 multiplier, uint256 depositTime, uint256 rewardDebt, uint256 unbondInitiatedAt))",
+  "function yieldWeightOf(address) view returns (uint256)",
+  "function claimableYield(address) view returns (uint256)",
+  "function claimedYieldTotal(address) view returns (uint256)",
+  "function instantPenaltyBps() view returns (uint256)",
+  "function UNBOND_PERIOD() view returns (uint256)",
+  // Actions
+  "function stake(uint256 amount, uint256 lockTier)",
+  "function withdraw(uint256 positionIndex)",
+  "function beginUnbond(uint256 positionIndex)",
+  "function completeUnbond(uint256 positionIndex)",
+  "function emergencyInstantWithdraw(uint256 positionIndex) returns (uint256, uint256)",
+  "function claimYield() returns (uint256)",
+  "function checkpoint(address user)",
+  // ERC20 BLD (approve)
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  // Events
+  "event Staked(address indexed user, uint256 amount, uint256 lockTier, uint256 builderScore, uint256 lockEnd)",
+  "event Withdrawn(address indexed user, uint256 amount, uint256 penalty, uint256 timestamp)",
+  "event UnbondInitiated(address indexed user, uint256 positionIndex, uint256 availableAt)",
+  "event EmergencyWithdrawn(address indexed user, uint256 positionIndex, uint256 amountSent, uint256 penalty, uint256 penaltyEth, uint256 timestamp)",
+  "event YieldClaimed(address indexed user, uint256 amount, uint256 feeBps)",
+];
