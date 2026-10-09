@@ -67,6 +67,116 @@ function uniqUsers(logs: readonly (ethers.Log | ethers.EventLog)[]): number {
 let cache: { at: number; body: unknown } | null = null;
 const TTL_MS = 60_000;
 
+// Amostragem de liquidez histórica: ~24 pontos do deploy até o now.
+// ethpandaops (reth) serve estado histórico — cada ponto = getBalance por
+// pool naquele bloco. Séries 100% reais, nada sintético.
+const HISTORY_POINTS = 24;
+
+interface LiquidityHistory {
+  blocks: number[];
+  totals: string[];
+  pools: { symbol: string; values: string[] }[];
+}
+
+async function sampleLiquidityHistory(
+  provider: ethers.JsonRpcProvider,
+  pools: { symbol: string; address: string }[],
+  fromBlock: number,
+  toBlock: number
+): Promise<LiquidityHistory> {
+  const span = Math.max(1, toBlock - fromBlock);
+  const step = Math.max(1, Math.floor(span / (HISTORY_POINTS - 1)));
+  const blocks: number[] = [];
+  for (let b = fromBlock; b <= toBlock; b += step) blocks.push(b);
+  if (blocks[blocks.length - 1] !== toBlock) blocks.push(toBlock);
+
+  const perPoolValues: bigint[][] = pools.map(() => []);
+  const totals: bigint[] = [];
+  // Sequencial por bloco (5 calls paralelos dentro de cada) — evita rate-limit
+  for (const b of blocks) {
+    const bals = await Promise.all(
+      pools.map((p) => provider.getBalance(p.address, b))
+    );
+    let sum = 0n;
+    bals.forEach((v, i) => {
+      perPoolValues[i].push(v);
+      sum += v;
+    });
+    totals.push(sum);
+  }
+  return {
+    blocks,
+    totals: totals.map(String),
+    pools: pools.map((p, i) => ({
+      symbol: p.symbol,
+      values: perPoolValues[i].map(String),
+    })),
+  };
+}
+
+interface ActivityItem {
+  type: "SWAP" | "STAKE" | "LP" | "MINT";
+  block: number;
+  tx: string;
+  label: string;
+  value: string;
+}
+
+function buildActivity(
+  swapR: Ok<readonly (ethers.Log | ethers.EventLog)[]>,
+  stakeR: Ok<readonly (ethers.Log | ethers.EventLog)[]>,
+  depR: Ok<readonly (ethers.Log | ethers.EventLog)[]>,
+  mintR: Ok<readonly (ethers.Log | ethers.EventLog)[]>
+): ActivityItem[] {
+  const items: ActivityItem[] = [];
+  const last = <T,>(arr: readonly T[], n: number) => arr.slice(-n);
+  if (swapR.ok)
+    for (const ev of last(swapR.value, 8)) {
+      if (!("args" in ev) || !ev.args) continue;
+      items.push({
+        type: "SWAP",
+        block: ev.blockNumber,
+        tx: ev.transactionHash,
+        label: String(ev.args[0]).slice(0, 6) + "…" + String(ev.args[0]).slice(-4),
+        value: `${(Number(ev.args[3]) / 1e18).toFixed(4)} ETH out`,
+      });
+    }
+  if (stakeR.ok)
+    for (const ev of last(stakeR.value, 5)) {
+      if (!("args" in ev) || !ev.args) continue;
+      items.push({
+        type: "STAKE",
+        block: ev.blockNumber,
+        tx: ev.transactionHash,
+        label: String(ev.args[0]).slice(0, 6) + "…" + String(ev.args[0]).slice(-4),
+        value: `${(Number(ev.args[1]) / 1e18).toFixed(2)} BLD`,
+      });
+    }
+  if (depR.ok)
+    for (const ev of last(depR.value, 4)) {
+      if (!("args" in ev) || !ev.args) continue;
+      items.push({
+        type: "LP",
+        block: ev.blockNumber,
+        tx: ev.transactionHash,
+        label: String(ev.args[0]).slice(0, 6) + "…" + String(ev.args[0]).slice(-4),
+        value: `${(Number(ev.args[1]) / 1e18).toFixed(4)} ETH`,
+      });
+    }
+  if (mintR.ok)
+    for (const ev of last(mintR.value, 5)) {
+      if (!("args" in ev) || !ev.args) continue;
+      items.push({
+        type: "MINT",
+        block: ev.blockNumber,
+        tx: ev.transactionHash,
+        label: `#${ev.args[1]?.toString() ?? "?"}`,
+        value: "Buildercoin",
+      });
+    }
+  return items.sort((a, b) => b.block - a.block).slice(0, 16);
+}
+
 export async function GET() {
   if (cache && Date.now() - cache.at < TTL_MS) {
     return NextResponse.json(cache.body);
@@ -106,6 +216,7 @@ export async function GET() {
     stakedEventsR,
     nftMintsR,
     poolBalsR,
+    historyR,
   ] = await Promise.all([
     settled(router.getStats()),
     settled(router.minBlockDelay()),
@@ -158,6 +269,17 @@ export async function GET() {
           eth: await provider.getBalance(addr),
         }))
       )
+    ),
+    settled(
+      (async () => {
+        const entries = Object.entries(dep.swapPools);
+        return sampleLiquidityHistory(
+          provider,
+          entries.map(([symbol, address]) => ({ symbol, address })),
+          SEPOLIA_FROM_ROUTER,
+          latest
+        );
+      })()
     ),
   ]);
 
@@ -252,6 +374,24 @@ export async function GET() {
           ),
         }
       : null,
+    // Séries temporais reais (amostragem histórica de saldo + eventos)
+    history: historyR.ok ? historyR.value : null,
+    // Série de swaps individuais (para o gráfico de barras de volume)
+    swapSeries:
+      swapEventsR.ok
+        ? swapEventsR.value
+            .filter((e): e is ethers.EventLog => "args" in e && !!e.args)
+            .map((e) => ({
+              block: e.blockNumber,
+              user: String(e.args[0]),
+              amountIn: (e.args[2] as bigint).toString(),
+              finalOut: (e.args[3] as bigint).toString(),
+              feeTotal: (e.args[4] as bigint).toString(),
+              userOut: (e.args[5] as bigint).toString(),
+              timestamp: Number(e.args[6]),
+            }))
+        : null,
+    activity: buildActivity(swapEventsR, stakedEventsR, vaultDepositsR, nftMintsR),
     partial: !(
       statsR.ok &&
       vaultStatsR.ok &&
