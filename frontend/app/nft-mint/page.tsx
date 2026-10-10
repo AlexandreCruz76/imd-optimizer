@@ -245,10 +245,16 @@ export default function NFTMintPage() {
                   "radial-gradient(600px 300px at 50% 0%, rgba(0,245,140,0.18), transparent)",
               }}
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/buildercoin.jpeg"
-              alt="Buildercoin dNFT"
+            {/* Vídeo Gemini (autoplay silencioso em loop) — poster = arte estática como fallback */}
+            <video
+              src="/images/gemini-hero.mp4"
+              poster="/images/buildercoin.jpeg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-label="Buildercoin dNFT"
               className="hero-breathe relative z-10 h-full w-full object-cover"
               style={{ filter: "drop-shadow(0 0 40px rgba(0,245,140,0.25))" }}
             />
