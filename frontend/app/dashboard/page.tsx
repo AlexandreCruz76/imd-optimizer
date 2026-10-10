@@ -26,6 +26,16 @@ interface DashboardData {
   nft?: Record<string, string | null>;
   users?: Record<string, number | null | Record<string, number | null>>;
   pools?: { totalEth: string; items: { symbol: string; address: string; eth: string }[] } | null;
+  metaHook?: {
+    address: string;
+    mevForwardedEth: string | null;
+    forwardedEvents: number | null;
+    detections: number | null;
+    imdBurned: string | null;
+    oracleQueries: string | null;
+    oracleBotHits: string | null;
+    arbitrages: string | null;
+  } | null;
   history?: {
     blocks: number[];
     totals: string[];
@@ -292,6 +302,8 @@ export default function DashboardPage() {
   const lpUsers = (users.cofreLp as number | null) ?? 0;
   const nftUsers = (users.nftMinters as number | null) ?? 0;
   const totalUsers = swapUsers + arbUsers + stakeUsers + lpUsers + nftUsers;
+  // Fonte real do teste MEV (eventos ETHForwardedToVault do Meta Hook)
+  const mh = data?.metaHook ?? null;
 
   // Série empilhada de liquidez por venue (dados históricos reais)
   const stackSeries =
@@ -410,8 +422,12 @@ export default function DashboardPage() {
               />
               <KpiTile
                 label="MEV Capturado"
-                value={<CountUpEth wei={data.swap?.mevCapturedEth ?? null} />}
-                sub="ETH resgatados"
+                value={
+                  <CountUpEth
+                    wei={mh?.mevForwardedEth ?? data.swap?.mevCapturedEth ?? null}
+                  />
+                }
+                sub={mh ? "ETH → Cofre (Meta Hook)" : "ETH resgatados"}
                 accent="#00F5FF"
               />
               <KpiTile
@@ -510,6 +526,89 @@ export default function DashboardPage() {
                 </div>
               </Panel>
             </div>
+
+            {/* ── META HOOK · RESULTADO DO TESTE MEV ──────────────── */}
+            {mh && (
+              <Panel
+                title="Meta Hook · Resultado do Teste MEV"
+                subtitle="Eventos e contadores reais do OptimizerHookV2 na Sepolia (stress: 5 bots · 4 ataques ofensivos neutralizados)"
+                right={
+                  <a
+                    href={`https://sepolia.etherscan.io/address/${mh.address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-[10px] text-[#00F58C]/70 hover:text-[#00F58C] transition-colors"
+                  >
+                    {short(mh.address)} ↗
+                  </a>
+                }
+              >
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    {
+                      label: "ETH confiscado → Cofre",
+                      value: fmtEth(mh.mevForwardedEth),
+                      accent: "text-[#00F58C]",
+                    },
+                    {
+                      label: "Interceptações",
+                      value: num(mh.forwardedEvents != null ? String(mh.forwardedEvents) : null),
+                      accent: "text-[#00F5FF]",
+                    },
+                    {
+                      label: "Detecções MEVCaptured",
+                      value: num(mh.detections != null ? String(mh.detections) : null),
+                      accent: "text-[#00F5FF]",
+                    },
+                    {
+                      label: "IMD auto-queimado",
+                      value: fmtEth(mh.imdBurned),
+                      accent: "text-[#FB7185]",
+                    },
+                    {
+                      label: "Oráculo consultas",
+                      value: num(mh.oracleQueries),
+                      accent: "text-[#A78BFA]",
+                    },
+                    {
+                      label: "Oráculo hits (bots)",
+                      value: num(mh.oracleBotHits),
+                      accent: "text-[#A78BFA]",
+                    },
+                    {
+                      label: "Arbitragens auto",
+                      value: num(mh.arbitrages),
+                      accent: "text-[#FFB000]",
+                    },
+                    {
+                      label: "Hook",
+                      value: short(mh.address),
+                      accent: "text-slate-300",
+                    },
+                  ].map((it) => (
+                    <div
+                      key={it.label}
+                      className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+                    >
+                      <div className="text-[9px] uppercase tracking-wider text-slate-600 font-mono">
+                        {it.label}
+                      </div>
+                      <div
+                        className={`mt-1 font-mono text-sm tabular-nums ${it.accent}`}
+                      >
+                        {it.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 font-mono text-[10px] text-slate-600">
+                  Fonte: eventos ETHForwardedToVault + contadores públicos do
+                  hook (Sepolia) — sem dados sintéticos. S1–S4 ofensivos
+                  confiscação parcial; S5 JIT legítimo não escrowado; S6 baleia
+                  sem registro on-chain.
+                </p>
+              </Panel>
+            )}
 
             {/* ── SWAP BARS + COFRE/STAKING ────────────────────────── */}
             <div className="grid lg:grid-cols-3 gap-4">

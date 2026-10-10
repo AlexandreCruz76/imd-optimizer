@@ -32,6 +32,11 @@ function minFromParsed(
 }
 
 const SEPOLIA_FROM_ROUTER = 11_700_000;
+// Meta Hook do teste stress (deploy ~bloco 11882280)
+const SEPOLIA_FROM_HOOK = 11_882_000;
+const HOOK_EVENT_ABI = [
+  "event ETHForwardedToVault(uint256 amount, uint256 timestamp)",
+];
 const SAMPLE = 10;
 
 type Status = "pass" | "fail" | "warn" | "info";
@@ -182,32 +187,66 @@ export async function GET() {
     });
   }
 
-  // T2 — MEV já interceptado registrado
+  // T2 — confiscações registradas. Fonte honesta: eventos
+  // ETHForwardedToVault do Meta Hook (ETH real confisco → Cofre).
+  // Fallback: OptimizerRouter.getStats()[1] (contador sem incremento no
+  // deploy atual — mantido apenas para depuração).
   try {
-    const stats: bigint[] = await router.getStats();
-    const mev = stats[1];
-    tests.push(
-      mev > 0n
-        ? {
-            id: "mev-captured-recorded",
-            name: "MEV interceptado registrado",
-            status: "pass",
-            detail: `totalMEVCaptured = ${ethers.formatEther(mev)} ETH.`,
-          }
-        : {
-            id: "mev-captured-recorded",
-            name: "MEV interceptado registrado",
-            status: "warn",
-            detail:
-              "totalMEVCaptured = 0 — nenhum swap de venda interceptado ainda (normal em testnet ociosa).",
-          }
-    );
+    const hookAddress = process.env.OPTIMIZER_HOOK_ADDRESS || "";
+    if (hookAddress) {
+      const hook = new ethers.Contract(hookAddress, HOOK_EVENT_ABI, provider);
+      const latest = await provider.getBlockNumber();
+      const logs = await queryFilterPaged(
+        hook,
+        "ETHForwardedToVault",
+        SEPOLIA_FROM_HOOK,
+        latest
+      );
+      let sum = 0n;
+      for (const l of logs)
+        if ("args" in l && l.args) sum += l.args[0] as bigint;
+      tests.push(
+        sum > 0n
+          ? {
+              id: "mev-captured-recorded",
+              name: "MEV interceptado registrado",
+              status: "pass",
+              detail: `Meta Hook ${hookAddress.slice(0, 8)}…: ${logs.length} interceptação(ões), ${ethers.formatEther(sum)} ETH encaminhados ao Cofre (eventos ETHForwardedToVault).`,
+            }
+          : {
+              id: "mev-captured-recorded",
+              name: "MEV interceptado registrado",
+              status: "warn",
+              detail:
+                "Nenhum ETHForwardedToVault no Meta Hook — nenhuma confiscação registrada ainda.",
+            }
+      );
+    } else {
+      const stats: bigint[] = await router.getStats();
+      const mev = stats[1];
+      tests.push(
+        mev > 0n
+          ? {
+              id: "mev-captured-recorded",
+              name: "MEV interceptado registrado",
+              status: "pass",
+              detail: `totalMEVCaptured = ${ethers.formatEther(mev)} ETH.`,
+            }
+          : {
+              id: "mev-captured-recorded",
+              name: "MEV interceptado registrado",
+              status: "warn",
+              detail:
+                "totalMEVCaptured = 0 — nenhum swap de venda interceptado ainda (normal em testnet ociosa).",
+            }
+      );
+    }
   } catch {
     tests.push({
       id: "mev-captured-recorded",
       name: "MEV interceptado registrado",
       status: "fail",
-      detail: "getStats() falhou no router.",
+      detail: "Leitura do Meta Hook / getStats() do router falhou.",
     });
   }
 

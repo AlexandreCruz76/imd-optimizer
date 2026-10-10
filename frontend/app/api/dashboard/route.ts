@@ -11,6 +11,8 @@ const SEPOLIA_FROM_ROUTER = 11_700_000;
 const SEPOLIA_FROM_VAULT = 11_700_000;
 const SEPOLIA_FROM_NFT = 11_800_000;
 const SEPOLIA_FROM_STAKING = 11_860_000;
+// Meta Hook do teste stress (deploy ~bloco 11882280)
+const SEPOLIA_FROM_HOOK = 11_882_000;
 
 const ROUTER_ABI = [
   "function getStats() view returns (uint256,uint256,uint256,uint256,uint256)",
@@ -41,6 +43,14 @@ const STAKING_ABI = [
 const NFT_ABI = [
   "function totalSupply() view returns (uint256)",
   "event Minted(address indexed minter, uint256 indexed tokenId, uint256 price)",
+];
+const HOOK_ABI = [
+  "function oracleQueries() view returns (uint256)",
+  "function oracleBotHits() view returns (uint256)",
+  "function totalIMDBurnedByOptimizer() view returns (uint256)",
+  "function totalArbitragesExecuted() view returns (uint256)",
+  "event ETHForwardedToVault(uint256 amount, uint256 timestamp)",
+  "event MEVCaptured(address indexed sender, uint256 amount, bool fromOracle)",
 ];
 
 type Ok<T> = { ok: true; value: T } | { ok: false };
@@ -200,6 +210,11 @@ export async function GET() {
   const vault = new ethers.Contract(dep.optimizerVaultV2, VAULT_ABI, provider);
   const staking = new ethers.Contract(dep.stakingVault, STAKING_ABI, provider);
   const nft = new ethers.Contract(dep.buildercoinNFT, NFT_ABI, provider);
+  // Fonte real do teste MEV: eventos + contadores públicos do Meta Hook
+  const hookAddress = process.env.OPTIMIZER_HOOK_ADDRESS || "";
+  const hook = hookAddress
+    ? new ethers.Contract(hookAddress, HOOK_ABI, provider)
+    : null;
 
   const [
     statsR,
@@ -217,6 +232,9 @@ export async function GET() {
     nftMintsR,
     poolBalsR,
     historyR,
+    hookCountersR,
+    hookForwardedR,
+    hookDetectionsR,
   ] = await Promise.all([
     settled(router.getStats()),
     settled(router.minBlockDelay()),
@@ -281,6 +299,26 @@ export async function GET() {
         );
       })()
     ),
+    hook
+      ? settled(
+          Promise.all([
+            hook.oracleQueries(),
+            hook.oracleBotHits(),
+            hook.totalIMDBurnedByOptimizer(),
+            hook.totalArbitragesExecuted(),
+          ])
+        )
+      : Promise.resolve({ ok: false as const }),
+    hook
+      ? settled(
+          queryFilterPaged(hook, "ETHForwardedToVault", SEPOLIA_FROM_HOOK, latest)
+        )
+      : Promise.resolve({ ok: false as const }),
+    hook
+      ? settled(
+          queryFilterPaged(hook, "MEVCaptured", SEPOLIA_FROM_HOOK, latest)
+        )
+      : Promise.resolve({ ok: false as const }),
   ]);
 
   const w = (v: bigint | undefined) => (v === undefined ? null : v.toString());
@@ -298,6 +336,39 @@ export async function GET() {
     r.status === "fulfilled" ? (r.value as bigint).toString() : null
   );
 
+  // Meta Hook: confiscações reais (eventos) + contadores públicos.
+  // ETHForwardedToVault.amount = ETH que saiu do hook rumo ao Cofre.
+  let metaHook: {
+    address: string;
+    mevForwardedEth: string | null;
+    forwardedEvents: number | null;
+    detections: number | null;
+    imdBurned: string | null;
+    oracleQueries: string | null;
+    oracleBotHits: string | null;
+    arbitrages: string | null;
+  } | null = null;
+  if (hook) {
+    const counters = hookCountersR.ok
+      ? (hookCountersR.value as unknown as bigint[])
+      : null;
+    const forwarded = hookForwardedR.ok ? hookForwardedR.value : null;
+    let sum = 0n;
+    if (forwarded)
+      for (const l of forwarded)
+        if ("args" in l && l.args) sum += l.args[0] as bigint;
+    metaHook = {
+      address: hookAddress,
+      mevForwardedEth: sum.toString(),
+      forwardedEvents: forwarded ? forwarded.length : null,
+      detections: hookDetectionsR.ok ? hookDetectionsR.value.length : null,
+      imdBurned: counters ? w(counters[2]) : null,
+      oracleQueries: counters ? w(counters[0]) : null,
+      oracleBotHits: counters ? w(counters[1]) : null,
+      arbitrages: counters ? w(counters[3]) : null,
+    };
+  }
+
   const poolBals = poolBalsR.ok ? poolBalsR.value : null;
   const poolTotalEth = poolBals
     ? poolBals.reduce((a: bigint, p: { eth: bigint }) => a + p.eth, 0n)
@@ -309,11 +380,13 @@ export async function GET() {
     blockNumber: latest,
     addresses: {
       router: dep.optimizerRouter,
+      hook: hookAddress || null,
       vaultV2: dep.optimizerVaultV2,
       stakingVault: dep.stakingVault,
       bldToken: dep.bldToken,
       buildercoinNFT: dep.buildercoinNFT,
     },
+    metaHook,
     cofre: {
       ethBalance: w(routerBalR.ok ? routerBalR.value : undefined),
       totalDeposits: w(vt?.[0]),
