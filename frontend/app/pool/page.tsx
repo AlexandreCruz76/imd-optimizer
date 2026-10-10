@@ -1,10 +1,37 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ethers } from "ethers";
 import { useWallet } from "../components/WalletProvider";
+import {
+  CompareAreaChart,
+  PulseDot,
+  Sparkline,
+  useCountUp,
+} from "../dashboard/charts";
 
+// ---------------------------------------------------------------------------
+// ABI
+// ---------------------------------------------------------------------------
+const ROUTER_ARB_ABI = [
+  "function executeCustomArbitrage(address venueBuy, address venueSell, address token, uint256 amountIn, uint256 minProfit) payable",
+];
+const ROUTER_IDENTITY_ABI = [
+  "function identityTier(address) view returns (uint8)",
+];
+const GENESIS_KEY_ABI = ["function balanceOf(address) view returns (uint256)"];
+
+const TIER_NAMES = [
+  "T1 · Buildercoin (Alpha)",
+  "T2 · Identity md (Partner)",
+  "T3 · $IMD/$BLD (Holder)",
+  "T4 · Retail",
+];
+
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
 interface PoolState {
   hookTVL: string;
   hookVolumeUSD: string;
@@ -19,212 +46,321 @@ interface PoolState {
   spreadAPY: string;
   price: string;
   ethUsd: string;
+  dataSource?: string;
+  timestamp?: string;
 }
 
-interface UserLp {
-  ethBalance: string;
-  imdBalance: string;
-  shareOfPool: string;
-  feeEarned: string;
-  pnl: string;
-  pnlPercent: string;
+interface ArbFeed {
+  current: {
+    spread: number;
+    hookAPY: number;
+    nativeAPY: number;
+    hookTVL: number;
+    nativeTVL: number;
+    winner: "hook" | "native";
+    timestamp?: string;
+  };
+  stats?: {
+    snapshotsCollected: number;
+    avgSpread: string;
+    maxSpread: string;
+    minSpread: string;
+    hookWins: number;
+    nativeWins: number;
+  };
+  recommendation?: {
+    migrationNeeded: boolean;
+    recommendedPool: string;
+    spreadThreshold: number;
+    currentSpread: string;
+    reasoning: string;
+  };
+  history: { timestamp: string; spread: number; winner: "hook" | "native" }[];
 }
 
-function fmtUsd(n: number): string {
+interface ArbConfig {
+  optimizerRouter?: string;
+  arbVenueBuy?: string;
+  arbVenueSell?: string;
+  standardToken?: string;
+}
+
+interface ArbLogEntry {
+  time: string;
+  spread: number;
+  action: string;
+  status: "ok" | "fail" | "info";
+  tx?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function usd(n: number): string {
   if (!isFinite(n)) return "—";
-  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (Math.abs(n) >= 1000)
+    return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (Math.abs(n) >= 1) return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
 
-function fmt(n: number, d = 4): string {
+function pct(n: number): string {
   if (!isFinite(n)) return "—";
-  return n.toLocaleString("en-US", { maximumFractionDigits: d });
+  return n.toFixed(2) + "%";
 }
 
-function Sparkline({ data, color = "#00F58C" }: { data: number[]; color?: string }) {
-  if (data.length < 2) return <div className="h-32 flex items-center justify-center text-xs text-slate-500 font-mono">collecting…</div>;
-  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
-  const pts = data.map((v, i) => `${((i / (data.length - 1)) * 100).toFixed(2)},${(30 - ((v - min) / range) * 28 - 1).toFixed(2)}`).join(" ");
+function shortAddr(a: string) {
+  return a.slice(0, 6) + "…" + a.slice(-4);
+}
+
+/** Count-up animado para valores USD (evita re-render do pai). */
+function CountUpUsd({ value, color = "#00F58C" }: { value: number; color?: string }) {
+  const shown = useCountUp(value);
   return (
-    <svg viewBox="0 0 100 30" className="w-full h-32" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.15"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      <polygon points={`0,30 ${pts} 100,30`} fill="url(#g)"/>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke"/>
-    </svg>
+    <span style={{ color }} className="tabular-nums">
+      {usd(shown)}
+    </span>
   );
 }
 
-function Card({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+function CountUpPct({ value, color = "#00F58C" }: { value: number; color?: string }) {
+  const shown = useCountUp(value);
   return (
-    <div className={`bg-[#0B111A]/90 border border-emerald-500/25 rounded-2xl p-5 shadow-[var(--elevation-1)] transition-colors duration-150 hover:bg-[#171D29] hover:border-white/[0.12] ${className}`}>
-      <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-4">{title}</div>
-      {children}
+    <span style={{ color }} className="tabular-nums">
+      {pct(shown)}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-componentes
+// ---------------------------------------------------------------------------
+function PoolCard({
+  label,
+  tag,
+  color,
+  tvl,
+  volume,
+  fees,
+  apy,
+  txs,
+  tvlSeries,
+  active,
+}: {
+  label: string;
+  tag: string;
+  color: string;
+  tvl: number;
+  volume: number;
+  fees: number;
+  apy: number;
+  txs: number;
+  tvlSeries: number[];
+  active: boolean;
+}) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-2xl border p-5 transition-all duration-300"
+      style={{
+        borderColor: active ? `${color}66` : "rgba(255,255,255,0.08)",
+        background: "linear-gradient(160deg, #0B111A 0%, #0D1520 100%)",
+        boxShadow: active ? `0 0 30px ${color}22` : "none",
+      }}
+    >
+      <div
+        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl"
+        style={{ background: color }}
+      />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+          />
+          <span className="font-mono text-[11px] tracking-[0.2em] text-slate-300 uppercase">{label}</span>
+        </div>
+        <span
+          className="rounded-full border px-2 py-0.5 font-mono text-[9px] tracking-widest uppercase"
+          style={{ color, borderColor: `${color}55`, background: `${color}15` }}
+        >
+          {tag}
+        </span>
+      </div>
+
+      <div className="mt-4">
+        <div className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">TVL</div>
+        <div className="mt-0.5 text-3xl font-bold tracking-tight">
+          <CountUpUsd value={tvl} color={color} />
+        </div>
+      </div>
+
+      <div className="mt-3 h-12">
+        <Sparkline values={tvlSeries} color={color} width={240} height={44} />
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-white/[0.03] py-2">
+          <div className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">VOLUME 24H</div>
+          <div className="mt-0.5 font-mono text-sm text-white/90">{usd(volume)}</div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] py-2">
+          <div className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">FEES 24H</div>
+          <div className="mt-0.5 font-mono text-sm text-white/90">{usd(fees)}</div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] py-2">
+          <div className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">TXS 24H</div>
+          <div className="mt-0.5 font-mono text-sm text-white/90">{txs}</div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-baseline justify-between border-t border-white/5 pt-3">
+        <span className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">APY (fees reais)</span>
+        <span className="text-xl font-bold">
+          <CountUpPct value={apy} color={color} />
+        </span>
+      </div>
     </div>
   );
 }
 
-function StatRow({ label, value, color = "#00F58C", sub }: { label: string; value: string; color?: string; sub?: string }) {
+function StatRow({
+  label,
+  value,
+  color = "#00F58C",
+  sub,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  sub?: string;
+}) {
   return (
     <div className="flex justify-between py-2 border-t border-slate-800/50">
       <span className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">{label}</span>
       <div className="text-right">
-        <div className="font-mono font-bold tracking-tight text-white/92" style={{ color }}>{value}</div>
+        <div className="font-mono font-bold tracking-tight" style={{ color }}>
+          {value}
+        </div>
         {sub && <div className="font-mono text-[10px] tracking-widest text-slate-500 uppercase mt-0.5">{sub}</div>}
       </div>
     </div>
   );
 }
 
-const TIER_NAMES = [
-  "T1 · Buildercoin NFT (Alpha)",
-  "T2 · Identity md (Partner)",
-  "T3 · $IMD/$BLD (Holder)",
-  "T4 · Retail",
-];
-
-const ROUTER_ABI = [
-  "function identityTier(address) view returns (uint8)",
-];
-
-const GENESIS_KEY_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-];
-
-interface AttackLogEntry {
-  time: string;
-  deltaEth: number;
-  totalEth: number;
-}
-
+// ---------------------------------------------------------------------------
+// Página
+// ---------------------------------------------------------------------------
 export default function MetaHookPoolPage() {
-  const { connected, address, connecting, walletError, walletName, connect } = useWallet();
+  const { connected, address, connecting, walletError, walletName, connect, signer, provider } = useWallet();
+
   const [pool, setPool] = useState<PoolState | null>(null);
-  const [lp, setLp] = useState<UserLp | null>(null);
-  const [ethSeries, setEthSeries] = useState<number[]>([]);
-  const [mevSeries, setMevSeries] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mevIntercepted, setMevIntercepted] = useState<number | null>(null);
+  const [liveTime, setLiveTime] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
+
+  // Série de TVL para os sparklines (hook / native)
+  const [hookSeries, setHookSeries] = useState<number[]>([]);
+  const [nativeSeries, setNativeSeries] = useState<number[]>([]);
+
+  // Arbitrage feed
+  const [feed, setFeed] = useState<ArbFeed | null>(null);
+  const [config, setConfig] = useState<ArbConfig>({});
+  const [threshold, setThreshold] = useState(2.0);
+  const [capital, setCapital] = useState("0.001");
+  const [autoOn, setAutoOn] = useState(false);
+  const [dryRunning, setDryRunning] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [arbLog, setArbLog] = useState<ArbLogEntry[]>([]);
+  const lastAutoAtRef = useRef(0);
+
+  // Identidade
   const [tier, setTier] = useState<number | null>(null);
   const [nftHeld, setNftHeld] = useState<number | null>(null);
-  const [liveTime, setLiveTime] = useState<string | null>(null);
-  const [attackLog, setAttackLog] = useState<AttackLogEntry[]>([]);
-  const prevMevRef = useRef<number | null>(null);
+
+  const hookTvl = parseFloat(pool?.hookTVL || "0") || 0;
+  const nativeTvl = parseFloat(pool?.nativeTVL || "0") || 0;
+  const hookVol = parseFloat(pool?.hookVolumeUSD || "0") || 0;
+  const nativeVol = parseFloat(pool?.nativeVolumeUSD || "0") || 0;
+  const hookFees = parseFloat(pool?.hookFeesUSD || "0") || 0;
+  const nativeFees = parseFloat(pool?.nativeFeesUSD || "0") || 0;
+  const hookApy = parseFloat(pool?.hookAPY || "0") || 0;
+  const nativeApy = parseFloat(pool?.nativeAPY || "0") || 0;
+  const hookTxs = pool?.hookTxs24h || 0;
+  const nativeTxs = pool?.nativeTxs24h || 0;
+  const totalTvl = hookTvl + nativeTvl;
+  const totalVol = hookVol + nativeVol;
+  const totalFees = hookFees + nativeFees;
+  const totalTxs = hookTxs + nativeTxs;
+  const ethUsd = parseFloat(pool?.ethUsd || "0") || 0;
+  const poolPrice = parseFloat(pool?.price || "0") || 0;
+  const spread = feed?.current.spread ?? (parseFloat(pool?.spreadAPY || "0") || 0);
+  const absSpread = Math.abs(spread);
+  const actionable = absSpread >= threshold;
+  const winner = spread > 0 ? "hook" : "native";
 
   const loadPool = useCallback(async () => {
     try {
       const res = await fetch("/api/pool-state");
       const json = await res.json();
-      if (json?.price) {
-        setPool(json);
-        const p = parseFloat(json.ethUsd) || 0;
-        if (p > 0) setEthSeries(prev => [...prev.slice(-39), p]);
-        const mev = parseFloat(json.hookFeesUSD) || 0;
-        setMevSeries(prev => [...prev.slice(-23), mev]);
-        setError(null);
-      } else if (json?.error) setError(json.error);
-    } catch { setError("pool-state unavailable"); }
-  }, []);
-
-  const loadUser = useCallback(async () => {
-    if (!address) return;
-    try {
-      const lpRes = await fetch(`/api/user-lp?address=${address}`);
-      const lpJson = await lpRes.json();
-      if (lpJson && !lpJson.error) setLp(lpJson);
-    } catch {}
-  }, [address]);
-
-  useEffect(() => {
-    const boot = setTimeout(loadPool, 0);
-    const id = setInterval(loadPool, 15000);
-    return () => {
-      clearTimeout(boot);
-      clearInterval(id);
-    };
-  }, [loadPool]);
-
-  useEffect(() => {
-    if (address) {
-      const boot = setTimeout(loadUser, 0);
-      const id = setInterval(loadUser, 30000);
-      return () => {
-        clearTimeout(boot);
-        clearInterval(id);
-      };
+      if (json?.error) {
+        setError(json.error);
+        return;
+      }
+      setPool(json);
+      setError(null);
+      const h = parseFloat(json.hookTVL) || 0;
+      const n = parseFloat(json.nativeTVL) || 0;
+      if (h > 0 || n > 0) {
+        setHookSeries((prev) => [...prev.slice(-39), h]);
+        setNativeSeries((prev) => [...prev.slice(-39), n]);
+      }
+    } catch {
+      setError("pool-state indisponível");
     }
-  }, [address, loadUser]);
-
-  const price = pool ? parseFloat(pool.price) || 0 : 0;
-  const ethUsd = pool ? parseFloat(pool.ethUsd) || 0 : 0;
-  const hookTVL = parseFloat(pool?.hookTVL || "0");
-  const nativeTVL = parseFloat(pool?.nativeTVL || "0");
-  const hookVol = parseFloat(pool?.hookVolumeUSD || "0");
-  const nativeVol = parseFloat(pool?.nativeVolumeUSD || "0");
-  const hookFees = parseFloat(pool?.hookFeesUSD || "0");
-  const nativeFees = parseFloat(pool?.nativeFeesUSD || "0");
-  const hookAPY = parseFloat(pool?.hookAPY || "0");
-  const nativeAPY = parseFloat(pool?.nativeAPY || "0");
-  const spread = parseFloat(pool?.spreadAPY || "0");
-  const hookTxs = pool?.hookTxs24h || 0;
-  const nativeTxs = pool?.nativeTxs24h || 0;
-  const totalTxs = hookTxs + nativeTxs;
-  const totalTVL = hookTVL + nativeTVL;
-  const totalVol = hookVol + nativeVol;
-  const totalFees = hookFees + nativeFees;
-
-  const positionEth = lp ? parseFloat(lp.ethBalance) || 0 : 0;
-  const imdBalance = lp ? parseFloat(lp.imdBalance) || 0 : 0;
-  const shareOfPool = lp ? parseFloat(lp.shareOfPool) || 0 : 0;
-  const feeEarned = lp ? parseFloat(lp.feeEarned) || 0 : 0;
-  const pnl = lp ? parseFloat(lp.pnl) || 0 : 0;
-  const pnlPct = lp ? parseFloat(lp.pnlPercent) || 0 : 0;
-
-  const dailyYield = totalTVL > 0 ? (totalFees / totalTVL) * positionEth * 100 : 0;
-  const monthlyYield = dailyYield * 30;
-  const annualYield = dailyYield * 365;
-
-  // RADAR: MEV interceptado on-chain (OptimizerRouter.getStats) + histórico de deltas
-  useEffect(() => {
-    let alive = true;
-    const loadMetrics = async () => {
-      try {
-        const res = await fetch("/api/metrics");
-        const json = await res.json();
-        if (!alive || json?.mevInterceptedEth == null) return;
-        const total = parseFloat(json.mevInterceptedEth);
-        if (!isFinite(total)) return;
-        const prev = prevMevRef.current;
-        if (prev !== null && total > prev) {
-          const now = new Date().toLocaleTimeString("en-US", { hour12: false });
-          setAttackLog((log) =>
-            [
-              {
-                time: now,
-                deltaEth: total - prev,
-                totalEth: total,
-              },
-              ...log,
-            ].slice(0, 8)
-          );
-        }
-        prevMevRef.current = total;
-        setMevIntercepted(total);
-      } catch {}
-    };
-    const boot = setTimeout(loadMetrics, 0);
-    const iv = setInterval(loadMetrics, 30000);
-    return () => {
-      alive = false;
-      clearTimeout(boot);
-      clearInterval(iv);
-    };
   }, []);
 
-  // RADAR: Identidade do utilizador — Optimizer NFT (GenesisKey) + tier (identityTier)
+  const loadArb = useCallback(async () => {
+    try {
+      const res = await fetch("/api/arbitrage");
+      const json = await res.json();
+      if (!json.error) setFeed(json);
+    } catch {
+      /* feed opcional */
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPool();
+    void loadArb();
+    const iv = setInterval(() => {
+      void loadPool();
+      void loadArb();
+    }, 15000);
+    return () => clearInterval(iv);
+  }, [loadPool, loadArb]);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then(setConfig)
+      .catch(() => {});
+  }, []);
+
+  // Relógio LIVE + "now" para animações (evita Date.now em render)
+  useEffect(() => {
+    const tick = () => {
+      setLiveTime(
+        new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      );
+      setNow(Date.now());
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Identidade on-chain
   useEffect(() => {
     let alive = true;
     if (!connected || !address) {
@@ -235,45 +371,28 @@ export default function MetaHookPoolPage() {
       return () => clearTimeout(t);
     }
     (async () => {
-      let provider: ethers.JsonRpcProvider | null = null;
       try {
         const cfgRes = await fetch("/api/config");
         const cfg = await cfgRes.json();
-        provider = new ethers.JsonRpcProvider(
-          cfg.rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com"
-        );
-        // 1) Optimizer NFT (Buildercoin dNFT — balanceOf)
+        const p = new ethers.JsonRpcProvider(cfg.rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com");
         if (!alive) return;
         if (cfg?.genesisKey) {
           try {
-            const key = new ethers.Contract(
-              cfg.genesisKey,
-              GENESIS_KEY_ABI,
-              provider
-            );
+            const key = new ethers.Contract(cfg.genesisKey, GENESIS_KEY_ABI, p);
             const bal = await key.balanceOf(address);
             if (alive) setNftHeld(Number(bal));
           } catch {
             if (alive) setNftHeld(-1);
           }
-        } else if (alive) {
-          setNftHeld(-1);
-        }
-        // 2) Identity tier (identityTier)
+        } else if (alive) setNftHeld(-1);
         if (cfg?.optimizerRouter) {
           try {
-            const router = new ethers.Contract(
-              cfg.optimizerRouter,
-              ROUTER_ABI,
-              provider
-            );
+            const router = new ethers.Contract(cfg.optimizerRouter, ROUTER_IDENTITY_ABI, p);
             const t = await router.identityTier(address);
             if (alive) setTier(Number(t));
           } catch {
             if (alive) setTier(null);
           }
-        } else if (alive) {
-          setTier(null);
         }
       } catch {
         if (alive) {
@@ -287,272 +406,439 @@ export default function MetaHookPoolPage() {
     };
   }, [connected, address]);
 
-  // Relógio LIVE — só no cliente (evita hydration mismatch de Date no SSR)
-  useEffect(() => {
-    const tick = () =>
-      setLiveTime(
-        new Date().toLocaleTimeString("en-US", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      );
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
+  const pushLog = useCallback((entry: ArbLogEntry) => {
+    setArbLog((prev) => [entry, ...prev].slice(0, 12));
   }, []);
 
+  /** Dry-run: chama executeCustomArbitrage via provider (eth_call) sem gastar gas. */
+  const runDry = useCallback(async () => {
+    if (!config.optimizerRouter || !config.arbVenueBuy || !config.arbVenueSell || !config.standardToken) {
+      pushLog({ time: new Date().toLocaleTimeString("en-US", { hour12: false }), spread, action: "dry-run", status: "fail", tx: "venues não configuradas" });
+      return;
+    }
+    setDryRunning(true);
+    try {
+      const p = provider ?? new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
+      const router = new ethers.Contract(config.optimizerRouter, ROUTER_ARB_ABI, p);
+      const amt = ethers.parseEther(capital || "0");
+      const minProfit = (amt * BigInt(Math.round(threshold * 100))) / 10000n;
+      await router.executeCustomArbitrage.staticCall(config.arbVenueBuy, config.arbVenueSell, config.standardToken, amt, minProfit, { value: amt });
+      pushLog({
+        time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+        spread,
+        action: "dry-run OK",
+        status: "ok",
+        tx: "simulação passou (sem gas)",
+      });
+    } catch (err) {
+      pushLog({
+        time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+        spread,
+        action: "dry-run FAIL",
+        status: "fail",
+        tx: err instanceof Error ? err.message.slice(0, 90) : "revert",
+      });
+    } finally {
+      setDryRunning(false);
+    }
+  }, [config, capital, threshold, spread, provider, pushLog]);
+
+  /** Execução live (assinada pela wallet). */
+  const runLive = useCallback(async () => {
+    if (!connected) {
+      await connect();
+      return;
+    }
+    if (!signer || !config.optimizerRouter || !config.arbVenueBuy || !config.arbVenueSell || !config.standardToken) {
+      pushLog({ time: new Date().toLocaleTimeString("en-US", { hour12: false }), spread, action: "execute", status: "fail", tx: "wallet/venues prontas?" });
+      return;
+    }
+    setExecuting(true);
+    try {
+      const router = new ethers.Contract(config.optimizerRouter, ROUTER_ARB_ABI, signer);
+      const amt = ethers.parseEther(capital || "0");
+      const minProfit = (amt * BigInt(Math.round(threshold * 100))) / 10000n;
+      const tx = await router.executeCustomArbitrage(config.arbVenueBuy, config.arbVenueSell, config.standardToken, amt, minProfit, { value: amt });
+      pushLog({ time: new Date().toLocaleTimeString("en-US", { hour12: false }), spread, action: "execute tx", status: "info", tx: tx.hash.slice(0, 18) + "…" });
+      await tx.wait();
+      pushLog({ time: new Date().toLocaleTimeString("en-US", { hour12: false }), spread, action: "confirmed", status: "ok", tx: tx.hash.slice(0, 18) + "…" });
+    } catch (err) {
+      pushLog({
+        time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+        spread,
+        action: "execute FAIL",
+        status: "fail",
+        tx: err instanceof Error ? err.message.slice(0, 90) : "reverted",
+      });
+    } finally {
+      setExecuting(false);
+    }
+  }, [connected, signer, config, capital, threshold, spread, connect, pushLog]);
+
+  // Engine automática: quando ligada e spread cruza o threshold, dry-run sozinho.
+  // Cooldown de 45s para não spammar. Live NUNCA roda automático (precisa clique).
+  const autoArmedRef = useRef(false);
+  useEffect(() => {
+    if (!autoOn || !actionable || dryRunning || executing) return;
+    if (now - lastAutoAtRef.current < 45_000) return;
+    lastAutoAtRef.current = now;
+    autoArmedRef.current = true;
+    void runDry();
+  }, [autoOn, actionable, now, dryRunning, executing, runDry]);
+
+  // Gráfico comparativo: histórico de spread (acumulado em memória)
+  const [spreadHist, setSpreadHist] = useState<{ t: string; h: number; n: number }[]>([]);
+  useEffect(() => {
+    if (!feed?.current) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSpreadHist((prev) => {
+      const stamp = feed.current.timestamp
+        ? new Date(feed.current.timestamp).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })
+        : String(prev.length + 1).padStart(2, "0");
+      const last = prev[prev.length - 1];
+      if (last && last.h === feed.current.hookAPY && last.n === feed.current.nativeAPY) return prev;
+      return [...prev.slice(-39), { t: stamp, h: feed.current.hookAPY, n: feed.current.nativeAPY }];
+    });
+  }, [feed]);
+
   return (
-    <div className="min-h-screen bg-[#070A0F] font-mono">
-      <main className="pt-24 space-y-6 max-w-7xl mx-auto px-4 md:px-8">
-        {/* Terminal Header */}
-        <div className="flex items-center justify-between font-mono text-sm tracking-[0.25em] text-slate-300 uppercase mb-6">
+    <div className="relative min-h-screen bg-[#070A0F] font-mono">
+      {/* Background sutil (arte existente) */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.10]"
+        style={{
+          backgroundImage: "url(/images/meta-hook-bg.svg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(1200px 600px at 20% -10%, rgba(0,245,140,0.06), transparent), radial-gradient(900px 500px at 90% 10%, rgba(0,245,255,0.05), transparent)",
+        }}
+      />
+
+      <main className="relative z-10 pt-24 space-y-6 max-w-7xl mx-auto px-4 md:px-8 pb-10">
+        {/* Command bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-sm tracking-[0.25em] text-slate-300 uppercase">
           <div className="flex items-center gap-3">
             <span className="text-emerald-400 font-bold">┌─</span>
             <span className="text-white/92 font-bold tracking-widest">META HOOK POOL</span>
             <span className="text-slate-600">──</span>
-            <span className="text-slate-300 font-medium">ANTI-MEV TELEMETRY</span>
-            <span className="text-slate-700 hidden md:inline">────────────────────────────────────┐</span>
+            <span className="text-slate-300 font-medium">DUAL POOL · ANTI-MEV · ARB</span>
           </div>
           <div className="flex items-center gap-4 text-xs tracking-widest">
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              LIVE {liveTime ?? "--:--:--"}
+              <PulseDot /> LIVE {liveTime ?? "--:--:--"}
             </span>
-            <button onClick={loadPool} className="text-emerald-400 hover:text-emerald-300 cursor-pointer font-bold">REFRESH</button>
+            <button
+              onClick={() => {
+                void loadPool();
+                void loadArb();
+              }}
+              className="text-emerald-400 hover:text-emerald-300 cursor-pointer font-bold"
+            >
+              ⟳ SYNC
+            </button>
           </div>
         </div>
 
-        {error && <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-400 text-sm font-mono">{error}</div>}
+        {error && (
+          <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-400 text-sm font-mono">
+            {error}
+          </div>
+        )}
 
-        {/* Top Row: Quote/Chart + Quick Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Quote & Chart */}
-          <Card title="QUOTE & CHART [SYS.01]">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
-                  <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">ETH / USD</div>
-                  <div className="font-mono font-bold tracking-tight text-white/92 text-3xl">{ethUsd > 0 ? fmtUsd(ethUsd) : "—"}</div>
-                </div>
-                <div className="bg-[#131823] border border-white/[0.07] rounded p-4">
-                  <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-1">POOL PRICE</div>
-                  <div className="font-mono font-bold tracking-tight text-emerald-400 text-3xl">{price > 0 ? fmt(price, 2) : "—"} <span className="text-sm font-normal text-slate-400">IMD/ETH</span></div>
-                </div>
-              </div>
-              <div className="pt-2">
-                <Sparkline data={ethSeries} color="#00F58C" />
-              </div>
-              <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                <span>24H SESSION</span>
-                <span>{ethSeries.length > 0 ? fmtUsd(ethSeries[ethSeries.length - 1]) : "—"}</span>
-              </div>
+        {/* Header KPIs agregados */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { l: "TVL COMBINADA", v: <CountUpUsd value={totalTvl} />, c: "#00F58C" },
+            { l: "VOLUME 24H", v: <CountUpUsd value={totalVol} />, c: "#00F5FF" },
+            { l: "FEES 24H", v: <CountUpUsd value={totalFees} />, c: "#FFB000" },
+            { l: "TXS 24H", v: <span style={{ color: "#A78BFA" }} className="tabular-nums">{totalTxs}</span>, c: "#A78BFA" },
+          ].map((k, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.07] bg-[#0B111A]/80 px-4 py-3">
+              <div className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">{k.l}</div>
+              <div className="mt-0.5 text-xl font-bold tracking-tight">{k.v}</div>
             </div>
-          </Card>
-
-          {/* RIGHT: Quick Metrics */}
-          <Card title="QUICK METRICS [SYS.02]">
-            <div className="space-y-3">
-              {!pool ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex justify-between items-center py-2 border-t border-slate-800/50">
-                    <div className="skeleton h-3 w-28" aria-hidden="true" />
-                    <div className="skeleton h-3 w-16" aria-hidden="true" />
-                  </div>
-                ))
-              ) : (
-                <>
-                  <StatRow label="ORDERS ALLOCATED" value={fmt(totalTxs, 0)} color="#00F58C" sub="orders processed in the last 24h"/>
-                  <StatRow label="VOLUME 24H" value={fmtUsd(totalVol)} color="#00F58C" sub={`hook: ${fmtUsd(hookVol)} · native: ${fmtUsd(nativeVol)}`}/>
-                  <StatRow label="FEES 24H" value={fmtUsd(totalFees)} color="#00F58C" sub={`hook: ${fmtUsd(hookFees)} · native: ${fmtUsd(nativeFees)}`}/>
-                  <StatRow label="SPREAD" value={`${spread >= 0 ? "+" : ""}${spread.toFixed(2)}%`} color={spread >= 0 ? "#00F58C" : "#FF567E"} sub={spread >= 0 ? "hook premium" : "native premium"}/>
-                  <StatRow label="TOTAL TVL" value={fmtUsd(totalTVL)} color="#00F58C" sub={`hook: ${fmtUsd(hookTVL)} · native: ${fmtUsd(nativeTVL)}`}/>
-                  <StatRow label="APY (BASE · REAL FEES)" value={`${hookAPY.toFixed(2)}%`} color="#00F58C" sub={`native pool: ${nativeAPY.toFixed(2)}% · rewards: none (no external incentives)`}/>
-                </>
-              )}
-            </div>
-          </Card>
+          ))}
         </div>
 
-        {/* Bottom Row: Radar Anti-MEV + Yield/P&L */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Radar Anti-MEV (dashboard analítico — sem depósitos) */}
-          <Card title="RADAR ANTI-MEV [SYS.03]">
-            <div className="space-y-4">
-              {connected ? (
-                <div className="space-y-3">
-                  <StatRow
-                    label="OPTIMIZER NFT"
-                    value={
-                      nftHeld === null
-                        ? "querying…"
-                        : nftHeld === -1
-                        ? "—"
-                        : nftHeld > 0
-                        ? `${nftHeld} Buildercoin`
-                        : "none"
-                    }
-                    color={nftHeld !== null && nftHeld > 0 ? "#FFD700" : "#00F58C"}
-                    sub="Buildercoin.balanceOf() on-chain"
-                  />
-                  <StatRow
-                    label="IDENTITY MD / TIER (NFT)"
-                    value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "querying…"}
-                    color="#00F5FF"
-                    sub="identityTier() on OptimizerRouter"
-                  />
-                  {tier !== null && (
-                    <div className="flex justify-end">
-                      <span
-                        className="inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold px-2 py-1 rounded-full border uppercase tracking-wider"
-                        style={{
-                          color: ["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88",
-                          borderColor: `${["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88"}55`,
-                          background: `${["#00F58C", "#00F5FF", "#FFB000", "#6B7A88"][tier] ?? "#6B7A88"}15`,
-                        }}
-                      >
-                        ● T{tier + 1}
-                      </span>
-                    </div>
-                  )}
-                  <StatRow
-                    label="MEV INTERCEPTED"
-                    value={mevIntercepted !== null ? fmt(mevIntercepted, 4) + " ETH" : "—"}
-                    color="#00F58C"
-                    sub="OptimizerRouter.getStats() on-chain"
-                  />
-                  <StatRow
-                    label="PROTECTED VOLUME 24H"
-                    value={fmtUsd(hookVol)}
-                    color="#00F58C"
-                    sub="volume processed in the hooked pool"
-                  />
-                  <div className="border-t border-slate-800/50 pt-2">
-                    <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">
-                      BLOCKED ATTACK HISTORY
-                    </div>
-                    {attackLog.length > 0 ? (
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {attackLog.map((e, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between bg-[#131823] border border-white/[0.07] rounded px-3 py-1.5 text-xs font-mono"
-                          >
-                            <span className="text-slate-400">{e.time}</span>
-                            <span className="text-emerald-400">
-                              +{fmt(e.deltaEth, 4)} ETH intercepted
-                            </span>
-                            <span className="text-slate-500">
-                              total {fmt(e.totalEth, 4)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs font-mono text-slate-500 bg-[#131823] border border-white/[0.07] rounded px-3 py-2">
-                        no new interception observed in this session
-                        (counter read every 30s)
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 text-slate-400 font-mono text-sm leading-relaxed">
-                  Connect the wallet to identify your Tier (NFT) and view protocol metrics.
-                  <br />
-                  <span className="text-slate-500">Connection is read-only — the deposit form lives in Staking.</span>
-                </div>
-              )}
+        {/* As 2 POOLS lado a lado */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <PoolCard
+            label="HOOK POOL"
+            tag="anti-MEV"
+            color="#00F58C"
+            tvl={hookTvl}
+            volume={hookVol}
+            fees={hookFees}
+            apy={hookApy}
+            txs={hookTxs}
+            tvlSeries={hookSeries}
+            active={winner === "hook" && actionable}
+          />
+          <PoolCard
+            label="NATIVE POOL"
+            tag="baseline"
+            color="#00F5FF"
+            tvl={nativeTvl}
+            volume={nativeVol}
+            fees={nativeFees}
+            apy={nativeApy}
+            txs={nativeTxs}
+            tvlSeries={nativeSeries}
+            active={winner === "native" && actionable}
+          />
+        </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <div className="text-xs font-mono text-slate-400">
-                  HOOK: <span className="text-white/92">passive contract</span> ·
-                  no direct deposits · TVL:{" "}
-                  <span className="text-emerald-400">{fmtUsd(totalTVL)}</span>
+        {/* Spread + Gráfico comparativo */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase">
+                APY HOOK vs NATIVE — SÉRIE AO VIVO
+              </span>
+              <span className="font-mono text-[10px] text-slate-500">
+                poll 15s · {feed?.stats?.snapshotsCollected ?? 0} snapshots
+              </span>
+            </div>
+            <CompareAreaChart
+              labels={spreadHist.map((s) => s.t)}
+              series={[
+                { name: "Hook APY", color: "#00F58C", values: spreadHist.map((s) => s.h) },
+                { name: "Native APY", color: "#00F5FF", values: spreadHist.map((s) => s.n) },
+              ]}
+              height={220}
+              unit="%"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5 flex flex-col">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">
+              SPREAD (HOOK − NATIVE)
+            </span>
+            <div className="text-4xl font-bold tracking-tight" style={{ color: spread >= 0 ? "#00F58C" : "#FB7185" }}>
+              {spread >= 0 ? "+" : ""}
+              <CountUpPct value={spread} color={spread >= 0 ? "#00F58C" : "#FB7185"} />
+            </div>
+            <div className="mt-1 font-mono text-[11px] text-slate-500">
+              vencedor agora: <span className="text-white/80 uppercase">{winner}</span>
+            </div>
+
+            <div className="mt-4 space-y-2 text-xs">
+              <div className="flex justify-between border-t border-slate-800/50 pt-2">
+                <span className="text-slate-400 uppercase tracking-widest font-mono text-[10px]">HOOK APY</span>
+                <span className="text-emerald-400 font-mono">{pct(hookApy)}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-800/50 pt-2">
+                <span className="text-slate-400 uppercase tracking-widest font-mono text-[10px]">NATIVE APY</span>
+                <span className="text-cyan-400 font-mono">{pct(nativeApy)}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-800/50 pt-2">
+                <span className="text-slate-400 uppercase tracking-widest font-mono text-[10px]">ETH/USD</span>
+                <span className="text-white/90 font-mono">{usd(ethUsd)}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-800/50 pt-2">
+                <span className="text-slate-400 uppercase tracking-widest font-mono text-[10px]">POOL PRICE</span>
+                <span className="text-white/90 font-mono">{poolPrice > 0 ? poolPrice.toFixed(2) : "—"} IMD/ETH</span>
+              </div>
+            </div>
+
+            <div
+              className="mt-4 rounded-xl border px-3 py-2 text-[11px] font-mono"
+              style={{
+                borderColor: actionable ? `${spread >= 0 ? "#00F58C" : "#00F5FF"}55` : "rgba(255,255,255,0.08)",
+                background: actionable ? `${spread >= 0 ? "#00F58C" : "#00F5FF"}10` : "transparent",
+                color: actionable ? (spread >= 0 ? "#00F58C" : "#00F5FF") : "#6B7A88",
+              }}
+            >
+              {actionable
+                ? `⚠ SPREAD ACIMA DO THRESHOLD (${threshold}%) — rota ${winner === "hook" ? "NATIVE → HOOK" : "HOOK → NATIVE"} candidata`
+                : `spread abaixo do threshold (${threshold}%) — hold`}
+            </div>
+          </div>
+        </div>
+
+        {/* ENGINE DE ARBITRAGEM AUTOMÁTICA */}
+        <div className="rounded-2xl border border-emerald-500/20 bg-[#0B111A]/80 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] tracking-[0.2em] text-emerald-400 uppercase">
+                ⚡ ENGINE DE ARBITRAGEM AUTOMÁTICA
+              </span>
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] tracking-widest text-amber-400 uppercase">
+                testnet
+              </span>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
+              <span className={`inline-block h-2 w-2 rounded-full ${autoOn ? "bg-emerald-400 animate-pulse" : "bg-slate-600"}`} />
+              {autoOn ? "AUTO ARMADA" : "AUTO DESLIGADA"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Controles */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">THRESHOLD SPREAD (%)</label>
+                <div className="mt-1 flex gap-2">
+                  {[0.5, 1, 2, 5].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setThreshold(t)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-mono transition-all ${
+                        threshold === t
+                          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-400"
+                          : "border-slate-700/50 bg-slate-900/40 text-slate-300 hover:border-emerald-500/30"
+                      }`}
+                    >
+                      {t}%
+                    </button>
+                  ))}
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">CAPITAL (ETH)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.0001"
+                  value={capital}
+                  onChange={(e) => setCapital(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 font-mono text-white focus:border-emerald-500/50 focus:outline-none"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={autoOn} onChange={(e) => setAutoOn(e.target.checked)} className="accent-emerald-500 h-4 w-4" />
+                <span className="text-xs font-mono text-slate-300 uppercase tracking-wider">
+                  Auto (dry-run no threshold)
+                </span>
+              </label>
+              <p className="text-[10px] font-mono text-slate-500 leading-relaxed">
+                A engine automática só roda <span className="text-emerald-400">dry-run</span> (eth_call, sem gas).
+                A execução <span className="text-amber-400">live</span> exige clique manual — nunca assina sozinha.
+              </p>
+            </div>
 
+            {/* Ações */}
+            <div className="space-y-2">
               <button
-                onClick={() => connect()}
-                disabled={connected || connecting}
-                className="w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] active:scale-[0.98] transition-[background-color,box-shadow,transform,color] duration-150 disabled:bg-slate-800/50 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                onClick={() => void runDry()}
+                disabled={dryRunning}
+                className="w-full rounded-xl border border-emerald-500/50 bg-slate-800/40 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-emerald-400 hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-60"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {connected
-                  ? `WALLET CONNECTED${tier !== null ? ` · ${TIER_NAMES[tier]?.split(" ")[0] ?? ""}` : ""}`
-                  : connecting
-                  ? `OPENING ${walletName.toUpperCase()}…`
-                  : `CONNECT ${walletName.toUpperCase()}`}
+                {dryRunning ? "SIMULANDO…" : "▶ DRY-RUN (sem gas)"}
               </button>
-
+              <button
+                onClick={() => void runLive()}
+                disabled={executing}
+                className="w-full rounded-xl bg-emerald-500 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+              >
+                {executing ? "EXECUTANDO…" : connected ? "▶ EXECUTE LIVE (assina tx)" : `CONECTAR ${walletName.toUpperCase()}`}
+              </button>
+              <div className="rounded-lg border border-white/[0.06] bg-slate-900/30 p-2 text-[10px] font-mono text-slate-500">
+                venues: {config.arbVenueBuy ? shortAddr(config.arbVenueBuy) : "—"} /{" "}
+                {config.arbVenueSell ? shortAddr(config.arbVenueSell) : "—"} · token:{" "}
+                {config.standardToken ? shortAddr(config.standardToken) : "—"}
+              </div>
               {walletError && !connected && (
-                <div className="text-xs font-mono text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2">
-                  {walletError}
-                </div>
+                <div className="text-[10px] font-mono text-rose-400">{walletError}</div>
               )}
+            </div>
 
-              <div className="text-center text-xs text-slate-500 font-mono">
-                Connection used only for Tier + metrics · the deposit ($BLD)
-                form lives in{" "}
-                <Link href="/staking" className="text-emerald-400 hover:text-emerald-300 underline">
-                  Staking
-                </Link>
+            {/* Log */}
+            <div className="rounded-xl border border-white/[0.06] bg-slate-900/30 p-3">
+              <div className="mb-2 font-mono text-[10px] tracking-widest text-slate-400 uppercase">EXECUTION LOG</div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {arbLog.length === 0 ? (
+                  <div className="text-[11px] font-mono text-slate-600">
+                    sem ações nesta sessão. ligue a engine ou dispare um dry-run.
+                  </div>
+                ) : (
+                  arbLog.map((e, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded bg-white/[0.02] px-2 py-1 text-[10px] font-mono">
+                      <span className="text-slate-500">{e.time}</span>
+                      <span style={{ color: e.status === "ok" ? "#00F58C" : e.status === "fail" ? "#FB7185" : "#00F5FF" }}>
+                        {e.action}
+                        {e.tx ? ` · ${e.tx}` : ""}
+                      </span>
+                      <span className="text-slate-400">{e.spread >= 0 ? "+" : ""}{e.spread.toFixed(2)}%</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
-          </Card>
-
-          {/* RIGHT: Yield & P&L */}
-          <Card title="YIELD & P&L [SYS.04]">
-            <div className="space-y-3">
-              {connected && lp ? (
-                <>
-                  <StatRow
-                    label="UNREALIZED P&L"
-                    value={`${pnl >= 0 ? "+" : ""}${fmt(pnl, 4)} ETH`}
-                    color={pnl >= 0 ? "#00F58C" : "#FF567E"}
-                    sub={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}% · fees earned: ${fmt(feeEarned, 4)} ETH`}
-                  />
-                  <StatRow label="POSITION (ETH)" value={fmt(positionEth, 4) + " ETH"} color="#00F58C" sub={`pool share: ${shareOfPool.toFixed(4)}%`}/>
-                  <StatRow label="POSITION (IMD)" value={fmt(imdBalance, 2) + " IMD"} color="#00F58C" sub="balance in pool"/>
-                  <div className="border-t border-slate-700/50 pt-2">
-                    <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">YIELD PROJECTIONS</div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
-                        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">DAILY</div>
-                        <div className="font-mono font-bold text-emerald-400 text-lg">{dailyYield > 0 ? "+" + fmt(dailyYield, 4) : "—"} ETH</div>
-                      </div>
-                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
-                        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">MONTHLY</div>
-                        <div className="font-mono font-bold text-emerald-400 text-lg">{monthlyYield > 0 ? "+" + fmt(monthlyYield, 2) : "—"} ETH</div>
-                      </div>
-                      <div className="bg-[#131823] border border-white/[0.07] rounded p-3">
-                        <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">ANNUAL</div>
-                        <div className="font-mono font-bold text-emerald-400 text-lg">{annualYield > 0 ? "+" + fmt(annualYield, 2) : "—"} ETH</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="border-t border-slate-700/50 pt-2">
-                    <div className="font-mono text-[10px] tracking-widest text-slate-400 uppercase mb-2">PROTOCOL METRICS</div>
-                    <StatRow label="IMD BURNED (TOTAL)" value={pool ? fmt(parseFloat(pool.hookTVL || "0") * 0.001, 0) + " IMD" : "—"} color="#FF567E" sub="estimativa via fee burn"/>
-                    <StatRow label="REWARDS DISTRIBUTED" value={pool ? fmtUsd(parseFloat(pool.hookFeesUSD || "0") * 0.6) : "—"} color="#00F58C" sub="60% fees → stakers"/>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-slate-400 font-mono text-sm leading-relaxed">
-                  Connect your wallet to see your LP position, fees earned and projections.
-                  <br />
-                  <span className="text-slate-500">Values come from real pool telemetry on Sepolia — no estimates.</span>
-                </div>
-              )}
-            </div>
-          </Card>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-xs text-slate-500 font-mono tracking-wider text-center pt-4 border-t border-slate-800/50">
+        {/* Identidade + Radar (compacto) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">IDENTIDADE / TIER</div>
+            {connected ? (
+              <div className="space-y-2">
+                <StatRow
+                  label="OPTIMIZER NFT"
+                  value={nftHeld === null ? "querying…" : nftHeld === -1 ? "—" : nftHeld > 0 ? `${nftHeld} Buildercoin` : "none"}
+                  color={nftHeld !== null && nftHeld > 0 ? "#FFD700" : "#00F58C"}
+                />
+                <StatRow
+                  label="TIER"
+                  value={tier !== null ? TIER_NAMES[tier] ?? `Tier ${tier}` : "querying…"}
+                  color="#00F5FF"
+                />
+                <div className="pt-2">
+                  <Link href="/nft-mint" className="text-emerald-400 hover:text-emerald-300 underline text-xs font-mono">
+                    → mint Buildercoin para destravar Tier Alpha
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-mono text-slate-400 leading-relaxed">
+                  Conecte a wallet para ler seu tier on-chain. Leitura apenas — a engine de arbitragem usa a mesma
+                  carteira só quando você clica em EXECUTE LIVE.
+                </p>
+                <button
+                  onClick={() => void connect()}
+                  disabled={connecting}
+                  className="w-full rounded-xl border border-emerald-500/50 bg-slate-800/40 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-emerald-400 hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-60"
+                >
+                  {connecting ? "OPENING…" : `CONNECT ${walletName.toUpperCase()}`}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">COMPARATIVO RÁPIDO</div>
+            <StatRow label="TVL HOOK" value={usd(hookTvl)} color="#00F58C" sub={`${((hookTvl / Math.max(totalTvl, 1)) * 100).toFixed(1)}% do total`} />
+            <StatRow label="TVL NATIVE" value={usd(nativeTvl)} color="#00F5FF" sub={`${((nativeTvl / Math.max(totalTvl, 1)) * 100).toFixed(1)}% do total`} />
+            <StatRow
+              label="RECOMENDAÇÃO"
+              value={feed?.recommendation?.recommendedPool?.toUpperCase() ?? (actionable ? winner.toUpperCase() : "HOLD")}
+              color={actionable ? "#FFB000" : "#6B7A88"}
+              sub={feed?.recommendation?.reasoning ?? "feed de arbitragem"}
+            />
+            <StatRow
+              label="WIN RATE (sessão)"
+              value={`${feed?.stats?.hookWins ?? 0}H / ${feed?.stats?.nativeWins ?? 0}N`}
+              color="#A78BFA"
+              sub={`avg spread ${feed?.stats?.avgSpread ?? "—"}%`}
+            />
+            <div className="mt-3 text-[10px] font-mono text-slate-600">
+              fonte: {pool?.dataSource ?? "—"} · dados reais (The Graph / event indexer / StateView)
+            </div>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-500 font-mono tracking-wider text-center pt-2 border-t border-slate-800/50">
           └────────────────────────────────────────────────────────────────────────┘
         </div>
       </main>
