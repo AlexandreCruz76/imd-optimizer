@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BarList,
   DonutChart,
+  fmtEthVal,
   GaugeArc,
   PulseDot,
   SERIES_COLORS,
@@ -80,11 +81,10 @@ function ethNum(v: string | null | undefined): number {
 }
 
 function fmtEth(v: string | null | undefined): string {
-  const n = ethNum(v);
   if (!v) return "—";
-  if (n === 0) return "0";
-  if (Math.abs(n) < 0.0001) return n.toExponential(2);
-  return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  const n = Number(v) / 1e18;
+  if (!isFinite(n)) return "—";
+  return fmtEthVal(n);
 }
 
 function num(v: string | null | undefined): string {
