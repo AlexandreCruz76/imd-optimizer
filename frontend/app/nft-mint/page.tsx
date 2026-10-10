@@ -205,7 +205,7 @@ export default function NFTMintPage() {
     <div className="min-h-screen bg-[#070A0F] font-mono">
       <main className="max-w-6xl mx-auto p-4 md:p-6 pt-24 space-y-8 pb-10">
         {/* ===== Título ===== */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
+        <header className="rise flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full border border-emerald-500 bg-[#0D121A] flex items-center justify-center">
               <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,9 +234,12 @@ export default function NFTMintPage() {
            ===================================================================== */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Arte buildercoin */}
-          <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-[#0B111A] min-h-[380px] flex items-center justify-center">
+          <div
+            className="rise relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-[#0B111A] min-h-[380px] flex items-center justify-center"
+            style={{ animationDelay: "80ms" }}
+          >
             <div
-              className="pointer-events-none absolute inset-0 opacity-40"
+              className="hero-glow pointer-events-none absolute inset-0 opacity-40"
               style={{
                 background:
                   "radial-gradient(600px 300px at 50% 0%, rgba(0,245,140,0.18), transparent)",
@@ -246,7 +249,7 @@ export default function NFTMintPage() {
             <img
               src="/images/buildercoin.jpeg"
               alt="Buildercoin dNFT"
-              className="relative z-10 h-full w-full object-cover"
+              className="hero-breathe relative z-10 h-full w-full object-cover"
               style={{ filter: "drop-shadow(0 0 40px rgba(0,245,140,0.25))" }}
             />
             <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-emerald-500/30 bg-black/60 px-3 py-1.5 font-mono text-[10px] tracking-widest text-emerald-400 uppercase">
@@ -255,7 +258,10 @@ export default function NFTMintPage() {
           </div>
 
           {/* Caixa de mint */}
-          <div className="flex flex-col rounded-3xl border border-emerald-500/25 bg-[#0B111A]/90 p-6">
+          <div
+            className="rise flex flex-col rounded-3xl border border-emerald-500/25 bg-[#0B111A]/90 p-6"
+            style={{ animationDelay: "160ms" }}
+          >
             <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">MINT STATUS</div>
 
             {!status.deployed && (
@@ -304,9 +310,9 @@ export default function NFTMintPage() {
               </div>
             </div>
 
-            <div className="h-2 bg-slate-800/50 rounded-full overflow-hidden">
+            <div className="progress-glow h-2 bg-slate-800/50 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700"
+                className="progress-shine h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700"
                 style={{ width: `${supplyPct}%` }}
               />
             </div>
@@ -324,7 +330,7 @@ export default function NFTMintPage() {
               disabled={!mintReady}
               className={`mt-5 w-full rounded-xl py-3 font-mono text-sm font-semibold uppercase tracking-widest transition-all active:scale-[0.98] ${
                 mintReady
-                  ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_28px_rgba(0,245,140,0.45)]"
+                  ? "cta-pulse bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_28px_rgba(0,245,140,0.45)]"
                   : "bg-emerald-500/10 text-emerald-500/40 cursor-not-allowed"
               }`}
             >
@@ -359,11 +365,12 @@ export default function NFTMintPage() {
         {/* =====================================================================
             SEÇÃO 2 — MARKETPLACE (estilo OpenSea): últimos 5 NFTs mintados
            ===================================================================== */}
-        <section>
+        <section className="rise" style={{ animationDelay: "240ms" }}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-white tracking-tight">Marketplace · Últimos mints</h2>
-              <p className="text-xs text-emerald-500/40 font-mono">
+              <div className="rule-grow mt-1 h-px w-40 bg-gradient-to-r from-emerald-500/60 to-transparent" style={{ animationDelay: "400ms" }} />
+              <p className="text-xs text-emerald-500/40 font-mono mt-1.5">
                 Últimos {recent.length} Buildercoin mintados on-chain · clique para ver no Etherscan
               </p>
             </div>
@@ -386,47 +393,50 @@ export default function NFTMintPage() {
               Nenhum mint recente encontrado (varredura de blocos). Verifique o contrato GENESIS_KEY.
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {recent.map((item) => {
-                const frame = LEVEL_FRAMES[item.level ?? 1] ?? LEVEL_FRAMES[1];
-                return (
-                  <a
-                    key={item.tokenId}
-                    href={`https://sepolia.etherscan.io/tx/${item.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0B111A] transition-all duration-300 hover:border-emerald-500/40 hover:shadow-[0_0_24px_rgba(0,245,140,0.15)] hover:-translate-y-1"
-                  >
-                    <div className="relative aspect-square overflow-hidden border-b border-white/[0.06]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/api/metadata/${item.tokenId}/image`}
-                        alt={`Buildercoin #${item.tokenId}`}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <span
-                        className="absolute top-2 left-2 rounded-full px-2 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase"
-                        style={{ color: frame.color, background: `${frame.color}22`, border: `1px solid ${frame.color}55` }}
-                      >
-                        {frame.name}
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-white">#{item.tokenId}</span>
-                        <span className="font-mono text-[9px] text-slate-500">LVL {item.level ?? 1}</span>
+            <div className="vitrine rounded-2xl border border-white/[0.06] p-4 bg-[#0B111A]/60">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {recent.map((item, idx) => {
+                  const frame = LEVEL_FRAMES[item.level ?? 1] ?? LEVEL_FRAMES[1];
+                  return (
+                    <a
+                      key={item.tokenId}
+                      href={`https://sepolia.etherscan.io/tx/${item.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rise shine-hover group overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0B111A] transition-all duration-300 hover:border-emerald-500/40 hover:shadow-[0_0_24px_rgba(0,245,140,0.15)] hover:-translate-y-1"
+                      style={{ animationDelay: `${280 + idx * 70}ms` }}
+                    >
+                      <div className="relative aspect-square overflow-hidden border-b border-white/[0.06]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/api/metadata/${item.tokenId}/image`}
+                          alt={`Buildercoin #${item.tokenId}`}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <span
+                          className="shine-hover absolute top-2 left-2 rounded-full px-2 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase"
+                          style={{ color: frame.color, background: `${frame.color}22`, border: `1px solid ${frame.color}55` }}
+                        >
+                          {frame.name}
+                        </span>
                       </div>
-                      <div className="mt-1 font-mono text-[10px] text-slate-500 truncate">
-                        {item.owner ? `${item.owner.slice(0, 6)}…${item.owner.slice(-4)}` : "—"}
+                      <div className="p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold text-white">#{item.tokenId}</span>
+                          <span className="font-mono text-[9px] text-slate-500">LVL {item.level ?? 1}</span>
+                        </div>
+                        <div className="mt-1 font-mono text-[10px] text-slate-500 truncate">
+                          {item.owner ? `${item.owner.slice(0, 6)}…${item.owner.slice(-4)}` : "—"}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between font-mono text-[9px] text-slate-600">
+                          <span>blk {item.blockNumber}</span>
+                          <span className="text-emerald-500/60 group-hover:text-emerald-400">ver ↗</span>
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center justify-between font-mono text-[9px] text-slate-600">
-                        <span>blk {item.blockNumber}</span>
-                        <span className="text-emerald-500/60 group-hover:text-emerald-400">ver ↗</span>
-                      </div>
-                    </div>
-                  </a>
-                );
-              })}
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>
@@ -436,10 +446,14 @@ export default function NFTMintPage() {
            ===================================================================== */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Split 40/40/20 */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
-            <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">
+          <div
+            className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5"
+            style={{ animationDelay: "560ms" }}
+          >
+            <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-2">
               PARA ONDE VAI A {status.mintPrice} ETH — HONESTIDADE RADICAL
             </div>
+            <div className="rule-grow mb-4 h-px w-full bg-gradient-to-r from-emerald-500/50 to-transparent" style={{ animationDelay: "640ms" }} />
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl border border-emerald-500/20 bg-slate-900/40 p-4">
                 <div className="text-2xl font-bold text-emerald-400">40%</div>
@@ -460,8 +474,12 @@ export default function NFTMintPage() {
           </div>
 
           {/* How it works */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
-            <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">COMO FUNCIONA</div>
+          <div
+            className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5"
+            style={{ animationDelay: "620ms" }}
+          >
+            <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-2">COMO FUNCIONA</div>
+            <div className="rule-grow mb-4 h-px w-full bg-gradient-to-r from-cyan-500/40 to-transparent" style={{ animationDelay: "700ms" }} />
             <ol className="space-y-2 text-xs text-emerald-500/60 list-decimal list-inside">
               <li>Conecte a wallet — Sepolia Testnet (mainnet após aprovação)</li>
               <li>Mint por {status.mintPrice} ETH — split 40/40/20 automático na mesma tx</li>
@@ -481,7 +499,7 @@ export default function NFTMintPage() {
 
         {/* Seus tokens (se houver) */}
         {connected && userKeys.length > 0 && (
-          <section className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+          <section className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5" style={{ animationDelay: "680ms" }}>
             <div className="text-[10px] text-emerald-500/60 tracking-widest font-mono mb-4">
               SEUS TOKENS ({userKeys.length})
             </div>

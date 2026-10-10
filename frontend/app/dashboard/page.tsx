@@ -380,7 +380,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <div className="w-28 h-1 rounded-full bg-white/[0.06] overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#00F58C] to-[#00F5FF] transition-[width] duration-1000 ease-linear"
+                className="progress-shine h-full rounded-full bg-gradient-to-r from-[#00F58C] to-[#00F5FF] transition-[width] duration-1000 ease-linear"
                 style={{ width: `${progressPct}%` }}
               />
             </div>

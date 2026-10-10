@@ -146,6 +146,7 @@ function PoolCard({
   txs,
   tvlSeries,
   active,
+  delay = 0,
 }: {
   label: string;
   tag: string;
@@ -157,11 +158,13 @@ function PoolCard({
   txs: number;
   tvlSeries: number[];
   active: boolean;
+  delay?: number;
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border p-5 transition-all duration-300"
+      className="rise relative overflow-hidden rounded-2xl border p-5 transition-all duration-300"
       style={{
+        animationDelay: `${delay}ms`,
         borderColor: active ? `${color}66` : "rgba(255,255,255,0.08)",
         background: "linear-gradient(160deg, #0B111A 0%, #0D1520 100%)",
         boxShadow: active ? `0 0 30px ${color}22` : "none",
@@ -171,6 +174,17 @@ function PoolCard({
         className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl"
         style={{ background: color }}
       />
+      {/* Orbe de liquidez: flutua e "respira" — ganha corpo quando a pool vence */}
+      <div aria-hidden className="orb-float pointer-events-none absolute right-4 top-14 h-12 w-12">
+        <div
+          className="orb-breath h-full w-full rounded-full"
+          style={{
+            background: `radial-gradient(circle at 32% 28%, #FFFFFFAA, ${color} 45%, transparent 75%)`,
+            boxShadow: `0 0 ${active ? 28 : 16}px ${color}${active ? "88" : "44"}`,
+            opacity: active ? 1 : 0.65,
+          }}
+        />
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
@@ -524,9 +538,23 @@ export default function MetaHookPoolPage() {
 
       <main className="relative z-10 pt-24 space-y-6 max-w-7xl mx-auto px-4 md:px-8 pb-10">
         {/* Command bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-sm tracking-[0.25em] text-slate-300 uppercase">
+        <div className="rise flex flex-wrap items-center justify-between gap-3 font-mono text-sm tracking-[0.25em] text-slate-300 uppercase">
           <div className="flex items-center gap-3">
             <span className="text-emerald-400 font-bold">┌─</span>
+            {/* Gancho dourado: assinatura anti-MEV balançando */}
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="hook-sway h-5 w-5 shrink-0"
+              fill="none"
+              stroke="#FFD700"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M12 3v8a5 5 0 0 0 10 0" />
+              <path d="M9 5l3-3 3 3" />
+              <circle cx="22" cy="11" r="1.6" fill="#FFD700" stroke="none" />
+            </svg>
             <span className="text-white/92 font-bold tracking-widest">META HOOK POOL</span>
             <span className="text-slate-600">──</span>
             <span className="text-slate-300 font-medium">DUAL POOL · ANTI-MEV · ARB</span>
@@ -561,7 +589,11 @@ export default function MetaHookPoolPage() {
             { l: "FEES 24H", v: <CountUpUsd value={totalFees} />, c: "#FFB000" },
             { l: "TXS 24H", v: <span style={{ color: "#A78BFA" }} className="tabular-nums">{totalTxs}</span>, c: "#A78BFA" },
           ].map((k, i) => (
-            <div key={i} className="rounded-xl border border-white/[0.07] bg-[#0B111A]/80 px-4 py-3">
+            <div
+              key={i}
+              className="rise rounded-xl border border-white/[0.07] bg-[#0B111A]/80 px-4 py-3"
+              style={{ animationDelay: `${60 + i * 50}ms` }}
+            >
               <div className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">{k.l}</div>
               <div className="mt-0.5 text-xl font-bold tracking-tight">{k.v}</div>
             </div>
@@ -581,6 +613,7 @@ export default function MetaHookPoolPage() {
             txs={hookTxs}
             tvlSeries={hookSeries}
             active={winner === "hook" && actionable}
+            delay={240}
           />
           <PoolCard
             label="NATIVE POOL"
@@ -593,12 +626,68 @@ export default function MetaHookPoolPage() {
             txs={nativeTxs}
             tvlSeries={nativeSeries}
             active={winner === "native" && actionable}
+            delay={320}
           />
+        </div>
+
+        {/* Rota de arbitragem: linha pontilhada com fluxo animado no sentido da rota */}
+        <div
+          className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 px-5 py-4"
+          style={{ animationDelay: "400ms" }}
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase">
+              ROTA DE ARBITRAGEM AO VIVO
+            </span>
+            <span
+              className="font-mono text-[10px] tracking-widest uppercase"
+              style={{ color: actionable ? (winner === "hook" ? "#00F58C" : "#00F5FF") : "#6B7A88" }}
+            >
+              {actionable
+                ? `fluxo ${winner === "hook" ? "NATIVE → HOOK" : "HOOK → NATIVE"} · ${absSpread.toFixed(2)}%`
+                : "sem fluxo — spread abaixo do threshold"}
+            </span>
+          </div>
+          <svg
+            aria-hidden
+            viewBox="0 0 800 44"
+            className="h-11 w-full"
+            preserveAspectRatio="none"
+          >
+            {/* Sentido do fluxo: origem (esquerda) → destino (direita) */}
+            <line
+              x1="60"
+              y1="22"
+              x2="740"
+              y2="22"
+              stroke={actionable ? (winner === "hook" ? "#00F58C" : "#00F5FF") : "#1E293B"}
+              strokeWidth="2"
+              className={actionable ? "flow-line" : ""}
+              style={actionable ? undefined : { strokeDasharray: "6 8" }}
+            />
+            <circle cx="60" cy="22" r="6" fill="#0B111A" stroke="#6B7A88" strokeWidth="2" />
+            <circle
+              cx="740"
+              cy="22"
+              r="7"
+              fill={actionable ? (winner === "hook" ? "#00F58C" : "#00F5FF") : "#1E293B"}
+              className={actionable ? "flow-node" : ""}
+            />
+            <text x="60" y="42" textAnchor="middle" fontSize="10" fill="#6B7A88" fontFamily="monospace">
+              {winner === "hook" ? "NATIVE" : "HOOK"}
+            </text>
+            <text x="740" y="42" textAnchor="middle" fontSize="10" fill={actionable ? "#E8E8E8" : "#6B7A88"} fontFamily="monospace">
+              {winner === "hook" ? "HOOK" : "NATIVE"}
+            </text>
+          </svg>
         </div>
 
         {/* Spread + Gráfico comparativo */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+          <div
+            className="rise lg:col-span-2 rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5"
+            style={{ animationDelay: "460ms" }}
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase">
                 APY HOOK vs NATIVE — SÉRIE AO VIVO
@@ -618,7 +707,10 @@ export default function MetaHookPoolPage() {
             />
           </div>
 
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5 flex flex-col">
+          <div
+            className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5 flex flex-col"
+            style={{ animationDelay: "520ms", ...(actionable ? { boxShadow: `0 0 26px ${spread >= 0 ? "rgba(0,245,140,0.18)" : "rgba(0,245,255,0.18)"}` } : {}) }}
+          >
             <span className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">
               SPREAD (HOOK − NATIVE)
             </span>
@@ -665,7 +757,10 @@ export default function MetaHookPoolPage() {
         </div>
 
         {/* ENGINE DE ARBITRAGEM AUTOMÁTICA */}
-        <div className="rounded-2xl border border-emerald-500/20 bg-[#0B111A]/80 p-5">
+        <div
+          className={`rise rounded-2xl border border-emerald-500/20 bg-[#0B111A]/80 p-5 ${autoOn ? "engine-armed" : ""}`}
+          style={{ animationDelay: "580ms" }}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[11px] tracking-[0.2em] text-emerald-400 uppercase">
@@ -731,14 +826,14 @@ export default function MetaHookPoolPage() {
               <button
                 onClick={() => void runDry()}
                 disabled={dryRunning}
-                className="w-full rounded-xl border border-emerald-500/50 bg-slate-800/40 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-emerald-400 hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-60"
+                className={`w-full rounded-xl border border-emerald-500/50 bg-slate-800/40 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-emerald-400 hover:bg-slate-700/50 transition-all active:scale-[0.98] disabled:opacity-60 ${actionable && !dryRunning ? "cta-pulse" : ""}`}
               >
                 {dryRunning ? "SIMULANDO…" : "▶ DRY-RUN (sem gas)"}
               </button>
               <button
                 onClick={() => void runLive()}
                 disabled={executing}
-                className="w-full rounded-xl bg-emerald-500 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+                className={`w-full rounded-xl bg-emerald-500 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(0,245,140,0.35)] transition-all active:scale-[0.98] disabled:opacity-60 ${actionable && !executing ? "cta-pulse" : ""}`}
               >
                 {executing ? "EXECUTANDO…" : connected ? "▶ EXECUTE LIVE (assina tx)" : `CONECTAR ${walletName.toUpperCase()}`}
               </button>
@@ -779,7 +874,10 @@ export default function MetaHookPoolPage() {
 
         {/* Identidade + Radar (compacto) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+          <div
+            className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5"
+            style={{ animationDelay: "640ms" }}
+          >
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">IDENTIDADE / TIER</div>
             {connected ? (
               <div className="space-y-2">
@@ -816,7 +914,10 @@ export default function MetaHookPoolPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5">
+          <div
+            className="rise rounded-2xl border border-white/[0.07] bg-[#0B111A]/80 p-5"
+            style={{ animationDelay: "700ms" }}
+          >
             <div className="font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase mb-3">COMPARATIVO RÁPIDO</div>
             <StatRow label="TVL HOOK" value={usd(hookTvl)} color="#00F58C" sub={`${((hookTvl / Math.max(totalTvl, 1)) * 100).toFixed(1)}% do total`} />
             <StatRow label="TVL NATIVE" value={usd(nativeTvl)} color="#00F5FF" sub={`${((nativeTvl / Math.max(totalTvl, 1)) * 100).toFixed(1)}% do total`} />
